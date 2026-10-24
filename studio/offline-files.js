@@ -1,6 +1,6 @@
 // Made by tools/studio-offline.js: the files the studio keeps for offline use, and a version made from their contents.
 self.STUDIO_OFFLINE = {
- "version": "1704d0717d2e",
+ "version": "3377342a994d",
  "files": [
   "packages/ai/src/bt.js",
   "packages/ai/src/crowd.js",
@@ -379,6 +379,8 @@ self.STUDIO_OFFLINE = {
   "studio/app/paint/behavior-model.js",
   "studio/app/paint/clip-model.js",
   "studio/app/paint/controls-model.js",
+  "studio/app/paint/environment-model.js",
+  "studio/app/paint/environment-preview.js",
   "studio/app/paint/kinds-model.js",
   "studio/app/paint/layers-model.js",
   "studio/app/paint/level-model.js",
@@ -402,6 +404,7 @@ self.STUDIO_OFFLINE = {
   "studio/app/panels/console-panel.js",
   "studio/app/panels/controls-panel.js",
   "studio/app/panels/editor-panel.js",
+  "studio/app/panels/environment-panel.js",
   "studio/app/panels/files-panel.js",
   "studio/app/panels/friend-panel.js",
   "studio/app/panels/game-panel.js",

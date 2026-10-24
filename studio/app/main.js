@@ -40,6 +40,7 @@ import { backpackPanel } from './panels/backpack-panel.js';
 import { shipPanel } from './panels/ship-panel.js';
 import { netlabPanel } from './panels/netlab-panel.js';
 import { friendPanel } from './panels/friend-panel.js';
+import { environmentPanel } from './panels/environment-panel.js';
 import { pluginsPanel } from './panels/plugins-panel.js';
 import { rulesPanel } from './panels/rules-panel.js';
 import { scene3dPanel } from './panels/scene3d-panel.js';
@@ -73,7 +74,7 @@ const dock = new Dock($('dock'));
 studio.dock = dock;
 const PANELS = [
   filesPanel, editorPanel, gamePanel, consolePanel, historyPanel, learnPanel, timePanel, inspectPanel, spritePanel, levelPanel, soundPanel,
-  shipPanel, netlabPanel, friendPanel,
+  shipPanel, netlabPanel, friendPanel, environmentPanel,
   pluginsPanel, rulesPanel, scene3dPanel, searchPanel, scenePanel, musicPanel, profilerPanel, textPanel, statePanel,
   clipPanel, worldPanel, kindsPanel, sequencePanel, layersPanel, lightsPanel, particlePanel, behaviorPanel, uiPanel, resourcesPanel, testsPanel,
     controlsPanel,
