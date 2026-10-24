@@ -36,6 +36,15 @@ const small = (v) => {
   try { const s = JSON.stringify(v); return s !== undefined && s.length <= MAX_STATE_JSON ? JSON.parse(s) : undefined; } catch { return undefined; }
 };
 
+/** A lockstep message (the keys held on a tick, or a fingerprint of the game), checked and copied; anything else is dropped. Also used on what a friend sends. */
+export function cleanNetMessage(m) {
+  if (!m || typeof m !== 'object') return null;
+  const keys = (k) => Array.isArray(k) && k.length <= 24 && k.every((c) => typeof c === 'string' && c.length <= 40);
+  if (m.t === 'in' && Number.isInteger(m.f) && m.f >= 0 && keys(m.k)) return { t: 'in', f: m.f, k: [...m.k] };
+  if (m.t === 'sum' && Number.isInteger(m.f) && m.f >= 0 && typeof m.h === 'string' && m.h.length <= 40) return { t: 'sum', f: m.f, h: m.h };
+  return null;
+}
+
 /**
  * Check a message from the runner.
  * @param {unknown} data what arrived
@@ -55,6 +64,10 @@ export function parseRunnerMessage(data) {
       if (perf) beat.perf = perf;
       const profile = cleanProfile(data.profile);
       if (profile) beat.profile = profile;
+      if (data.net && typeof data.net === 'object') {
+        const n = data.net;
+        beat.net = { waiting: !!n.waiting, tick: int(n.tick) ?? 0, stalls: int(n.stalls) ?? 0, desync: int(n.desync) ?? null };
+      }
       return beat;
     }
     case 'applied': return {
@@ -96,6 +109,10 @@ export function parseRunnerMessage(data) {
             actual: r.error.actual === undefined ? undefined : text(r.error.actual, 150) } : undefined,
       })),
     };
+    case 'netOut': {
+      const m = cleanNetMessage(data.message);
+      return m ? { t: 'netOut', message: m } : null;
+    }
     case 'hang': return { t: 'hang' };
     case 'recovered': return { t: 'recovered', run: int(data.run) ?? 0, fromSnapshot: !!data.fromSnapshot };
     case 'log': return { t: 'log', level: LEVELS.has(data.level) ? data.level : 'log', text: text(data.text, 1000) };
@@ -120,6 +137,12 @@ export function isStudioMessage(data) {
   if (data.t === 'mute') return typeof data.value === 'boolean';
   if (data.t === 'select') return data.path === null || validPath(data.path);
   if (data.t === 'edit') return validPath(data.path) && (data.value === null || ['number', 'string', 'boolean'].includes(typeof data.value));
+  if (data.t === 'net') {
+    if (data.op === 'stop') return true;
+    const within = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    if (data.op === 'start') return within(data.players, 2, 8) && within(data.me, 0, data.players - 1) && within(data.delay, 0, 30);
+    return data.op === 'msg' && Number.isInteger(data.from) && data.from >= 0 && data.from < 8 && cleanNetMessage(data.message) !== null;
+  }
   if (data.t === 'loadReplay') return !!data.replay && typeof data.replay === 'object';
   return data.t === 'stop';
 }

@@ -30,6 +30,7 @@ const LIGHT_FIELDS = [
   { key: 'radius', label: 'Size', min: 10, max: 400, step: 5, help: 'How far the light reaches, in pixels' },
   { key: 'intensity', label: 'Brightness', min: 0, max: 1, step: 0.05, help: 'How much of the dark it clears' },
   { key: 'flicker', label: 'Flicker', min: 0, max: 1, step: 0.05, help: '0 is steady, 1 is a candle in a draught' },
+  { key: 'core', label: 'Strong centre', min: 0, max: 0.9, step: 0.05, help: 'How far from the middle the light stays at full strength' },
 ];
 
 export function lightsPanel(studio) {
@@ -141,7 +142,10 @@ export function lightsPanel(studio) {
           ...SCREEN_FIELDS.slice(0, 1).map((f) => slider(f, fx[f.key], (v) => set({ [f.key]: v }))),
           colorInput('Colour of the dark', fx.ambient, (v) => set({ ambient: v })),
           colorInput('Tint colour', fx.tint || '#ff9a4a', (v) => set({ tint: v })),
-          ...SCREEN_FIELDS.slice(1).map((f) => slider(f, fx[f.key], (v) => set({ [f.key]: v }))));
+          ...SCREEN_FIELDS.slice(1).map((f) => slider(f, fx[f.key], (v) => set({ [f.key]: v }))),
+          h('label', { class: 'state-line' }, 'Things that block light ', h('input', { type: 'text', value: fx.occluders.join(', '),
+            placeholder: '(none: no shadows)', aria: { label: 'Kinds of thing that cast shadows' },
+            on: { change: (e) => set({ occluders: e.target.value }, true) } })));
       }
       function drawList() {
         fill(list, h('h4', { text: 'Lights' }), ...file.lights.map((l, i) => h('div', { class: `layers-row${i === selected ? ' on' : ''}` },
@@ -170,6 +174,8 @@ export function lightsPanel(studio) {
             l.y ?? 0, (v) => set({ y: v })),
           colorInput('Colour', l.color ?? '#ffffff', (v) => set({ color: v })),
           ...LIGHT_FIELDS.map((f) => slider(f, l[f.key] ?? 0, (v) => set({ [f.key]: v }))),
+          h('label', { class: 'state-line' }, h('input', { type: 'checkbox', checked: l.shadows !== false,
+            on: { change: (e) => set({ shadows: e.target.checked }, true) } }), ' Casts shadows (when some things block light)'),
           h('label', { class: 'state-line' }, h('input', { type: 'checkbox', checked: !!l.hidden,
             on: { change: (e) => set({ hidden: e.target.checked }, true) } }), ' Hidden for now'));
       }

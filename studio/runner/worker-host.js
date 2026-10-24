@@ -6,9 +6,12 @@
 //
 // It also keeps the Time Machine: every tick goes through `timeline` (see timeline.js), which records the keys pressed and the values edited by hand, and a
 // copy of the state once a second, so the studio can pause, go back, replay with new code, and export a recording that reproduces a bug.
-import { Timeline, validPath, getPath, checkReplay, verifyReplay } from './timeline.js';
+import { Timeline, validPath, getPath, checkReplay, verifyReplay, hashState } from './timeline.js';
 
 let FixedLoop = null;
+let Netplay = null;         // the kit's lockstep (packages/arcade/src/netplay.js), when the engine has it
+let pendingLoad = null;     // a new version that arrived while playing with a friend, applied afterwards
+let net = null;             // playing with a friend: { lock, me, players, waiting, reported }
 let g = null;                // the 2D drawing context
 let mod = null;              // the project's current code
 let state = null;            // the game's state: plain data
@@ -53,6 +56,11 @@ const summary = () => {
 };
 
 async function load({ run, restart, progress, assets, settings }) {
+  if (net) {
+    postMessage({ t: 'log', level: 'info', text: 'the game was edited while you are playing with a friend: the change will apply when you stop' });
+    pendingLoad = { run, restart: false, progress, assets, settings };
+    return;
+  }
   globalThis.__engineProgress = progress ?? {};
   applySettings(settings);
   await loadAssets(assets ?? []);           // what this project saved last time (see the kit's loadProgress)
@@ -192,11 +200,72 @@ const profiledUpdate = (s, keys, dt) => {
   try { mod.update(s, keys, dt); } finally { prof.update += performance.now() - t; }
 };
 
+// ---- playing with a friend: both computers run the game, and each tick waits for both players' keys (see the kit's netplay.js) ----
+function netTick() {
+  const t = performance.now();
+  const message = net.lock.local(timeline.held);
+  if (message) postMessage({ t: 'netOut', message });
+  if (!net.lock.ready()) {
+    if (!net.waiting) { net.waiting = true; Netplay.setNetInfo({ waiting: true }); }
+    return;
+  }
+  if (net.waiting) { net.waiting = false; Netplay.setNetInfo({ waiting: false }); }
+  const inputs = net.lock.take();
+  try {
+    timeline.step(state, (s, keys, dt) => mod.update(s, inputs[0], dt, inputs));
+    const sum = net.lock.done(net.lock.wantsSum(net.lock.frame + 1) ? hashState(state) : undefined);
+    if (sum) postMessage({ t: 'netOut', message: sum });
+  } catch (error) {
+    broken = true;
+    fail('run', error);
+  }
+  if (net.lock.desyncAt !== null && !net.reported) {
+    net.reported = true;
+    const text = `the two computers stopped agreeing at tick ${net.lock.desyncAt}: something in the game is not repeatable (Math.random, Date.now?)`;
+    postMessage({ t: 'log', level: 'error', text });
+  }
+  frameWork += performance.now() - t;
+}
+
+/** Start playing with a friend: both computers begin the game again from tick 0 so they agree. */
+function netStart({ me, players, delay }) {
+  if (!Netplay || !mod || broken) {
+    postMessage({ t: 'log', level: 'warn', text: 'playing with a friend is not available (the game has not started, or this engine is too old)' });
+    return;
+  }
+  if (mod.players !== undefined && mod.players !== players) {
+    postMessage({ t: 'log', level: 'warn', text: `the game says it is for ${mod.players} players, but ${players} are connecting` });
+  }
+  try {
+    state = mod.create();
+    timeline.reset(state);
+    timeline.paused = false;
+    net = { lock: new Netplay.Lockstep({ players, me, delay }), me, players, waiting: false, reported: false };
+    Netplay.setNetInfo({ me, players, online: true, waiting: false });
+  } catch (error) {
+    broken = true;
+    fail('run', error);
+  }
+}
+
+function netStop() {
+  if (!net) return;
+  net = null;
+  if (pendingLoad) {
+    const next = pendingLoad;
+    pendingLoad = null;
+    loads = loads.then(() => withTimeout(load(next), next.run)).catch((error) => fail('load', error));
+  }
+  Netplay?.setNetInfo({ me: 0, players: 1, online: false, waiting: false });
+}
+
 function makeLoop() {
   return new FixedLoop({
     tickRate: 60,
     update() {
-      if (!mod || broken || timeline.paused) return;
+      if (!mod || broken) return;
+      if (net) { netTick(); return; }
+      if (timeline.paused) return;
       const t = performance.now();
       try {
         timeline.step(state, profiling ? profiledUpdate : mod.update);
@@ -417,6 +486,7 @@ function tick(now) {
   last = now;
   frame++;
   const beat = { t: 'beat', frame, tick: timeline.tick };
+  if (net) beat.net = { waiting: net.waiting, tick: net.lock.frame, stalls: net.lock.stalls, desync: net.lock.desyncAt };
   if (frame % 30 === 0) {
     beat.summary = summary();
     beat.perf = { frame: costStats(), heapMB: performance.memory ? performance.memory.usedJSHeapSize / 1e6 : null, firstFrameMs };
@@ -480,6 +550,8 @@ let ready = Promise.resolve();
 let loads = Promise.resolve();
 async function init(m) {
   ({ FixedLoop } = await import(`${m.engineRoot}/core/src/index.js`));
+  // an engine without the kit can still run games
+  try { Netplay = await import(`${m.engineRoot}/arcade/src/netplay.js`); } catch { Netplay = null; }
   loop = makeLoop();
   g = m.canvas.getContext('2d');
   base = m.base;
@@ -499,7 +571,13 @@ onmessage = (event) => {
     else if (m.t === 'key') {
       if (m.down) physical.add(m.code); else physical.delete(m.code);
       timeline.key(m.down, m.code);
-    } else if (m.t === 'time') timeControl(m);
+    } else if (m.t === 'net') {
+      const small = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+      if (m.op === 'start') {
+        if (small(m.players, 2, 8) && small(m.me, 0, m.players - 1) && small(m.delay, 0, 30)) netStart(m);
+      } else if (m.op === 'stop') netStop();
+      else if (m.op === 'msg' && net) net.lock.receive(m.message, m.from);
+    } else if (m.t === 'time') { if (!net) timeControl(m); }
     else if (m.t === 'watch') { watching = !!m.on; lastStatus = ''; sendTimeline(true); sendState(); }
     else if (m.t === 'progress') globalThis.__engineProgress = m.progress ?? {};
     else if (m.t === 'select') { selection = validPath(m.path) ? m.path : null; }
@@ -507,7 +585,7 @@ onmessage = (event) => {
     else if (m.t === 'overlay') { overlayOn = !!m.on; showBoxes = !!m.boxes; }
     else if (m.t === 'profile') profileOn(m.on);
     else if (m.t === 'edit') {
-      if (state !== null && validPath(m.path) && timeline.edit(state, m.path, m.value)) { sendTimeline(true); sendState(); }
-    } else if (m.t === 'loadReplay') loads = loads.then(() => loadReplay(m.replay)).catch((error) => fail('load', error));
+      if (!net && state !== null && validPath(m.path) && timeline.edit(state, m.path, m.value)) { sendTimeline(true); sendState(); }
+    } else if (m.t === 'loadReplay' && !net) loads = loads.then(() => loadReplay(m.replay)).catch((error) => fail('load', error));
   });
 };

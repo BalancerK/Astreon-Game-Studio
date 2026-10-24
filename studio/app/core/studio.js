@@ -323,6 +323,9 @@ export class Studio extends Emitter {
     this.timers.run = setTimeout(() => this.run({ restart: false }), this.settings.get('autoRunDelay'));
   }
 
+  /** The project's text files as the game gets them (path to text). */
+  gameFiles() { return this.#textFiles(); }
+
   /** Run the project in the game. `restart` starts the game over; otherwise the new code takes over and the game keeps its state. */
   run({ restart = true } = {}) {
     clearTimeout(this.timers.run);

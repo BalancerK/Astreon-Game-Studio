@@ -398,6 +398,76 @@ const RULES_STARTER = [
   { id: 3, once: true, when: { type: 'none', kind: 'coin' }, then: [{ type: 'say', text: 'You got every coin!', seconds: 3 }] },
 ];
 
+const DUEL_MAIN = `import { isOnline, isWaiting, me } from '@engine/arcade';
+
+export const players = 2;     // this game is for two players: open "Play with a friend" to play over the internet
+
+const SPEED = 140;            // pixels per second
+const WIN = 10;               // coins needed to win
+
+/** A new game. The coin positions come from the seed, which is part of the game, so both computers see the same coins. */
+export function create() {
+  const game = { seed: 12345, players: [{ x: 100, y: 160, score: 0 }, { x: 380, y: 160, score: 0 }], coin: null, winner: -1 };
+  game.coin = nextCoin(game);
+  return game;
+}
+
+/** A small repeatable random number: never use Math.random here, or the two computers stop agreeing. */
+function nextCoin(game) {
+  game.seed = (game.seed * 1664525 + 1013904223) >>> 0;
+  const x = 20 + (game.seed % 440);
+  game.seed = (game.seed * 1664525 + 1013904223) >>> 0;
+  return { x, y: 40 + (game.seed % 250) };
+}
+
+/** One tick. The first of inputs is the first player's keys and the second is the second player's. */
+export function update(game, keys, dt, inputs = [keys]) {
+  if (game.winner >= 0) return;
+  game.players.forEach((p, i) => {
+    const k = inputs[i] ?? new Set();                       // alone, the second player stands still
+    if (k.has('ArrowLeft')) p.x -= SPEED * dt;
+    if (k.has('ArrowRight')) p.x += SPEED * dt;
+    if (k.has('ArrowUp')) p.y -= SPEED * dt;
+    if (k.has('ArrowDown')) p.y += SPEED * dt;
+    p.x = Math.max(10, Math.min(470, p.x));
+    p.y = Math.max(10, Math.min(310, p.y));
+    if (Math.hypot(p.x - game.coin.x, p.y - game.coin.y) < 18) {
+      p.score++;
+      game.coin = nextCoin(game);
+      if (p.score >= WIN) game.winner = i;
+    }
+  });
+}
+
+/** Draw the game. */
+export function render(game, g) {
+  g.fillStyle = '#12161f';
+  g.fillRect(0, 0, 480, 320);
+  g.fillStyle = '#ffd23c';
+  g.beginPath();
+  g.arc(game.coin.x, game.coin.y, 7, 0, Math.PI * 2);
+  g.fill();
+  game.players.forEach((p, i) => {
+    g.fillStyle = i === 0 ? '#ff6b6b' : '#5ac8ff';
+    g.fillRect(p.x - 10, p.y - 10, 20, 20);
+    if (isOnline() && i === me()) {
+      g.strokeStyle = '#fff';
+      g.strokeRect(p.x - 12, p.y - 12, 24, 24);             // a frame round you
+    }
+  });
+  g.fillStyle = '#fff';
+  g.font = '16px system-ui';
+  g.fillText('Red ' + game.players[0].score + '   Blue ' + game.players[1].score, 12, 24);
+  if (isWaiting()) g.fillText('Waiting for your friend…', 150, 160);
+  if (game.winner >= 0) g.fillText((game.winner === 0 ? 'Red' : 'Blue') + ' wins!', 200, 160);
+}
+
+/** What the studio shows in its status bar. */
+export function summary(game) {
+  return { red: game.players[0].score, blue: game.players[1].score };
+}
+`;
+
 /** @type {Record<string, {title: string, description: string, files: Record<string, string>}>} */
 export const TEMPLATES = {
   blank: {
@@ -435,6 +505,11 @@ export const TEMPLATES = {
     title: 'Gem hall from a scene (3D)',
     description: 'The same hall, but built by dragging blocks in the 3D panel: the game reads the scene file, so change the level without code.',
     files: { 'src/main.js': SCENE_HALL_MAIN, 'scenes/hall.json': HALL_SCENE_JSON },
+  },
+  duel: {
+    title: 'Coin duel (2 players)',
+    description: 'Two squares race for coins. Play alone to try it, or open Play with a friend to play against someone over the internet.',
+    files: { 'src/main.js': DUEL_MAIN },
   },
   rules: {
     title: 'Made with rules',

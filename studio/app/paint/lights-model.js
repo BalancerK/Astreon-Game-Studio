@@ -94,6 +94,8 @@ export function setLight(file, index, props) {
     } else if (key === 'radius') light.radius = clamp(value, 4, LIGHT_LIMITS.radius);
     else if (key === 'intensity') light.intensity = clamp(value, 0, 1);
     else if (key === 'flicker') light.flicker = clamp(value, 0, 1);
+    else if (key === 'core') light.core = clamp(value, 0, 0.9);
+    else if (key === 'shadows') { if (value) delete light.shadows; else light.shadows = false; }
     else if (key === 'x' || key === 'y' || key === 'dx' || key === 'dy') light[key] = clamp(value, -5000, 5000);
     else if (key === 'seed') light.seed = clamp(value, 0, 9999) | 0;
     else if (key === 'hidden') light.hidden = !!value;
@@ -111,6 +113,10 @@ export function setScreen(file, props) {
       if (key === 'tint' && value === '') next.screen.tint = '';
       else if (!COLOR.test(String(value))) throw new Error('A colour looks like #0a0e24.');
       else next.screen[key] = String(value).toLowerCase();
+    } else if (key === 'occluders') {
+      const kinds = (Array.isArray(value) ? value : String(value).split(/[\s,]+/)).filter(Boolean);
+      if (kinds.some((k) => !KIND.test(String(k)))) throw new Error('A kind of thing is a name: letters, numbers, dashes and underscores.');
+      next.screen.occluders = [...new Set(kinds.map(String))].slice(0, 16);
     } else if (key === 'darkness' || key === 'tintAlpha' || key === 'vignette') next.screen[key] = clamp(value, 0, 1);
     else throw new Error(`"${key}" is not a screen setting.`);
   }
@@ -151,6 +157,7 @@ export function parseLights(text) {
   });
   const screen = { ...SCREEN_DEFAULTS };
   for (const key of ['darkness', 'tintAlpha', 'vignette']) if (Number.isFinite(data.screen?.[key])) screen[key] = clamp(data.screen[key], 0, 1);
+  if (Array.isArray(data.screen?.occluders)) screen.occluders = data.screen.occluders.filter((k) => KIND.test(String(k))).map(String).slice(0, 16);
   for (const key of ['ambient',
     'tint']) if (typeof data.screen?.[key] === 'string' && (COLOR.test(data.screen[key]) || (key === 'tint' && data.screen[key] === ''))) {
     screen[key] = data.screen[key];

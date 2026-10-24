@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { drawLights, flicker, lightProblems } from '../src/lights.js';
+import { drawLights, flicker, lightProblems, shadowShapes } from '../src/lights.js';
 import { setCanvasFactory } from '../src/art.js';
 
 /** A pretend canvas that writes down what it was asked to do (and what it was set to). */
@@ -107,4 +107,35 @@ test('lightProblems says what is wrong', () => {
   assert.match(lightProblems({ screen: { tint: 'red', tintAlpha: 0.5 }, lights: [] })[0], /tint/);
   assert.match(lightProblems({ screen: { darkness: 2 }, lights: [{ radius: 5 }] })[0], /0 to 1/);
   assert.match(lightProblems(Array.from({ length: 25 }, () => ({ radius: 5 })))[0], /25 lights/);
+});
+
+test('a box throws a shadow from the sides that face the light, running out to the reach', () => {
+  const shapes = shadowShapes({ x: 0, y: 50 }, [{ x: 40, y: 40, w: 10, h: 20 }], 100);
+  assert.equal(shapes.length, 1, 'only the left edge faces a light on the left');
+  const [a, b, c, d] = shapes[0];
+  assert.deepEqual([a, b], [[40, 60], [40, 40]]);
+  assert.ok(c[0] > 40 + 90 && d[0] > 40 + 90, 'the shadow runs away from the light');
+  assert.ok(Math.abs(c[1] - d[1]) > Math.abs(a[1] - b[1]), 'and spreads: the far end is wider than the near end');
+  assert.equal(shadowShapes({ x: 45, y: 50 }, [{ x: 40, y: 40, w: 10, h: 20 }], 100).length, 0, 'a light inside a box is not shadowed by it');
+  assert.equal(shadowShapes({ x: 0, y: 0 }, [{ x: 40, y: 40, w: 10, h: 20 }], 100).length, 2, 'from a corner, two sides face the light');
+});
+
+test('shadows are cut out of a light only when some kinds block light, and a light can opt out', () => {
+  const game = { things: [{ id: 1, kind: 'wall', x: 60, y: 40, w: 10, h: 40 }], camera: { x: 0, y: 0 } };
+  const run = (screen, light = {}) => { reset(); const { g } = recorder(); drawLights(g, game, { screen: { darkness: 0.8, ...screen }, lights: [{ x: 20, y: 60, radius: 50, ...light }] }, view);
+    return darkCalls.filter((c) => c[0] === 'fill').length; };
+  assert.equal(run({}), 0, 'no blocking kinds: no shadows');
+  assert.ok(run({ occluders: ['wall'] }) > 0, 'a wall blocks the light');
+  assert.equal(run({ occluders: ['wall'] }, { shadows: false }), 0, 'unless this light ignores it');
+  assert.equal(run({ occluders: ['crate'] }), 0, 'other kinds do not');
+});
+
+test('a core keeps the light at full strength out to there, and bad occluders or cores are reported', () => {
+  reset();
+  drawLights(recorder().g, { things: [], camera: { x: 0, y: 0 } }, { screen: { darkness: 0.5 }, lights: [{ x: 10, y: 10, radius: 40, core: 0.5 }] }, view);
+  const stops = darkCalls.filter((c) => c[0] === 'stop').map((c) => c[1]);
+  assert.deepEqual(stops, [0, 0.5, 0.775, 1]);
+  assert.equal(lightProblems({ screen: { occluders: ['wall'] }, lights: [{ radius: 5, core: 0.5 }] }).length, 0);
+  assert.equal(lightProblems({ screen: { occluders: ['bad name!'] }, lights: [] }).length, 1);
+  assert.equal(lightProblems({ lights: [{ radius: 5, core: 2 }] }).length, 1);
 });

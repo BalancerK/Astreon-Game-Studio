@@ -129,7 +129,7 @@ function spawn(files, run, state) {
       frame = m.frame;
       if (m.state !== undefined) snapshot = m.state;
       if (candidate && frame - candidate.since >= 45) { lastGood = candidate; candidate = null; }      // it survived most of a second
-      post({ t: 'beat', frame: m.frame, summary: m.summary, perf: m.perf, stateProblem: m.stateProblem, profile: m.profile });
+      post({ t: 'beat', frame: m.frame, summary: m.summary, perf: m.perf, stateProblem: m.stateProblem, profile: m.profile, net: m.net });
     } else if (m.t === 'wantMouse') {
       mouse.want(true);
     } else if (m.t === 'picked') {
@@ -349,7 +349,7 @@ addEventListener('message', (event) => {
     worker?.postMessage({ t: 'progress', progress: null });
   }
   else if (m.t === 'visible') { visible = !!m.value; lastBeat = performance.now(); }
-  else if (['time', 'watch', 'select', 'edit', 'loadReplay'].includes(m.t)) worker?.postMessage(m);               // the worker checks them again
+  else if (['time', 'watch', 'select', 'edit', 'loadReplay', 'net'].includes(m.t)) worker?.postMessage(m);      // checked again there
   else if (m.t === 'stop') { stop(); stopMusicNow(); candidate = null; lastGood = null; snapshot = null; }
 });
 const sendKey = (code, down) => worker?.postMessage({ t: 'key', down, code });

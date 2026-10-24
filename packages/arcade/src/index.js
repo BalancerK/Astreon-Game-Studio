@@ -24,7 +24,7 @@ export { music, playMusic, stopMusic, cleanSong } from './music.js';
 export { text, t, setLanguage, setPseudo, language, languages, pseudo, textProblems } from './text.js';
 export { stepState, enterState, holds, ready, eventsOf, fieldsOf, describe, machineProblems } from './states.js';
 export { stepClip, sampleClip, sampleTrack, clipTime, ease, clipProblems } from './clips.js';
-export { drawLights, flicker, lightProblems, LIGHT_LIMITS, SCREEN_DEFAULTS } from './lights.js';
+export { drawLights, shadowShapes, flicker, lightProblems, LIGHT_LIMITS, SCREEN_DEFAULTS } from './lights.js';
 export {
   playSequence, stepSequence, sequenceActive, takeSequenceCommands, clearSequence, drawSequence, sequenceProblems, cleanEvent, EVENT_KINDS, SEQUENCE_LIMITS, SPECIAL_TARGETS,
 } from './sequences.js';
@@ -42,3 +42,4 @@ export { timed } from './profile.js';
 export {
   camera3d, forward3d, move3d, mouseLook3d, chase3d, jump3d, slideAgainst, block, ramp, stairs, groundAt, gem, project3d, drawWorld3d, block3d, gem3d, sky3d, floor3d,
 } from './view3d.js';
+export { Lockstep, keyList, setNetInfo, me, playerCount, isOnline, isWaiting } from './netplay.js';

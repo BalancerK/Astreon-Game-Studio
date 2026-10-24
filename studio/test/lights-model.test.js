@@ -85,3 +85,20 @@ test('a hand-edited file is read kindly, and a broken one is explained', () => {
   assert.throws(() => parseLights('export default { nope };'), /plain JSON/);
   assert.throws(() => parseLights('export default { "screen": {} };'), /list of "lights"/);
 });
+
+test('things that block light, a light\'s core and its shadows switch are kept, checked and written to the file', () => {
+  let file = newLights();
+  file = addLight(file, 'lamp').file;
+  file = setScreen(file, { occluders: 'wall, crate  wall' });
+  assert.deepEqual(file.screen.occluders, ['wall', 'crate'], 'split on commas and spaces, once each');
+  assert.throws(() => setScreen(file, { occluders: 'no way!' }), /name/);
+  file = setLight(file, 0, { core: 5 });
+  assert.equal(file.lights[0].core, 0.9, 'a core stops short of the edge');
+  file = setLight(file, 0, { shadows: false });
+  assert.equal(file.lights[0].shadows, false);
+  file = setLight(file, 0, { shadows: true });
+  assert.equal('shadows' in file.lights[0], false, 'casting shadows is the normal state, so it is not written');
+  const back = parseLights(serializeLights(file));
+  assert.deepEqual(back.screen.occluders, ['wall', 'crate']);
+  assert.equal(back.lights[0].core, 0.9);
+});

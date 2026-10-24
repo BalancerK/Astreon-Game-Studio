@@ -245,6 +245,17 @@ export class RunnerController extends Emitter {
   /** Give the game a recording from a file; it goes to the start of it, paused. */
   loadReplay(replay) { return this.ready && this.#post({ t: 'loadReplay', replay }); }
 
+  /**
+   * Play with a friend (see the kit's netplay.js): both computers start the game again from the beginning and then trade only their keys. `me` is this player's number (0 is the host).
+   * Listen for `'netOut'` (a message to send to the friend) and `'net'` (how it is going), and give the friend's messages to `netMessage`.
+   * @param {{me: number, players?: number, delay?: number}} o
+   */
+  netStart({ me, players = 2, delay = 3 }) { this.netState = null; this.#post({ t: 'net', op: 'start', me, players, delay }); }
+  /** Stop playing with a friend; the game goes on by itself from where it is. */
+  netStop() { this.netState = null; this.#post({ t: 'net', op: 'stop' }); }
+  /** A message from the friend (checked again in the game's frame). @param {number} from @param {object} message */
+  netMessage(from, message) { this.#post({ t: 'net', op: 'msg', from, message }); }
+
   #message(event) {
     if (event.origin !== this.origin || !this.frame || event.source !== this.frame.contentWindow) return;
     const m = parseRunnerMessage(event.data);
@@ -270,7 +281,9 @@ export class RunnerController extends Emitter {
         if (m.profile?.frames.length) this.emit('profile', m.profile);
         if (m.summary !== undefined) { this.summary = m.summary; this.emit('summary', m.summary); }
         if (m.stateProblem) this.emit('log', { level: 'warn', text: m.stateProblem });
+        if (m.net) { this.netState = m.net; this.emit('net', m.net); }
         break;
+      case 'netOut': this.emit('netOut', m.message); break;
       case 'applied': {
         const ms = Math.round(performance.now() - (this.sent.get(m.run) ?? performance.now()));
         this.stats.applied++;

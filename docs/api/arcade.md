@@ -8,7 +8,7 @@ npm install @engine/arcade
 
 Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade/README.md)) explains how the pieces fit together; this page lists every export.
 
-## Contents (211 of 211 documented)
+## Contents (219 of 219 documented)
 
 | Name | Kind | Summary |
 |---|---|---|
@@ -22,6 +22,7 @@ Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade
 | [`LAYER_KINDS`](#layer_kinds) | constant | What each kind of layer draws. |
 | [`LAYER_LIMITS`](#layer_limits) | constant | The limits a layers file is held to. |
 | [`LIGHT_LIMITS`](#light_limits) | constant | The limits a lights file is held to. |
+| [`Lockstep`](#class-lockstep) | class | The agreement between two (or more) computers about whose keys count on which tick. |
 | [`SCREEN_DEFAULTS`](#screen_defaults) | constant | What the darkness, the tint and the vignette are when they are not set. |
 | [`SEQUENCE_LIMITS`](#sequence_limits) | constant | The limits a sequence is held to. |
 | [`SETTING_SPEC`](#setting_spec) | constant | The settings: what each is called, what it can be, and what it starts as. |
@@ -108,9 +109,12 @@ Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade
 | [`image`](#image) | function | The picture at a path, or null when there is none. |
 | [`imageSize`](#imagesize) | function | The size of a picture in pixels, or null when there is none. |
 | [`isAssetPath`](#isassetpath) | function | Is this a path the studio keeps pictures and sounds at? |
+| [`isOnline`](#isonline) | function | Is the game being played with someone else over the network? |
 | [`isReservedField`](#isreservedfield) | function | Is this word one that a field cannot be called, because things already have it? |
+| [`isWaiting`](#iswaiting) | function | True while the game is waiting for the other player's keys (draw a "waiting for your friend" message). |
 | [`jump`](#jump) | function | Jump if a jump key is held and the thing is standing on something. |
 | [`jump3d`](#jump3d) | function | Jump with the space bar: it starts a jump when you are on the ground (the floor, a ledge, a ramp). |
+| [`keyList`](#keylist) | function | The key codes of a set, in a fixed order, so the same keys always look the same. |
 | [`keyName`](#keyname) | function | A key code in plain words: "Left arrow", "A", "Space", "Enter", "Shift (left)". |
 | [`kindProblems`](#kindproblems) | function | Say what is wrong with a kinds table, in plain words. |
 | [`label`](#label) | function | Write text on the screen (it does not move with the camera). |
@@ -128,6 +132,7 @@ Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade
 | [`makeWorld`](#makeworld) | function | Make a world a game can use. |
 | [`masksFor`](#masksfor) | function | The neighbour mask of every tile of a level made of letters. |
 | [`masksFromGrid`](#masksfromgrid) | function | The neighbour mask of every cell of a grid of terrains. |
+| [`me`](#me) | function | Which player this computer is, counting from 0. |
 | [`mouseDelta`](#mousedelta) | function | How far the mouse has moved since the last time you asked. |
 | [`mouseLook3d`](#mouselook3d) | function | Look around with the mouse: moving it turns the camera (left and right) and tilts it (up and down). |
 | [`move`](#move) | function | Move a thing by its speed for one tick (no collisions: use {@link moveAndCollide} for things that must not pass through walls). |
@@ -146,6 +151,7 @@ Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade
 | [`play`](#play) | function | Play a sound: a name given to {@link sounds}, or a recipe. |
 | [`playMusic`](#playmusic) | function | Start a song (a name given to {@link music}) and let it repeat. |
 | [`playSequence`](#playsequence) | function | Begin a sequence (one that is already going is replaced). |
+| [`playerCount`](#playercount) | function | How many players the game is being played by (1 when played alone). |
 | [`project3d`](#project3d) | function | Where a point of the world is on the screen. |
 | [`pseudo`](#pseudo) | function | Test text: every letter becomes an accented one, the words grow by about a third (other languages are often longer) and sit in brackets, so a word that does not fit its space, or a font that lacks accents, is seen at once. |
 | [`ramp`](#ramp) | function | A ramp: like a block, but its top rises from the floor at the near end (the +z side, where you walk up from when you face -z) to its full height `h` at the far end, turned by `yaw` like a block. |
@@ -170,6 +176,7 @@ Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade
 | [`setBinding`](#setbinding) | function | Choose the keys for an action (up to three) and keep them for next time. |
 | [`setCanvasFactory`](#setcanvasfactory) | function | Choose how small canvases are made (the default is an OffscreenCanvas, which the game's worker and modern browsers have). |
 | [`setLanguage`](#setlanguage) | function | Choose the language: 'fr', 'pt-BR' (falls back to 'pt' when only that is in the table), or 'auto'. |
+| [`setNetInfo`](#setnetinfo) | function | Tell the kit about the game being played. |
 | [`setProgressHost`](#setprogresshost) | function | Where saved progress goes and where it is read from (for tests, or a host that is not the studio). |
 | [`setPseudo`](#setpseudo) | function | Turn on (or off) the stretched, accented test text that shows which words are not in the table and which are too long for their space. |
 | [`setSetting`](#setsetting) | function | Change a setting (kept in range) and keep it for next time. |
@@ -180,6 +187,7 @@ Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade
 | [`settingsMenuScreen`](#settingsmenuscreen) | function | The menu as a UI screen (plain data), for drawing and for finding what was clicked. |
 | [`settingsValues`](#settingsvalues) | function | Every setting's value. |
 | [`shade`](#shade) | function | A colour made darker (or lighter, with a factor above 1): `#3b4a6b` to `#24304a`. |
+| [`shadowShapes`](#shadowshapes) | function | The shadow a set of boxes throws from a light: for each side of a box that faces the light, the four corners of the area behind that side, stretching out to `reach`. |
 | [`shake`](#shake) | function | Shake the screen for a moment. |
 | [`shakeOffset`](#shakeoffset) | function | Where the screen is pushed by the shake right now (zero when nothing is shaking). |
 | [`shapesOf`](#shapesof) | function | The shapes of a mode, as the neighbour masks they stand for, in frame order (frame 0 is a tile on its own). |
@@ -912,7 +920,7 @@ Draw the lights and screen effects. Call it after `drawThings` (and before the t
 | `file` | `{screen?: object, lights: Array<object>} \| Array<object>` | the whole file from the Lights panel, or just the list of lights |
 | `opts` (optional) | `{width?: number, height?: number}` | the screen's size |
 
-<sub>src/lights.js:77</sub>
+<sub>src/lights.js:161</sub>
 
 ### `drawSequence`
 
@@ -1477,6 +1485,16 @@ Is this a path the studio keeps pictures and sounds at? (`assets/` and a plain f
 
 <sub>src/assets.js:75</sub>
 
+### `isOnline`
+
+```js
+function isOnline()
+```
+
+Is the game being played with someone else over the network?
+
+<sub>src/netplay.js:28</sub>
+
 ### `isReservedField`
 
 ```js
@@ -1486,6 +1504,16 @@ function isReservedField(name)
 Is this word one that a field cannot be called, because things already have it?
 
 <sub>src/kinds.js:30</sub>
+
+### `isWaiting`
+
+```js
+function isWaiting()
+```
+
+True while the game is waiting for the other player's keys (draw a "waiting for your friend" message).
+
+<sub>src/netplay.js:30</sub>
 
 ### `jump`
 
@@ -1528,6 +1556,22 @@ Call it every tick, next to {@link move3d} (which does the falling and landing);
 **Returns** `boolean` — true while you are on the ground
 
 <sub>src/view3d.js:216</sub>
+
+### `keyList`
+
+```js
+function keyList(keys)
+```
+
+The key codes of a set, in a fixed order, so the same keys always look the same.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `keys` | `Iterable<string>` |  |
+
+<sub>src/netplay.js:36</sub>
 
 ### `keyName`
 
@@ -1641,7 +1685,7 @@ Say what is wrong with a lights file, as short sentences (an empty list when it 
 
 **Returns** `string[]`
 
-<sub>src/lights.js:121</sub>
+<sub>src/lights.js:213</sub>
 
 ### `loadMap`
 
@@ -1812,6 +1856,16 @@ The neighbour mask of every cell of a grid of terrains.
 **Returns** `(number \| null)[][]`
 
 <sub>src/autotile.js:55</sub>
+
+### `me`
+
+```js
+function me()
+```
+
+Which player this computer is, counting from 0. Use it only for drawing (a camera that follows *you*), never for the rules, or the two computers stop agreeing.
+
+<sub>src/netplay.js:24</sub>
 
 ### `mouseDelta`
 
@@ -2144,6 +2198,16 @@ Begin a sequence (one that is already going is replaced).
 | `name` (optional) | `string` | which sequence this is (for the game to tell them apart) |
 
 <sub>src/sequences.js:129</sub>
+
+### `playerCount`
+
+```js
+function playerCount()
+```
+
+How many players the game is being played by (1 when played alone).
+
+<sub>src/netplay.js:26</sub>
 
 ### `project3d`
 
@@ -2506,6 +2570,22 @@ Choose the language: 'fr', 'pt-BR' (falls back to 'pt' when only that is in the 
 
 <sub>src/text.js:38</sub>
 
+### `setNetInfo`
+
+```js
+function setNetInfo(next)
+```
+
+Tell the kit about the game being played. Called by the runner, not by games.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `next` | `{me?: number, players?: number, online?: boolean, waiting?: boolean}` |  |
+
+<sub>src/netplay.js:21</sub>
+
 ### `setProgressHost`
 
 ```js
@@ -2625,6 +2705,27 @@ function shade(color, factor)
 A colour made darker (or lighter, with a factor above 1): `#3b4a6b` to `#24304a`. Anything that is not a hex colour comes back as it was.
 
 <sub>src/autotile.js:88</sub>
+
+### `shadowShapes`
+
+```js
+function shadowShapes(light, boxes, reach)
+```
+
+The shadow a set of boxes throws from a light: for each side of a box that faces the light, the four corners of the area behind that side, stretching out to `reach`.
+Together the shapes cover everything the boxes hide from the light. Boxes the light is inside are skipped (a light inside a wall would put the whole room in shadow).
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `light` | `{x: number, y: number}` | where the light is |
+| `boxes` | `Array<{x: number, y: number, w: number, h: number}>` | the things that block light |
+| `reach` | `number` | how far the shadows run (the light's radius is enough) |
+
+**Returns** `Array<Array<[number, number]>>` — shapes, each a list of corner points
+
+<sub>src/lights.js:66</sub>
 
 ### `shake`
 
@@ -3315,6 +3416,110 @@ Look a world over and say what is wrong, in plain words. Give it the names of th
 
 <sub>src/world.js:184</sub>
 
+## Classes
+
+### `class Lockstep`
+
+```js
+class Lockstep
+```
+
+The agreement between two (or more) computers about whose keys count on which tick.
+
+Each tick: call `local(keys)` once with the keys this player holds *now* (it gives back the message to send); call `receive(message)` for every message from the others; and
+simulate a tick only if `ready()`, taking `take()` for the keys of every player. The keys held on tick `t` are used on tick `t + delay`, so the first `delay` ticks run with nobody
+holding anything. Messages may arrive late, twice, or out of order; they never need to arrive in any particular order.
+
+#### `Lockstep.constructor`
+
+```js
+constructor({ players = 2, me = 0, delay = 3, window = 240, checkEvery = 60 } = {})
+```
+
+| Name | Type | Description |
+|---|---|---|
+| `o` (optional) | `object` |  |
+| `o.players` (optional) | `number` | How many players (default 2). |
+| `o.me` (optional) | `number` | This player's number (0 is the host). |
+| `o.delay` (optional) | `number` | Ticks between pressing a key and the game using it (default 3: a twentieth of a second). |
+| `o.window` (optional) | `number` | The most ticks a friend's keys may be ahead of this computer before they are refused (default 240). |
+| `o.checkEvery` (optional) | `number` | Every this many ticks the computers compare a fingerprint of the game, to notice at once if they ever disagree (default 60). |
+
+#### `Lockstep.local`
+
+```js
+local(keys)
+```
+
+Choose this player's keys for a tick `delay` ticks from now, once per tick.
+
+| Name | Type | Description |
+|---|---|---|
+| `keys` | `Iterable<string>` | The keys held now. |
+
+**Returns** `{t: 'in', f: number, k: string[]} \| null` — The message to send to the others, or null if this tick's keys were already chosen.
+
+#### `Lockstep.receive`
+
+```js
+receive(message, from)
+```
+
+Take in a message from another computer.
+
+| Name | Type | Description |
+|---|---|---|
+| `message` | `unknown` |  |
+| `from` | `number` | Which player sent it. |
+
+**Returns** `boolean` — False if it was refused.
+
+#### `Lockstep.ready`
+
+```js
+ready()
+```
+
+Has every player's keys for the next tick arrived?
+
+#### `Lockstep.take`
+
+```js
+take()
+```
+
+The keys of every player for the tick about to be simulated: one `Set` per player. Call only when `ready()`; then simulate the tick, and call `done`.
+
+**Returns** `Set<string>[]`
+
+#### `Lockstep.done`
+
+```js
+done(hash)
+```
+
+The tick has been simulated. Pass a fingerprint of the game now (only needed on the ticks `wantsSum` says; otherwise leave it out).
+
+| Name | Type | Description |
+|---|---|---|
+| `hash` (optional) | `string` |  |
+
+**Returns** `{t: 'sum', f: number, h: string} \| null` — A message to send, when this is a tick to compare on.
+
+#### `Lockstep.wantsSum`
+
+```js
+wantsSum(frame)
+```
+
+Is the game after `frame` ticks one the computers compare?
+
+| Name | Type | Description |
+|---|---|---|
+| `frame` | `number` |  |
+
+<sub>src/netplay.js:45</sub>
+
 ## Constants
 
 ### `ANIMATION_MODES`
@@ -3433,7 +3638,7 @@ const LIGHT_LIMITS
 
 The limits a lights file is held to.
 
-Value: `{ lights: 24, radius: 1200, name: 32 }`
+Value: `{ lights: 24, radius: 1200, name: 32, occluders: 200 }`
 
 <sub>src/lights.js:12</sub>
 
@@ -3445,7 +3650,7 @@ const SCREEN_DEFAULTS
 
 What the darkness, the tint and the vignette are when they are not set.
 
-Value: `{ darkness: 0, ambient: '#0a0e24', tint: '', tintAlpha: 0, vignette: 0 }`
+Value: `{ darkness: 0, ambient: '#0a0e24', tint: '', tintAlpha: 0, vignette: 0, occluder`
 
 <sub>src/lights.js:15</sub>
 

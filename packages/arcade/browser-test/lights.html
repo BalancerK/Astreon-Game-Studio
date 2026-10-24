@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Arcade lights self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { drawLights, newGame, spawn } from '/packages/arcade/src/index.js';
+
+const out = { kind: 'canvas2d', checks: {} };
+const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+const W = 200, H = 120;
+const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H; document.body.append(canvas);
+const g = canvas.getContext('2d', { willReadFrequently: true });
+
+function scene(file) {
+  const game = newGame();
+  spawn(game, 'wall', { x: 130, y: 40, w: 10, h: 40 });
+  g.fillStyle = '#c8c8c8'; g.fillRect(0, 0, W, H);
+  drawLights(g, game, file, { width: W, height: H });
+  const px = (x, y) => { const d = g.getImageData(x, y, 1, 1).data; return d[0] + d[1] + d[2]; };
+  return { front: px(115, 60), behind: px(155, 60), beside: px(155, 10), far: px(195, 115), wall: px(135, 60) };
+}
+const light = { x: 100, y: 60, radius: 90 };
+const base = { darkness: 0.95, ambient: '#000000' };
+const open = scene({ screen: base, lights: [light] });
+const lit = scene({ screen: { ...base, occluders: ['wall'] }, lights: [light] });
+const optedOut = scene({ screen: { ...base, occluders: ['wall'] }, lights: [{ ...light, shadows: false }] });
+const cored = scene({ screen: base, lights: [{ ...light, core: 0.6 }] });
+
+add('without shadows the light reaches behind the wall', open.behind > open.far * 3, open, 'behind much brighter than far');
+add('with shadows it is dark behind the wall', lit.behind < open.behind * 0.25, [lit.behind, open.behind], 'behind < 25% of unshadowed');
+add('the light in front of the wall is not changed', Math.abs(lit.front - open.front) < 40, [lit.front, open.front], 'same');
+add('beside the wall, out of its shadow, it is still lit', lit.beside > open.beside * 0.8, [lit.beside, open.beside], 'about the same');
+add('the wall itself is not lit from inside', lit.wall < open.wall * 0.3, [lit.wall, open.wall], 'dark');
+add('a light with shadows turned off ignores the wall', optedOut.behind > open.behind * 0.8, [optedOut.behind, open.behind], 'same as open');
+add('a core keeps the light at full strength further out', cored.front >= open.front && cored.beside > open.beside, [cored.front, open.front], 'brighter or equal');
+out.ok = Object.values(out.checks).every((c) => c.ok);
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results: [out], userAgent: navigator.userAgent }) });
+</script>
