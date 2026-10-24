@@ -139,6 +139,16 @@ test('mouse adapter: buttons, wheel and look; with pointer lock the view turns o
     core.update(); assert.deepEqual(core.vector('look'), { x: 4, y: 2 });
     element.dispatchEvent(ev('pointerdown', { button: 0, pointerType: 'mouse' }));
     core.update(); assert.ok(core.held('fire'));
+    // buttons pressed together: the browser sends pointer events only for the first, so the mouse events do the rest
+    const chord = new InputCore({ actions: { fire: { type: 'button', bindings: [{ type: 'mouseButton', button: 0 }] }, aim: { type: 'button', bindings: [{ type: 'mouseButton', button: 2 }] } } });
+    const m2 = attachMouse(chord, element, { pointerLock: true, requireLock: true });
+    element.dispatchEvent(ev('mousedown', { button: 0, buttons: 1 })); element.dispatchEvent(ev('mousedown', { button: 2, buttons: 3 }));
+    chord.update(); assert.ok(chord.held('fire') && chord.held('aim'), 'both buttons are down');
+    element.dispatchEvent(ev('mouseup', { button: 2, buttons: 1 }));
+    chord.update(); assert.ok(chord.held('fire') && !chord.held('aim') && chord.released('aim'), 'letting go of the right one is seen while the left is held');
+    element.dispatchEvent(ev('mousemove', { movementX: 0, movementY: 0, buttons: 0 }));
+    chord.update(); assert.ok(!chord.held('fire'), 'a button that the browser says is no longer held is let go');
+    m2.detach();
     element.dispatchEvent(ev('pointerdown', { button: 0, pointerType: 'touch' }));
     const wheel = ev('wheel', { deltaY: 100 }); element.dispatchEvent(wheel);
     core.update(); assert.ok(core.pressed('next') && wheel.defaultPrevented, 'the wheel does not scroll the page');

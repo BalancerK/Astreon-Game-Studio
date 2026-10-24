@@ -47,16 +47,30 @@ export function attachMouse(core, element, { pointerLock = false, requireLock = 
   const isLocked = () => globalThis.document?.pointerLockElement === element;
   const accepting = () => !options.requireLock || isLocked();
   const move = (e) => {
+    sync(e, false);                                                                      // (a button already held when the lock was granted does not count as a new press)
     if (options.pointerLock && !isLocked()) { core.mouseMove(0, 0, e.clientX, e.clientY); return; } // a free pointer only reports where it is: it does not turn the view
     core.mouseMove(e.movementX ?? 0, e.movementY ?? 0, e.clientX, e.clientY);
   };
   const down = (e) => { if (e.pointerType === 'touch') return; if (accepting()) core.mouseButtonDown(e.button); };
   const up = (e) => { if (e.pointerType === 'touch') return; core.mouseButtonUp(e.button); };
+  // Pointer events report only the first button down and the last one up: with the right button pressed while the left is held (or let go first) they say nothing. Mouse events come
+  // for every button and carry the whole set held (`buttons`), so the state of every button is brought into line with it.
+  const BITS = [[1, 0], [4, 1], [2, 2], [8, 3], [16, 4]];
+  const sync = (e, presses = true) => {
+    if (e.sourceCapabilities?.firesTouchEvents || typeof e.buttons !== 'number') return;
+    for (const [bit, button] of BITS) {
+      const want = (e.buttons & bit) !== 0, have = core.mouseButtons.get(button)?.down === true;
+      if (want && !have) { if (presses && accepting()) core.mouseButtonDown(button); } else if (!want && have) core.mouseButtonUp(button);
+    }
+  };
   const wheel = (e) => { if (accepting()) { core.mouseWheel(e.deltaY); e.preventDefault?.(); } };
   const menu = (e) => e.preventDefault?.();
   element.addEventListener('mousemove', move);
   element.addEventListener('pointerdown', down);
   globalThis.addEventListener?.('pointerup', up);
+  element.addEventListener('mousedown', sync);
+  element.addEventListener('mouseup', sync);
+  globalThis.addEventListener?.('mouseup', sync);
   element.addEventListener('wheel', wheel, { passive: false });
   element.addEventListener('contextmenu', menu);
   const lockLost = () => { if (!isLocked()) for (const b of [0, 1, 2]) core.mouseButtonUp(b); };
@@ -64,6 +78,7 @@ export function attachMouse(core, element, { pointerLock = false, requireLock = 
   return {
     detach() {
       element.removeEventListener('mousemove', move); element.removeEventListener('pointerdown', down); globalThis.removeEventListener?.('pointerup', up);
+      element.removeEventListener('mousedown', sync); element.removeEventListener('mouseup', sync); globalThis.removeEventListener?.('mouseup', sync);
       element.removeEventListener('wheel', wheel); element.removeEventListener('contextmenu', menu); globalThis.document?.removeEventListener?.('pointerlockchange', lockLost);
     },
     /** Ask for the pointer lock. Resolves to whether it was granted: if it cannot be (an embedded page, a restricted browser) the caller can fall back by clearing `options.pointerLock` and `options.requireLock`. */

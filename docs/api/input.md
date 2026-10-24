@@ -75,7 +75,7 @@ Gamepads: nothing to listen to, the browser is polled once per `core.update()`.
 | `core` | `import('./core.js').InputCore` |  |
 | `nav` (optional) | `{getGamepads?: () => ArrayLike<any>}` |  |
 
-<sub>src/devices.js:109</sub>
+<sub>src/devices.js:124</sub>
 
 ### `attachGestures`
 
@@ -151,7 +151,7 @@ A pen (stylus) on a touch screen or a tablet: pressure, tilt, twist, the side bu
 | `core` | `import('./core.js').InputCore` |  |
 | `element` | `HTMLElement` |  |
 
-<sub>src/devices.js:83</sub>
+<sub>src/devices.js:98</sub>
 
 ### `attachPenStrokes`
 
@@ -192,7 +192,7 @@ layout on a desktop).
 
 **Returns** `{controller: TouchController, detach: () => void}`
 
-<sub>src/devices.js:123</sub>
+<sub>src/devices.js:138</sub>
 
 ### `createInput`
 

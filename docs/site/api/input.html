@@ -31,7 +31,7 @@
 <p>Gamepads: nothing to listen to, the browser is polled once per <code>core.update()</code>.</p>
 <p><strong>Parameters</strong></p>
 <div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>core</code></td><td><code>import('./core.js').InputCore</code></td><td></td></tr><tr><td><code>nav</code> (optional)</td><td><code>{getGamepads?: () =&gt; ArrayLike&lt;any&gt;}</code></td><td></td></tr></tbody></table></div>
-<p><sub>src/devices.js:109</sub></p>
+<p><sub>src/devices.js:124</sub></p>
 <h3 id="attachgestures"><code>attachGestures</code><a class="anchor" href="#attachgestures" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">attachGestures</span>(element, recognizer, { includeMouse = <span class="tk-k">false</span>, preventDefault = <span class="tk-k">true</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Feed a page's pointer events to a recognizer (touch, pen and, with <code>includeMouse</code>, mouse), keep the browser from scrolling or zooming the element (<code>touch-action: none</code>), and run its long-press timer. Returns <code>{detach}</code>.</p>
@@ -56,7 +56,7 @@
 <p>A pen (stylus) on a touch screen or a tablet: pressure, tilt, twist, the side button and the eraser end go to <code>core.penUpdate</code>, where <code>penPressure</code>, <code>penTilt</code>, <code>penContact</code>, <code>penBarrel</code> and <code>penEraser</code> bindings read them. A pen also still counts as the mouse's left button, so menus and clicks work with it. Only pen pointers are used.</p>
 <p><strong>Parameters</strong></p>
 <div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>core</code></td><td><code>import('./core.js').InputCore</code></td><td></td></tr><tr><td><code>element</code></td><td><code>HTMLElement</code></td><td></td></tr></tbody></table></div>
-<p><sub>src/devices.js:83</sub></p>
+<p><sub>src/devices.js:98</sub></p>
 <h3 id="attachpenstrokes"><code>attachPenStrokes</code><a class="anchor" href="#attachpenstrokes" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">attachPenStrokes</span>(element, recorder, { pointerTypes = [<span class="tk-s">'pen'</span>], preventDefault = <span class="tk-k">true</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Feed a page's pointer events to a stroke recorder (pen, and <code>touch</code> / <code>mouse</code> if asked for), including the extra samples a pen reports between frames. Sets <code>touch-action: none</code> on the element. The positions are relative to the element.</p>
@@ -69,7 +69,7 @@
 <p><strong>Parameters</strong></p>
 <div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>core</code></td><td><code>import('./core.js').InputCore</code></td><td></td></tr><tr><td><code>element</code></td><td><code>HTMLElement</code></td><td>The area the controls live in (usually the game's container)</td></tr><tr><td><code>layout</code> (optional)</td><td><code>(w: number, h: number) =&gt; import('./touch.js').TouchControl[]</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{overlay?: boolean, includeMouse?: boolean}</code></td><td><code>overlay</code>: draw the controls (default true)</td></tr></tbody></table></div>
 <p><strong>Returns</strong> <code>{controller: TouchController, detach: () =&gt; void}</code></p>
-<p><sub>src/devices.js:123</sub></p>
+<p><sub>src/devices.js:138</sub></p>
 <h3 id="createinput"><code>createInput</code><a class="anchor" href="#createinput" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createInput</span>({ actions, element, contexts, pointerLock = <span class="tk-k">false</span>, requireLock = <span class="tk-k">false</span>, touch = <span class="tk-k">false</span>, touchOverlay = <span class="tk-k">true</span>, pen = <span class="tk-k">false</span>, deadzone } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Everything in one call for a browser game: an <code>InputCore</code> with keyboard, mouse, gamepads and (optionally) on-screen touch controls attached.</p>
