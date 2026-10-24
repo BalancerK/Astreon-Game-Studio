@@ -42,7 +42,9 @@ export class RtcTransport {
     this.opts = { maxMessageBytes, softSendLimit, hardSendLimit, disconnectGraceMs };
     this.timers = timers;
     /** @type {'connecting' | 'open' | 'closed'} */ this.state = 'connecting';
-    /** @type {((bytes: Uint8Array, channel: import('../types.js').Channel) => void) | null} */ this.onMessage = null;
+    /** Messages that came before anyone was listening (the handler is usually set a moment after the connection opens), kept for the first one who does. */
+    this.early = [];
+    this.handler = null;
     /** @type {((reason: string) => void) | null} */ this.onClose = null;
     /** @type {(() => void) | null} */ this.onOpen = null;
     this.stats = { ...createStats(), droppedMessages: 0 };
@@ -78,12 +80,20 @@ export class RtcTransport {
     } else if (this.graceTimer !== null) { this.timers.clearTimeout(this.graceTimer); this.graceTimer = null; }
   }
 
+  /** @type {((bytes: Uint8Array, channel: import('../types.js').Channel) => void) | null} What to do with a message. Messages that arrived before it was set are delivered, in order, the moment it is. */
+  get onMessage() { return this.handler; }
+  set onMessage(fn) {
+    this.handler = fn;
+    if (fn) { const early = this.early; this.early = []; for (const [bytes, tag] of early) fn(bytes, tag); }
+  }
+
   #receive(data, tag) {
     if (this.state === 'closed') return;
     if (!(data instanceof ArrayBuffer)) { this.close('bad message'); return; }      // text frames are not part of the protocol
     if (data.byteLength > this.opts.maxMessageBytes) { this.close('message too large'); return; }
     this.stats.receivedMessages++; this.stats.receivedBytes += data.byteLength;
-    this.onMessage?.(new Uint8Array(data), tag);
+    const bytes = new Uint8Array(data);
+    if (this.handler) this.handler(bytes, tag); else if (this.early.length < 256) this.early.push([bytes, tag]);
   }
 
   /** @param {Uint8Array} bytes @param {import('../types.js').Channel} [channel] @returns {boolean} False if the connection is not open or the message was refused. */

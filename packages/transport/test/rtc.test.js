@@ -215,3 +215,22 @@ test('messages that arrive before a handler is attached are kept and delivered i
   const heard = []; peer.send({ a: 1 }); await wait(5); host.onMessage = (id, m) => heard.push([id, m.a]); assert.deepEqual(heard, [[peer.peerId, 1]]);
   const seen = []; host.onPeer = (id) => seen.push(id); assert.equal(seen.length, 1, 'the player who came in before anyone was listening'); await signaling.join('QUEUE'); await wait(5); assert.equal(seen.length, 2);
 });
+
+test('a message that arrives before anyone is listening is kept and delivered, in order, to the first listener', async () => {
+  FakePeerConnection.reset();
+  const signaling = new LoopbackSignaling();
+  const listener = await listenWebRTC(signaling, { rtc });
+  let host = null;
+  listener.onConnection = (t) => { host = t; };                                   // no onMessage yet
+  const client = connectWebRTC(signaling, listener.room, { rtc });
+  await waitFor(() => host && client.state === 'open', 3000, 'both open');
+  client.send(Uint8Array.of(1), CHANNEL.RELIABLE); client.send(Uint8Array.of(2), CHANNEL.RELIABLE);
+  await wait(20);
+  const got = [];
+  host.onMessage = (bytes) => got.push(bytes[0]);                                 // set late
+  assert.deepEqual(got, [1, 2]);
+  client.send(Uint8Array.of(3), CHANNEL.RELIABLE);
+  await waitFor(() => got.length === 3);
+  assert.deepEqual(got, [1, 2, 3]);
+  listener.close();
+});

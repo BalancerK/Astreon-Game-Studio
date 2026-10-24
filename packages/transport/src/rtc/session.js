@@ -48,7 +48,7 @@ export async function listenWebRTC(signaling, options = {}) {
   };
   hs.onMessage = (peerId, m) => { negotiations.get(peerId)?.receive(m); };
   // a player who has answered closes their signalling connection as soon as their side is open, a moment before ours is: that is not leaving. Only someone who goes before answering is dropped.
-  hs.onPeerLeft = (peerId) => { const n = negotiations.get(peerId); if (n && !n.remoteSet) n.cancel('peer left'); };
+  hs.onPeerLeft = (peerId) => { const n = negotiations.get(peerId); if (n && !n.remoteSet && !n.answered) n.cancel('peer left'); };
   hs.onClose = () => listener.close();
   return listener;
 }

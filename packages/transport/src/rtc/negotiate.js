@@ -31,6 +31,8 @@ export class Negotiation {
     this.channels = openChannels(this.pc);
     this.pending = [];
     this.remoteSet = false;
+    /** The answer has arrived (even if it is still being applied): the other side has done its part and may now go. */
+    this.answered = false;
     this.done = false;
     this.timers = options.timers ?? globalThis;
     const t = new RtcTransport(this.pc, this.channels, transportOptions(options, peerId));
@@ -72,6 +74,7 @@ export class Negotiation {
   /** @param {any} message What the other end sent. */
   async receive(message) {
     if (this.done || !message || typeof message !== 'object') return;
+    if (message.t === 'answer') this.answered = true;
     try {
       if (message.t === 'offer' && !this.offerer && typeof message.sdp === 'string') {
         await this.pc.setRemoteDescription({ type: 'offer', sdp: message.sdp });

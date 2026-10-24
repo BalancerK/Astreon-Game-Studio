@@ -4,6 +4,8 @@ All packages are released together under one version number. `node tools/release
 
 ## Unreleased
 
+- Fixed a rare lost first message on browser-to-browser connections: `RtcTransport` now keeps messages that arrive before `onMessage` is set (the handler is usually set a moment after the connection opens) and delivers them, in order, when it is.
+
 - Studio: an **Environment** panel. Sliders for the sky (time of day, haze, clouds, stars), the water (level, colours, clearness, waves) and the ground (hills, roughness, land number), drawn live by the engine's own renderer (drag to turn the view, scroll to zoom) and kept in `environment.json`, which a game made with the engine can read to get the same sky, water and hills. Studio arcade games do not use it. The Friend panel is now in the workspaces too.
 
 - Studio: a **Pixel art** switch in Project settings (`pixelArt` in `project.json`) keeps pictures sharp when the game is scaled up, in the studio and in the exported game, plus a 320 × 180 screen preset. Without it the studio preview is now smooth like the export (it used to be always blocky).

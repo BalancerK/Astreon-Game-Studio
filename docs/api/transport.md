@@ -619,6 +619,18 @@ constructor(pc, channels, { peerId = '', maxMessageBytes = 64 * 1024, softSendLi
 | `o.disconnectGraceMs` (optional) | `number` |  |
 | `o.timers` (optional) | `{setTimeout: typeof setTimeout, clearTimeout: typeof clearTimeout}` |  |
 
+#### `RtcTransport.onMessage`
+
+```js
+get onMessage
+```
+
+#### `RtcTransport.onMessage`
+
+```js
+set onMessage(fn)
+```
+
 #### `RtcTransport.send`
 
 ```js
