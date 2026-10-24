@@ -1,0 +1,4 @@
+{
+  "pages": ["index.html"],
+  "outDir": "dist"
+}

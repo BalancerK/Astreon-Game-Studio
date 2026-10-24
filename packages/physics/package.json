@@ -1,0 +1,34 @@
+{
+  "name": "@engine/physics",
+  "version": "0.1.0",
+  "description": "2D spatial hash and swept box collision; 3D triangle worlds, swept-ellipsoid movement and a character controller (no tunnelling at any speed); rigid bodies with joints, sleeping and triggers",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "API.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "game-engine",
+    "javascript",
+    "webgpu",
+    "multiplayer",
+    "physics"
+  ],
+  "dependencies": {
+    "@engine/math": "^0.1.0"
+  }
+}

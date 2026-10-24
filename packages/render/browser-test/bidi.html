@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Bidi against the browser</title>
+<body>
+<div id="box" style="position:absolute;left:0;top:0;white-space:pre;font:24px 'Segoe UI', Arial, 'Noto Sans', sans-serif;unicode-bidi:isolate"></div>
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { resolveBidi } from '../src/index.js';
+
+const out = { kind: 'chrome', checks: {} };
+const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+try {
+  const box = document.getElementById('box');
+  const ALPHABET = ['a', 'b', 'c', 'd', ' ', ' ', '1', '2', '3', '.', ',', '-', '(', ')', '[', ']', '!', '%', '$', ':', '/', '+', 'א', 'ב', 'ג', 'ד', 'ا', 'ب', 'ج', 'د', '٣', '٤', '⁧', '⁦', '⁩', '‏', '‎'];
+  const ZERO = new Set(['⁧', '⁦', '⁨', '⁩', '‏', '‎']);
+  let s = 424242; const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+  const trials = 2500, mismatches = [], counts = { ltr: 0, rtl: 0, auto: 0 };
+  for (let t = 0; t < trials; t++) {
+    const text = Array.from({ length: 1 + Math.floor(rnd() * 13) }, () => ALPHABET[Math.floor(rnd() * ALPHABET.length)]).join('');
+    if (/^\s|\s$/.test(text)) continue;                                   // leading and trailing spaces: the browser has its own rules for the edges of a line
+    for (const dir of ['ltr', 'rtl', 'auto']) {
+      // for 'auto' the browser's own guess ignores the isolate rule of the standard, so it is given the direction found here, and the guess itself is compared separately where isolates are absent
+      const mineAll = resolveBidi(text, dir), paragraph = mineAll.paragraphLevel ? 'rtl' : 'ltr';
+      box.setAttribute('dir', dir === 'auto' && /[⁦-⁩]/.test(text) ? paragraph : dir); box.textContent = text;
+      const node = box.firstChild, range = document.createRange(), xs = [];
+      for (let k = 0; k < text.length; k++) { if (ZERO.has(text[k])) { xs.push(null); continue; } range.setStart(node, k); range.setEnd(node, k + 1); const r = range.getBoundingClientRect(); xs.push(r.left + r.width / 2); }
+      const chrome = xs.map((x, k) => [x, k]).filter(([x]) => x !== null).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(([, k]) => k);
+      // the characters are all in the BMP and none is removed, so indices agree; zero-width marks are left out on both sides
+      const mineVisible = mineAll.order.filter((k) => !ZERO.has(text[k]));
+      counts[dir]++;
+      if (JSON.stringify(chrome) !== JSON.stringify(mineVisible)) mismatches.push({ text: [...text].map((c) => 'U+' + c.codePointAt(0).toString(16)).join(' '), dir, chrome: chrome.join(','), mine: mineVisible.join(',') });
+    }
+  }
+  const total = counts.ltr + counts.rtl + counts.auto;
+  add(`my reordering agrees with Chrome's on ${total} random mixed-direction strings (left-to-right, right-to-left and automatic paragraphs)`, mismatches.length === 0, { total, mismatches: mismatches.length, first: mismatches.slice(0, 6) }, 'no mismatches');
+  out.ok = Object.values(out.checks).every((c) => c.ok);
+} catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results: [out], userAgent: navigator.userAgent }) });
+</script>

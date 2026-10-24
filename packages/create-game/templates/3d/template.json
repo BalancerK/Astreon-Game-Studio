@@ -1,0 +1,5 @@
+{
+  "description": "3D scenes as data: a prefab library, a scene file, orbit camera, spinning things, and the browser scene editor wired up (edit scenes/main.json, press Play).",
+  "engine": ["core", "math", "render", "prefab", "scene", "assets", "editor", "build"],
+  "scripts": { "editor": "echo Run npm run dev, then open http://127.0.0.1:8080/editor.html" }
+}

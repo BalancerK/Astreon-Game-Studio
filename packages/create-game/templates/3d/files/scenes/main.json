@@ -1,0 +1,18 @@
+{
+  "format": "engine-scene",
+  "version": 1,
+  "name": "Main",
+  "settings": {},
+  "assets": [],
+  "prefabs": [],
+  "entities": [
+    { "id": "ground", "prefab": "ground", "at": { "x": 0, "y": -0.1, "z": 0 } },
+    { "id": "tower-1", "prefab": "tower", "at": { "x": -4, "y": 0, "z": 0 } },
+    { "id": "tower-2", "prefab": "tower", "at": { "x": 4, "y": 0, "z": -2, "yaw": 0.6 } },
+    { "id": "spinner-1", "prefab": "spinner", "at": { "x": 0, "y": 0.5, "z": 0 }, "params": { "width": 2, "speed": 2 } },
+    { "id": "spinner-2", "prefab": "spinner", "at": { "x": 0, "y": 0.5, "z": 5 }, "params": { "speed": -1 }, "overrides": { "components": { "colour": { "r": 0.4, "g": 0.8, "b": 0.5 } } } },
+    { "id": "ball-1", "prefab": "ball", "at": { "x": -2, "y": 0.5, "z": 4 } },
+    { "id": "ball-2", "prefab": "ball", "at": { "x": 2.5, "y": 1, "z": 3.5 }, "params": { "size": 2 } },
+    { "id": "ball-3", "prefab": "ball", "at": { "x": 6, "y": 0.4, "z": 4 }, "params": { "size": 0.8 } }
+  ]
+}

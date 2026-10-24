@@ -1,0 +1,93 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>3D render benchmark</title>
+<body style="margin:0;background:#000">
+<script type="module">
+import { Camera3D, DrawList3D, createBox, createSphere, createPlane, createLighting, createRenderer3D } from '../src/index.js';
+
+const params = new URLSearchParams(location.search);
+const W = Number(params.get('w') ?? 1280), H = Number(params.get('h') ?? 720);
+const quick = params.get('quick') === '1';
+const kinds = (params.get('kinds') ?? 'webgpu,webgl2').split(',');
+const FRAMES = quick ? 40 : 150, WARMUP = quick ? 10 : 40, MAX_MS = quick ? 1500 : 4000;
+
+let seed = 777;
+const rand = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
+const box = createBox(1, 1, 1);
+const sphereLow = createSphere(0.5, 12, 8), sphereHigh = createSphere(0.5, 64, 48), ground = createPlane(400, 400, 1, 1);
+
+const scenarios = [
+  { name: 'cubes (12 triangles each)', counts: [1000, 10_000, 50_000, 100_000, 200_000], mesh: box },
+  { name: 'low-poly spheres (192 triangles each)', counts: [1000, 10_000, 50_000], mesh: sphereLow },
+  { name: 'high-poly spheres (6,144 triangles each)', counts: [100, 1000, 4000], mesh: sphereHigh },
+];
+
+function fill(list, mesh, n) {
+  list.clear();
+  list.addTransform(ground, 0, 0, 0, null, 1, 1, 1, 0.4, 0.45, 0.4);
+  const side = Math.ceil(Math.sqrt(n));
+  const spacing = Math.max(0.9, 380 / side);
+  for (let i = 0; i < n; i++) list.addTransform(mesh, ((i % side) - side / 2) * spacing, 0.5 + rand() * 2, ((i / side | 0) - side / 2) * spacing - 20, null, 1, 1, 1, rand(), rand(), rand());
+}
+
+const pct = (s, p) => s[Math.min(s.length - 1, Math.floor(s.length * p))];
+const stats = (a) => { const s = [...a].sort((x, y) => x - y); return { median: pct(s, 0.5), p95: pct(s, 0.95) }; };
+
+async function finish(r) {
+  if (r.kind === 'webgpu') await r.device.queue.onSubmittedWorkDone();
+  else r.gl.readPixels(0, 0, 1, 1, r.gl.RGBA, r.gl.UNSIGNED_BYTE, new Uint8Array(4));
+}
+
+async function measure(r, camera, list, L) {
+  const submit = [];
+  const t00 = performance.now();
+  let warm = WARMUP;
+  for (let f = 0; f < WARMUP + FRAMES; f++) {
+    const t0 = performance.now();
+    r.render({ camera, list, lighting: L });
+    const t1 = performance.now();
+    await finish(r);
+    if (f === 0 && performance.now() - t0 > 300) warm = 1;
+    if (f >= warm) submit.push(t1 - t0);
+    if (f >= warm + 2 && performance.now() - t00 > MAX_MS) break;
+  }
+  // pipelined throughput
+  let frames = 0;
+  const t0 = performance.now();
+  while (frames < FRAMES) { r.render({ camera, list, lighting: L }); frames++; if (frames >= 3 && performance.now() - t0 > MAX_MS) break; }
+  await finish(r);
+  return { submit: stats(submit), pipelinedMs: (performance.now() - t0) / frames };
+}
+
+const out = { env: { userAgent: navigator.userAgent, cores: navigator.hardwareConcurrency }, width: W, height: H, results: [], init: {} };
+try {
+  const a = await navigator.gpu?.requestAdapter();
+  const info = a?.info ?? (await a?.requestAdapterInfo?.());
+  out.env.webgpu = a ? { vendor: info?.vendor, architecture: info?.architecture } : null;
+} catch { out.env.webgpu = null; }
+
+for (const kind of kinds) {
+  for (const aa of [false, true]) {
+    let r;
+    const tInit = performance.now();
+    try { r = await createRenderer3D({ prefer: [kind], antialias: aa }); if (r.kind !== kind) throw new Error(`got ${r.kind}`); } catch (e) { out.results.push({ kind, aa, unavailable: String(e.message ?? e) }); continue; }
+    document.body.append(r.canvas);
+    r.resize(W, H, 1);
+    const camera = new Camera3D({ x: 0, y: 30, z: 60, pitch: -0.45, fovY: 1.0, viewW: W, viewH: H, far: 1000 });
+    const list = new DrawList3D();
+    const L = { ...createLighting(), fogDensity: 0.004 };
+    fill(list, box, 16); r.render({ camera, list, lighting: L }); await finish(r);
+    out.init[`${kind}${aa ? '+msaa' : ''}`] = performance.now() - tInit;
+    for (const sc of scenarios) {
+      for (const n of sc.counts) {
+        fill(list, sc.mesh, n);
+        const m = await measure(r, camera, list, L);
+        out.results.push({ kind, aa, scenario: sc.name, n, triangles: n * sc.mesh.indices.length / 3, ...m });
+      }
+    }
+    r.destroy?.();
+    r.canvas.remove();
+  }
+}
+await fetch('/report', { method: 'POST', body: JSON.stringify(out) });
+</script>

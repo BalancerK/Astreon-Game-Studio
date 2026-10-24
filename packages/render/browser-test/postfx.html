@@ -1,0 +1,107 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Post effects self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { createRenderer3D, Camera3D, DrawList3D, createLighting, createBox } from '../src/index.js';
+
+const W = 320, H = 180, CLEAR = [0.1, 0.1, 0.12, 1];
+const m4 = (x, y, z, sx = 1, sy = sx, sz = sx) => Float32Array.from([sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, sz, 0, x, y, z, 1]);
+const BASE = { bloom: false, tonemap: 'none', dither: 0 };
+
+function snapshot(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d');
+  g.drawImage(renderer.canvas, 0, 0);
+  return g.getImageData(0, 0, c.width, c.height).data;
+}
+const px = (cam, x, y, z) => { const m = cam.viewProj, w = m[3] * x + m[7] * y + m[11] * z + m[15]; return [Math.round(((m[0] * x + m[4] * y + m[8] * z + m[12]) / w * 0.5 + 0.5) * W), Math.round((0.5 - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * 0.5) * H)]; };
+const lumaAt = (img, [x, y]) => { let s = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const o = ((y + j) * W + x + i) * 4; s += img[o] + img[o + 1] + img[o + 2]; } return s / 27; };
+// how sharp a region is: the mean difference between neighbouring pixels along a row
+const sharpness = (img, x0, x1, y0, y1) => { let s = 0, n = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1 - 1; x++) { const a = (y * W + x) * 4, b = a + 4; s += Math.abs(img[a] - img[b]) + Math.abs(img[a + 1] - img[b + 1]) + Math.abs(img[a + 2] - img[b + 2]); n += 3; } return s / n; };
+
+async function check(kind, antialias) {
+  const out = { kind: `${kind}${antialias ? '+msaa' : ''}`, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer3D({ prefer: [kind], antialias });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const L = { ...createLighting(), fogDensity: 0, pointLights: [] };
+    const box = createBox(1, 1, 1);
+    const draw = (cam, build, post) => { const list = new DrawList3D(); list.setCamera(cam); build(list); renderer.render({ camera: cam, list, clear: CLEAR, lighting: L, post: { ...BASE, ...post } }); return snapshot(renderer); };
+
+    // ---- ambient occlusion: a cube standing on a floor. The floor beside the cube's foot and the cube's own foot get darker, open floor and the cube's top do not.
+    const cam = new Camera3D({ x: 0, y: 3, z: 12, yaw: 0, pitch: -0.12, fovY: 0.9, viewW: W, viewH: H, far: 300 }).update();
+    const room = (list) => { list.add(box, m4(0, -0.5, 0, 60, 1, 60), 0.7, 0.7, 0.7); list.add(box, m4(0, 1, 0, 2), 0.7, 0.7, 0.7); };
+    const flat = draw(cam, room, {});
+    const occluded = draw(cam, room, { ao: { radius: 1.2 } });
+    const probes = { foot: [0, 0, 1.25], face: [0, 0.2, 1.001], open: [7, 0, 3], top: [0, 2, 0], sky: [160, 6] };
+    const at = (name) => (probes[name].length === 2 ? probes[name] : px(cam, ...probes[name]));
+    const ratio = (name, img = occluded) => lumaAt(img, at(name)) / Math.max(lumaAt(flat, at(name)), 1e-3);
+    add('ambient occlusion darkens the floor at the cube\'s foot', ratio('foot') < 0.88, +ratio('foot').toFixed(3), 'below 0.88');
+    add('...and the cube\'s own foot', ratio('face') < 0.92, +ratio('face').toFixed(3), 'below 0.92');
+    add('...but not open floor, the top of the cube or the sky', ratio('open') > 0.97 && ratio('top') > 0.97 && Math.abs(ratio('sky') - 1) < 0.01, { open: +ratio('open').toFixed(3), top: +ratio('top').toFixed(3), sky: +ratio('sky').toFixed(3) }, 'unchanged');
+    const half = draw(cam, room, { ao: { radius: 1.2, scale: 0.5 } });
+    add('at half resolution it still darkens the foot (and leaves open floor alone)', ratio('foot', half) < 0.92 && ratio('open', half) > 0.97, { foot: +ratio('foot', half).toFixed(3), open: +ratio('open', half).toFixed(3) }, 'darker foot');
+    const none = draw(cam, room, { ao: { radius: 1.2, intensity: 0 } });
+    add('intensity 0 changes nothing', ratio('foot', none) > 0.99, +ratio('foot', none).toFixed(3), '1');
+
+    // ---- depth of field: stripes 4 pixels wide at three distances; the ones at the focus stay sharp, the others blur
+    const flatCam = new Camera3D({ x: 0, y: 3, z: 12, yaw: 0, pitch: 0, fovY: 0.9, viewW: W, viewH: H, far: 300 }).update();
+    const tan = Math.tan(0.45), aspect = W / H;
+    const stripes = (list) => {
+      for (const [D, sx] of [[6, 60], [14, 160], [40, 260]]) {
+        const world = 4 * D * tan * 2 / H;                       // four pixels at this distance
+        for (let i = -10; i < 10; i++) list.add(box, m4(((sx + i * 4 + 2) / W * 2 - 1) * D * tan * aspect, 3, 12 - D, world, 3, 0.5), ...(i & 1 ? [0.9, 0.9, 0.9, 1] : [0.1, 0.1, 0.1, 1]));
+      }
+    };
+    const sharp = draw(flatCam, stripes, {});
+    const blurred = draw(flatCam, stripes, { dof: { focus: 14, aperture: 1, maxBlur: 8 } });
+    const region = (img, sx) => sharpness(img, sx - 24, sx + 24, H / 2 - 8, H / 2 + 8);
+    const keep = (sx) => region(blurred, sx) / region(sharp, sx);
+    add('depth of field leaves what is at the focus sharp', keep(160) > 0.95, +keep(160).toFixed(3), 'about 1');
+    add('...and blurs what is nearer', keep(60) < 0.6, +keep(60).toFixed(3), 'below 0.6');
+    add('...and what is farther', keep(260) < 0.75, +keep(260).toFixed(3), 'below 0.75');
+    const wide = draw(flatCam, stripes, { dof: { focus: 14, range: 40 } });
+    add('a range around the focus keeps everything inside it sharp', region(wide, 60) / region(sharp, 60) > 0.95 && region(wide, 260) / region(sharp, 260) > 0.95, [+(region(wide, 60) / region(sharp, 60)).toFixed(3), +(region(wide, 260) / region(sharp, 260)).toFixed(3)], 'about 1');
+
+    // ---- FXAA: a tilted square against the clear colour: without it the edge is a staircase, with it the edge has in-between pixels and the flat parts are untouched
+    const square = (list) => list.add(box, m4(0, 3, 0, 5, 5, 1), 0.9, 0.5, 0.2);
+    const tilted = (list) => list.add(box, Float32Array.from([2.45, 1.4, 0, 0, -1.4, 2.45, 0, 0, 0, 0, 1, 0, 0, 3, 0, 1]), 0.9, 0.5, 0.2);
+    void square;
+    const between = (img) => { let n = 0; for (let i = 0; i < img.length; i += 4) { const r = img[i], g = img[i + 1], b = img[i + 2]; const nearClear = Math.abs(r - 26) < 6 && Math.abs(g - 26) < 6 && Math.abs(b - 31) < 6, nearFace = Math.abs(r - img[(H / 2 * W + W / 2) * 4]) < 6 && Math.abs(g - img[(H / 2 * W + W / 2) * 4 + 1]) < 6; if (!nearClear && !nearFace) n++; } return n; };
+    const stairs = draw(flatCam, tilted, {});
+    const smooth = draw(flatCam, tilted, { fxaa: true });
+    let changed = 0; for (let i = 0; i < stairs.length; i += 4) if (Math.abs(stairs[i] - smooth[i]) > 2 || Math.abs(stairs[i + 1] - smooth[i + 1]) > 2) changed++;
+    if (!antialias) add('FXAA gives the staircase edge in-between pixels', between(smooth) > between(stairs) + 40, [between(stairs), between(smooth)], 'many more');
+    else add('FXAA on a multisampled picture leaves it a clean image with in-between pixels', between(smooth) >= between(stairs) * 0.8, [between(stairs), between(smooth)], 'about the same or more');
+    add('...and leaves the flat parts alone (only a thin band along the edge changes)', changed > 20 && changed < W * H * 0.08, changed, 'a few percent of the picture');
+
+    // ---- all together with the usual bloom and tone mapping, nothing errors
+    const all = draw(cam, room, { bloom: {}, tonemap: 'aces', dither: 1, ao: true, dof: { focus: 12 }, fxaa: true });
+    add('everything at once draws a picture', sharpness(all, 0, W, 0, H) > 0.1, +sharpness(all, 0, W, 0, H).toFixed(2), 'something drawn');
+    // after the effects are turned off the renderer goes back to the plain path
+    const back = draw(cam, room, {});
+    let drift = 0; for (let i = 0; i < back.length; i += 4) if (Math.abs(back[i] - flat[i]) > 2) drift++;
+    add('turning the effects off again restores the plain picture', drift === 0, drift, 0);
+
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) {
+    out.unavailable = String(e.message ?? e);
+    out.stack = String(e.stack ?? '');
+  }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2']) for (const aa of [false, true]) results.push(await check(kind, aa));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

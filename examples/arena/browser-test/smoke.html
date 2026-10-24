@@ -1,0 +1,49 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Arena smoke test</title>
+<div id="stage" style="position:fixed;inset:0"></div>
+<div id="hud"></div>
+<div id="msg"></div>
+<script type="module">
+// Loads the real demo, lets it play for a few seconds with simulated key presses, then reports.
+await import('../client/main.js');
+const { client, renderer } = window.__arena;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const waitUntil = async (cond, ms) => { const t0 = performance.now(); while (!cond() && performance.now() - t0 < ms) await sleep(20); return cond(); };
+
+const connected = await waitUntil(() => client.state === 'playing' && client.stats.snapshots > 5, 8000);
+const key = (type, code) => dispatchEvent(new KeyboardEvent(type, { code }));
+const startSnapshots = client.stats.snapshots;
+// Reaction time: how long after the key press the local player is first drawn moving.
+const { shownSelf } = window.__arena;
+await sleep(300);
+const x0 = shownSelf.x, y0 = shownSelf.y, t0 = performance.now();
+key('keydown', 'KeyD'); key('keydown', 'KeyS');
+let reactionMs = null;
+while (performance.now() - t0 < 3000) {
+  await new Promise((r) => requestAnimationFrame(r));
+  if (Math.hypot(shownSelf.x - x0, shownSelf.y - y0) > 2) { reactionMs = Math.round(performance.now() - t0); break; }
+}
+await sleep(1500);
+key('keyup', 'KeyD'); key('keyup', 'KeyS');
+await sleep(500);
+
+// Screenshot: copy the canvas right after a frame has rendered.
+const shot = await new Promise((resolve) => requestAnimationFrame(() => {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d');
+  g.drawImage(renderer.canvas, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height).data;
+  const seen = new Set();
+  for (let i = 0; i < d.length; i += 4 * 97) seen.add((d[i] >> 4) * 256 + (d[i + 1] >> 4) * 16 + (d[i + 2] >> 4));
+  resolve({ png: c.toDataURL('image/png'), distinctColours: seen.size, w: c.width, h: c.height });
+}));
+
+const s = client.stats;
+await fetch('/report', { method: 'POST', body: JSON.stringify({
+  reactionMs, connected, rendererKind: renderer.kind, state: client.state, selfId: client.selfId, latestTick: client.latestTick,
+  snapshotsDuringInput: s.snapshots - startSnapshots, stats: s, hud: document.getElementById('hud').textContent,
+  entities: window.__arena.samples.count, distinctColours: shot.distinctColours, size: [shot.w, shot.h], png: shot.png,
+}) });
+</script>

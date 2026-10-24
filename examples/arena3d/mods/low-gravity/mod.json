@@ -1,0 +1,12 @@
+{
+  "id": "low-gravity",
+  "version": "1.0.0",
+  "name": "Low gravity",
+  "description": "Moon-like jumps and a faster, lighter weapon. Pure data: no code runs anywhere.",
+  "tier": "data",
+  "rules": {
+    "gravity": 9,
+    "jumpSpeed": 6,
+    "weapon": { "cooldownTicks": 8, "damage": 20 }
+  }
+}

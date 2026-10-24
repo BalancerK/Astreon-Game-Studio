@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/math · Astreon Engine</title>
+<meta name="description" content="Deterministic sin/cos/tan/atan2/asin/acos plus 3D vectors and quaternions, bit-identical in Node, Chrome and Firefox (the built-in Math.sin is not).">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html" class="on">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginemath">@engine/math</h1>
+<p>Deterministic sin/cos/tan/atan2/asin/acos plus 3D vectors and quaternions, bit-identical in Node, Chrome and Firefox (the built-in Math.sin is not).</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/math</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/math.html">packages/math</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-60-of-60-documented">Contents (60 of 60 documented)<a class="anchor" href="#contents-60-of-60-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#deg_to_rad"><code>DEG_TO_RAD</code></a></td><td>constant</td><td>Multiply degrees by this to get radians.</td></tr><tr><td><a href="#half_pi"><code>HALF_PI</code></a></td><td>constant</td><td>π / 2.</td></tr><tr><td><a href="#pi"><code>PI</code></a></td><td>constant</td><td>π.</td></tr><tr><td><a href="#quarter_pi"><code>QUARTER_PI</code></a></td><td>constant</td><td>π / 4.</td></tr><tr><td><a href="#rad_to_deg"><code>RAD_TO_DEG</code></a></td><td>constant</td><td>Multiply radians by this to get degrees.</td></tr><tr><td><a href="#two_pi"><code>TWO_PI</code></a></td><td>constant</td><td>2π.</td></tr><tr><td><a href="#acos"><code>acos</code></a></td><td>function</td><td>Arc cosine of <code>x</code> in radians (0 to π), computed with + - * / and sqrt only, so the result is the same bits in every engine.</td></tr><tr><td><a href="#asin"><code>asin</code></a></td><td>function</td><td>Arc sine of <code>x</code> in radians (-π/2 to π/2), computed with + - * / and sqrt only, so the result is the same bits in every engine.</td></tr><tr><td><a href="#atan"><code>atan</code></a></td><td>function</td><td>Arc tangent of <code>x</code> in radians (-π/2 to π/2), computed with + - * / only, so the result is the same bits in every engine.</td></tr><tr><td><a href="#atan2"><code>atan2</code></a></td><td>function</td><td>Angle of the point (x, y) from the +x axis, in (-pi, pi]; same special cases as Math.atan2.</td></tr><tr><td><a href="#cos"><code>cos</code></a></td><td>function</td><td>Cosine of <code>x</code> (radians), computed with + - * / only, so the result is the same bits in every engine (unlike <code>Math.cos</code>).</td></tr><tr><td><a href="#deltaangle"><code>deltaAngle</code></a></td><td>function</td><td>The shortest signed turn from angle <code>from</code> to angle <code>to</code>, in [-pi, pi].</td></tr><tr><td><a href="#lerpangle"><code>lerpAngle</code></a></td><td>function</td><td>Interpolate between two angles the short way round.</td></tr><tr><td><a href="#mat4"><code>mat4</code></a></td><td>namespace</td><td>4x4 matrices as plain arrays or Float32Array/Float64Array of 16, COLUMN-major (element [column * 4 + row]), the layout both WebGPU and WebGL expect, so a matrix can be uploaded as it is.</td></tr><tr><td><a href="#quat"><code>quat</code></a></td><td>namespace</td><td>Quaternions as plain arrays [x, y, z, w] (unit length for rotations); output-first and allocation-free.</td></tr><tr><td><a href="#sin"><code>sin</code></a></td><td>function</td><td>Sine of <code>x</code> (radians), computed with + - * / only, so the result is the same bits in every engine (unlike <code>Math.sin</code>).</td></tr><tr><td><a href="#sincos"><code>sincos</code></a></td><td>function</td><td>Both at once with a single argument reduction: the right call for rotations.</td></tr><tr><td><a href="#tan"><code>tan</code></a></td><td>function</td><td>Tangent of <code>x</code> (radians), computed with + - * / only, so the result is the same bits in every engine.</td></tr><tr><td><a href="#vec3"><code>vec3</code></a></td><td>namespace</td><td>3D vectors as plain arrays [x, y, z] (or Float64Array(3)): no function here allocates; the first argument is the output (and may be one of the inputs).</td></tr><tr><td><a href="#wrapangle"><code>wrapAngle</code></a></td><td>function</td><td>Wrap an angle (radians) into [-pi, pi].</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="acos"><code>acos</code><a class="anchor" href="#acos" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">acos</span>(x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Arc cosine of <code>x</code> in radians (0 to π), computed with + - * / and sqrt only, so the result is the same bits in every engine.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>x</code></td><td><code>number</code></td><td>In [-1, 1]; NaN outside.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — Radians in [0, pi].</p>
+<p><sub>src/trig.js:225</sub></p>
+<h3 id="asin"><code>asin</code><a class="anchor" href="#asin" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">asin</span>(x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Arc sine of <code>x</code> in radians (-π/2 to π/2), computed with + - * / and sqrt only, so the result is the same bits in every engine.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>x</code></td><td><code>number</code></td><td>In [-1, 1]; NaN outside.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — Radians in [-pi/2, pi/2].</p>
+<p><sub>src/trig.js:214</sub></p>
+<h3 id="atan"><code>atan</code><a class="anchor" href="#atan" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">atan</span>(x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Arc tangent of <code>x</code> in radians (-π/2 to π/2), computed with + - * / only, so the result is the same bits in every engine.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>x</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — Radians in [-pi/2, pi/2].</p>
+<p><sub>src/trig.js:161</sub></p>
+<h3 id="atan2"><code>atan2</code><a class="anchor" href="#atan2" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">atan2</span>(y, x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Angle of the point (x, y) from the +x axis, in (-pi, pi]; same special cases as Math.atan2.</p>
+<p><sub>src/trig.js:188</sub></p>
+<h3 id="cos"><code>cos</code><a class="anchor" href="#cos" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">cos</span>(x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Cosine of <code>x</code> (radians), computed with + - * / only, so the result is the same bits in every engine (unlike <code>Math.cos</code>).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>x</code></td><td><code>number</code></td><td>Radians.</td></tr></tbody></table></div>
+<p><sub>src/trig.js:110</sub></p>
+<h3 id="deltaangle"><code>deltaAngle</code><a class="anchor" href="#deltaangle" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">deltaAngle</span>(<span class="tk-k">from</span>, to)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The shortest signed turn from angle <code>from</code> to angle <code>to</code>, in [-pi, pi].</p>
+<p><sub>src/angle.js:10</sub></p>
+<h3 id="lerpangle"><code>lerpAngle</code><a class="anchor" href="#lerpangle" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">lerpAngle</span>(<span class="tk-k">from</span>, to, t)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Interpolate between two angles the short way round.</p>
+<p><sub>src/angle.js:15</sub></p>
+<h3 id="sin"><code>sin</code><a class="anchor" href="#sin" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">sin</span>(x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Sine of <code>x</code> (radians), computed with + - * / only, so the result is the same bits in every engine (unlike <code>Math.sin</code>).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>x</code></td><td><code>number</code></td><td>Radians.</td></tr></tbody></table></div>
+<p><sub>src/trig.js:94</sub></p>
+<h3 id="sincos"><code>sincos</code><a class="anchor" href="#sincos" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">sincos</span>(x, out)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Both at once with a single argument reduction: the right call for rotations.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>x</code></td><td><code>number</code></td><td>Radians.</td></tr><tr><td><code>out</code></td><td><code>number[] | Float64Array</code></td><td>Receives [sin, cos].</td></tr></tbody></table></div>
+<p><sub>src/trig.js:126</sub></p>
+<h3 id="tan"><code>tan</code><a class="anchor" href="#tan" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">tan</span>(x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Tangent of <code>x</code> (radians), computed with + - * / only, so the result is the same bits in every engine.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>x</code></td><td><code>number</code></td><td>Radians. Near odd multiples of pi/2 the result is huge, as it should be.</td></tr></tbody></table></div>
+<p><sub>src/trig.js:144</sub></p>
+<h3 id="wrapangle"><code>wrapAngle</code><a class="anchor" href="#wrapangle" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">wrapAngle</span>(a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Wrap an angle (radians) into [-pi, pi]. Exact for angles that are already inside.</p>
+<p><sub>src/angle.js:4</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="deg_to_rad"><code>DEG_TO_RAD</code><a class="anchor" href="#deg_to_rad" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> DEG_TO_RAD</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Multiply degrees by this to get radians.</p>
+<p>Value: <code>0.017453292519943295</code></p>
+<p><sub>src/angle.js:20</sub></p>
+<h3 id="half_pi"><code>HALF_PI</code><a class="anchor" href="#half_pi" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> HALF_PI</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>π / 2.</p>
+<p>Value: <code>1.5707963267948966</code></p>
+<p><sub>src/trig.js:19</sub></p>
+<h3 id="pi"><code>PI</code><a class="anchor" href="#pi" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> PI</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>π.</p>
+<p>Value: <code>3.141592653589793</code></p>
+<p><sub>src/trig.js:15</sub></p>
+<h3 id="quarter_pi"><code>QUARTER_PI</code><a class="anchor" href="#quarter_pi" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> QUARTER_PI</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>π / 4.</p>
+<p>Value: <code>0.7853981633974483</code></p>
+<p><sub>src/trig.js:21</sub></p>
+<h3 id="rad_to_deg"><code>RAD_TO_DEG</code><a class="anchor" href="#rad_to_deg" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> RAD_TO_DEG</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Multiply radians by this to get degrees.</p>
+<p>Value: <code>57.29577951308232</code></p>
+<p><sub>src/angle.js:22</sub></p>
+<h3 id="two_pi"><code>TWO_PI</code><a class="anchor" href="#two_pi" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> TWO_PI</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>2π.</p>
+<p>Value: <code>6.283185307179586</code></p>
+<p><sub>src/trig.js:17</sub></p>
+<h2 id="namespaces">Namespaces<a class="anchor" href="#namespaces" aria-label="Link to this section">#</a></h2>
+<h3 id="mat4"><code>mat4</code><a class="anchor" href="#mat4" aria-label="Link to this section">#</a></h3>
+<p>4x4 matrices as plain arrays or Float32Array/Float64Array of 16, COLUMN-major (element [column * 4 + row]), the layout both WebGPU and WebGL expect, so a matrix can be uploaded as it is. Output-first and allocation-free, like vec3 and quat. Right-handed, +y up, the camera looks down -z. <code>perspective</code> and <code>orthographic</code> give clip-space depth in [0, 1] (WebGPU's convention; the WebGL2 renderer remaps it in the vertex shader). Deterministic: only + - * / and sqrt, plus this package's own sin, cos and tan.</p>
+<h4 id="mat4compose"><code>mat4.compose</code><a class="anchor" href="#mat4compose" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">compose</span>(out, px, py, pz, q, sx, sy, sz)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A model matrix from a position, a rotation quaternion and a scale (the usual translate * rotate * scale).</p>
+<p><sub>src/mat4.js:66</sub></p>
+<h4 id="mat4copy"><code>mat4.copy</code><a class="anchor" href="#mat4copy" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">copy</span>(out, a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a. Returns <code>out</code>.</p>
+<p><sub>src/mat4.js:20</sub></p>
+<h4 id="mat4create"><code>mat4.create</code><a class="anchor" href="#mat4create" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">create</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A new identity matrix (16 numbers, column-major).</p>
+<p><sub>src/mat4.js:10</sub></p>
+<h4 id="mat4fromquat"><code>mat4.fromQuat</code><a class="anchor" href="#mat4fromquat" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">fromQuat</span>(out, q)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The rotation matrix of a unit quaternion [x, y, z, w].</p>
+<p><sub>src/mat4.js:54</sub></p>
+<h4 id="mat4identity"><code>mat4.identity</code><a class="anchor" href="#mat4identity" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">identity</span>(out)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Set <code>out</code> to the identity matrix. Returns <code>out</code>.</p>
+<p><sub>src/mat4.js:13</sub></p>
+<h4 id="mat4invert"><code>mat4.invert</code><a class="anchor" href="#mat4invert" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">invert</span>(out, a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a^-1, or the identity if <code>a</code> is singular. Returns false when it was singular. <code>out</code> may be <code>a</code>.</p>
+<p><sub>src/mat4.js:140</sub></p>
+<h4 id="mat4lookat"><code>mat4.lookAt</code><a class="anchor" href="#mat4lookat" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">lookAt</span>(out, eye, target, up)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The view matrix of a camera at <code>eye</code> looking at <code>target</code>; <code>up</code> is usually [0, 1, 0].</p>
+<p><sub>src/mat4.js:105</sub></p>
+<h4 id="mat4multiply"><code>mat4.multiply</code><a class="anchor" href="#mat4multiply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">multiply</span>(out, a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a * b: the transform that applies <code>b</code> first, then <code>a</code>. <code>out</code> may be <code>a</code> or <code>b</code>.</p>
+<p><sub>src/mat4.js:26</sub></p>
+<h4 id="mat4orthographic"><code>mat4.orthographic</code><a class="anchor" href="#mat4orthographic" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">orthographic</span>(out, l, r, b, t, near, far)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Orthographic projection of the box [l, r] x [b, t] x [-near, -far] to clip space (depth 0..1).</p>
+<p><sub>src/mat4.js:92</sub></p>
+<h4 id="mat4perspective"><code>mat4.perspective</code><a class="anchor" href="#mat4perspective" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">perspective</span>(out, fovY, aspect, near, far)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Perspective projection (right-handed, looking down -z; clip depth 0 at <code>near</code> and 1 at <code>far</code>).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>fovY</code></td><td><code>number</code></td><td>Vertical field of view in radians</td></tr><tr><td><code>aspect</code></td><td><code>number</code></td><td>Width / height</td></tr></tbody></table></div>
+<p><sub>src/mat4.js:80</sub></p>
+<h4 id="mat4scaling"><code>mat4.scaling</code><a class="anchor" href="#mat4scaling" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">scaling</span>(out, x, y, z)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Set <code>out</code> to a scale by (x, y, z). Returns <code>out</code>.</p>
+<p><sub>src/mat4.js:47</sub></p>
+<h4 id="mat4transformdirection"><code>mat4.transformDirection</code><a class="anchor" href="#mat4transformdirection" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">transformDirection</span>(out, m, d)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Transform the direction d by the upper 3x3 of m (no translation, no divide). <code>out</code> may be <code>d</code>.</p>
+<p><sub>src/mat4.js:181</sub></p>
+<h4 id="mat4transformpoint"><code>mat4.transformPoint</code><a class="anchor" href="#mat4transformpoint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">transformPoint</span>(out, m, p)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Transform the point p by m (with the perspective divide). <code>out</code> may be <code>p</code>.</p>
+<p><sub>src/mat4.js:170</sub></p>
+<h4 id="mat4translation"><code>mat4.translation</code><a class="anchor" href="#mat4translation" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">translation</span>(out, x, y, z)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Set <code>out</code> to a move by (x, y, z). Returns <code>out</code>.</p>
+<p><sub>src/mat4.js:40</sub></p>
+<h4 id="mat4viewfromyawpitch"><code>mat4.viewFromYawPitch</code><a class="anchor" href="#mat4viewfromyawpitch" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">viewFromYawPitch</span>(out, x, y, z, yaw, pitch, roll = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The view matrix of a first-person camera: at (x, y, z) with the orientation of yaw/pitch/roll (see quat.fromYawPitchRoll; <code>vec3.forward(yaw, pitch)</code> is the direction it looks).</p>
+<p><sub>src/mat4.js:129</sub></p>
+<p><sub>src/mat4.js:1</sub></p>
+<h3 id="quat"><code>quat</code><a class="anchor" href="#quat" aria-label="Link to this section">#</a></h3>
+<p>Quaternions as plain arrays [x, y, z, w] (unit length for rotations); output-first and allocation-free. Deterministic: sin, cos and atan2 come from this package, never Math.*.</p>
+<h4 id="quatconjugate"><code>quat.conjugate</code><a class="anchor" href="#quatconjugate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">conjugate</span>(out, a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = the conjugate of <code>a</code> (the inverse rotation, for a unit quaternion). Returns <code>out</code>.</p>
+<p><sub>src/quat.js:12</sub></p>
+<h4 id="quatcopy"><code>quat.copy</code><a class="anchor" href="#quatcopy" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">copy</span>(out, a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a. Returns <code>out</code>.</p>
+<p><sub>src/quat.js:10</sub></p>
+<h4 id="quatdot"><code>quat.dot</code><a class="anchor" href="#quatdot" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">dot</span>(a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The dot product of two quaternions (1 means the same rotation, for unit quaternions).</p>
+<p><sub>src/quat.js:14</sub></p>
+<h4 id="quatfromaxisangle"><code>quat.fromAxisAngle</code><a class="anchor" href="#quatfromaxisangle" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">fromAxisAngle</span>(out, axis, angle)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Rotation of <code>angle</code> radians around the (unit) <code>axis</code>.</p>
+<p><sub>src/quat.js:17</sub></p>
+<h4 id="quatfromyawpitchroll"><code>quat.fromYawPitchRoll</code><a class="anchor" href="#quatfromyawpitchroll" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">fromYawPitchRoll</span>(out, yaw, pitch, roll = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>First-person camera orientation: yaw around +y, then pitch around the new +x, then roll around the new +z (the &quot;YXZ&quot; order). Rotating (0, 0, -1) by the result gives <code>forward(yaw, pitch)</code> from vec3.js.</p>
+<p><sub>src/quat.js:46</sub></p>
+<h4 id="quatidentity"><code>quat.identity</code><a class="anchor" href="#quatidentity" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">identity</span>(out)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Set <code>out</code> to the identity rotation [0, 0, 0, 1]. Returns <code>out</code>.</p>
+<p><sub>src/quat.js:8</sub></p>
+<h4 id="quatmultiply"><code>quat.multiply</code><a class="anchor" href="#quatmultiply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">multiply</span>(out, a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Hamilton product: the rotation that applies <code>b</code> first, then <code>a</code>. <code>out</code> may be <code>a</code> or <code>b</code>.</p>
+<p><sub>src/quat.js:24</sub></p>
+<h4 id="quatnlerp"><code>quat.nlerp</code><a class="anchor" href="#quatnlerp" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">nlerp</span>(out, a, b, t)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Normalised linear interpolation: cheap, and good for small steps.</p>
+<p><sub>src/quat.js:69</sub></p>
+<h4 id="quatnormalize"><code>quat.normalize</code><a class="anchor" href="#quatnormalize" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">normalize</span>(out, a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Scale to unit length; a zero quaternion becomes the identity.</p>
+<p><sub>src/quat.js:34</sub></p>
+<h4 id="quatrotate"><code>quat.rotate</code><a class="anchor" href="#quatrotate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">rotate</span>(out, q, v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Rotate the vector <code>v</code> by the unit quaternion <code>q</code>. <code>out</code> may be <code>v</code>.</p>
+<p><sub>src/quat.js:58</sub></p>
+<h4 id="quatslerp"><code>quat.slerp</code><a class="anchor" href="#quatslerp" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">slerp</span>(out, a, b, t)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Spherical interpolation along the shortest arc at constant angular speed.</p>
+<p><sub>src/quat.js:79</sub></p>
+<p><sub>src/quat.js:1</sub></p>
+<h3 id="vec3"><code>vec3</code><a class="anchor" href="#vec3" aria-label="Link to this section">#</a></h3>
+<p>3D vectors as plain arrays [x, y, z] (or Float64Array(3)): no function here allocates; the first argument is the output (and may be one of the inputs). Right-handed, +x right, +y up, the camera looks down -z. Deterministic: only + - * / and sqrt, plus this package's own sin and cos.</p>
+<h4 id="vec3add"><code>vec3.add</code><a class="anchor" href="#vec3add" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">add</span>(out, a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a + b. Returns <code>out</code>.</p>
+<p><sub>src/vec3.js:13</sub></p>
+<h4 id="vec3addscaled"><code>vec3.addScaled</code><a class="anchor" href="#vec3addscaled" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">addScaled</span>(out, a, b, s)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a + b * s</p>
+<p><sub>src/vec3.js:19</sub></p>
+<h4 id="vec3copy"><code>vec3.copy</code><a class="anchor" href="#vec3copy" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">copy</span>(out, a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a. Returns <code>out</code>.</p>
+<p><sub>src/vec3.js:11</sub></p>
+<h4 id="vec3create"><code>vec3.create</code><a class="anchor" href="#vec3create" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">create</span>(x = <span class="tk-n">0</span>, y = <span class="tk-n">0</span>, z = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A new vector [x, y, z].</p>
+<p><sub>src/vec3.js:7</sub></p>
+<h4 id="vec3cross"><code>vec3.cross</code><a class="anchor" href="#vec3cross" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">cross</span>(out, a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a x b (right-handed).</p>
+<p><sub>src/vec3.js:34</sub></p>
+<h4 id="vec3distance"><code>vec3.distance</code><a class="anchor" href="#vec3distance" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">distance</span>(a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The distance between points <code>a</code> and <code>b</code>.</p>
+<p><sub>src/vec3.js:27</sub></p>
+<h4 id="vec3dot"><code>vec3.dot</code><a class="anchor" href="#vec3dot" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">dot</span>(a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The dot product of <code>a</code> and <code>b</code>.</p>
+<p><sub>src/vec3.js:21</sub></p>
+<h4 id="vec3forward"><code>vec3.forward</code><a class="anchor" href="#vec3forward" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">forward</span>(out, yaw, pitch)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The direction a camera or player looks for the given angles. Yaw 0 looks down -z; positive yaw turns left (counter-clockwise seen from above); positive pitch looks up.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>out</code></td><td><code>number[]</code></td><td></td></tr><tr><td><code>yaw</code></td><td><code>number</code></td><td>Radians</td></tr><tr><td><code>pitch</code></td><td><code>number</code></td><td>Radians</td></tr></tbody></table></div>
+<p><sub>src/vec3.js:58</sub></p>
+<h4 id="vec3length"><code>vec3.length</code><a class="anchor" href="#vec3length" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">length</span>(a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The length of <code>a</code>.</p>
+<p><sub>src/vec3.js:25</sub></p>
+<h4 id="vec3lengthsq"><code>vec3.lengthSq</code><a class="anchor" href="#vec3lengthsq" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">lengthSq</span>(a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The squared length of <code>a</code> (no square root: cheaper for comparisons).</p>
+<p><sub>src/vec3.js:23</sub></p>
+<h4 id="vec3lerp"><code>vec3.lerp</code><a class="anchor" href="#vec3lerp" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">lerp</span>(out, a, b, t)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a + (b - a) * t. Returns <code>out</code>.</p>
+<p><sub>src/vec3.js:29</sub></p>
+<h4 id="vec3negate"><code>vec3.negate</code><a class="anchor" href="#vec3negate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">negate</span>(out, a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = -a. Returns <code>out</code>.</p>
+<p><sub>src/vec3.js:31</sub></p>
+<h4 id="vec3normalize"><code>vec3.normalize</code><a class="anchor" href="#vec3normalize" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">normalize</span>(out, a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Unit vector in the direction of <code>a</code>; the zero vector stays zero (never NaN).</p>
+<p><sub>src/vec3.js:41</sub></p>
+<h4 id="vec3right"><code>vec3.right</code><a class="anchor" href="#vec3right" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">right</span>(out, yaw)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The unit vector to the right of a yaw (always horizontal).</p>
+<p><sub>src/vec3.js:67</sub></p>
+<h4 id="vec3scale"><code>vec3.scale</code><a class="anchor" href="#vec3scale" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">scale</span>(out, a, s)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a * s. Returns <code>out</code>.</p>
+<p><sub>src/vec3.js:17</sub></p>
+<h4 id="vec3set"><code>vec3.set</code><a class="anchor" href="#vec3set" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-k">set</span>(out, x, y, z)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Set <code>out</code> to (x, y, z). Returns <code>out</code>.</p>
+<p><sub>src/vec3.js:9</sub></p>
+<h4 id="vec3sub"><code>vec3.sub</code><a class="anchor" href="#vec3sub" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">sub</span>(out, a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>out = a - b. Returns <code>out</code>.</p>
+<p><sub>src/vec3.js:15</sub></p>
+<p><sub>src/vec3.js:1</sub></p><div class="pager"><a href="core.html"><small>Previous</small>core</a><a class="next" href="arcade.html"><small>Next</small>arcade</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-60-of-60-documented">Contents (60 of 60 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#acos">acos</a><a class="l3" href="#asin">asin</a><a class="l3" href="#atan">atan</a><a class="l3" href="#atan2">atan2</a><a class="l3" href="#cos">cos</a><a class="l3" href="#deltaangle">deltaAngle</a><a class="l3" href="#lerpangle">lerpAngle</a><a class="l3" href="#sin">sin</a><a class="l3" href="#sincos">sincos</a><a class="l3" href="#tan">tan</a><a class="l3" href="#wrapangle">wrapAngle</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#deg_to_rad">DEG_TO_RAD</a><a class="l3" href="#half_pi">HALF_PI</a><a class="l3" href="#pi">PI</a><a class="l3" href="#quarter_pi">QUARTER_PI</a><a class="l3" href="#rad_to_deg">RAD_TO_DEG</a><a class="l3" href="#two_pi">TWO_PI</a><a class="l2" href="#namespaces">Namespaces</a><a class="l3" href="#mat4">mat4</a><a class="l3" href="#quat">quat</a><a class="l3" href="#vec3">vec3</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

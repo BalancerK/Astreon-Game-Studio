@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/i18n · Astreon Engine</title>
+<meta name="description" content="Localisation: plural forms for every language, contexts, gettext .po and CSV import, fallback chains (pt-BR to pt), pseudo-localisation, a list of what is untranslated.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html" class="on">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginei18n">@engine/i18n</h1>
+<p>Localisation: plural forms for every language, contexts, gettext .po and CSV import, fallback chains (pt-BR to pt), pseudo-localisation, a list of what is untranslated.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/i18n</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/i18n.html">packages/i18n</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-10-of-10-documented">Contents (10 of 10 documented)<a class="anchor" href="#contents-10-of-10-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#context_separator"><code>CONTEXT_SEPARATOR</code></a></td><td>constant</td><td>The separator gettext puts between a context and a word (the &quot;end of transmission&quot; character).</td></tr><tr><td><a href="#class-localizer"><code>Localizer</code></a></td><td>class</td><td>The words of a game in several languages: <code>add</code> tables (or <code>addPo</code> / <code>addCsv</code> files), <code>setLanguage</code>, then <code>t</code>, <code>tn</code> (with a count), <code>tc</code> and <code>tcn</code> (in a context).</td></tr><tr><td><a href="#cldrrules"><code>cldrRules</code></a></td><td>function</td><td>The plural rules of a language from the CLDR data the platform ships (<code>Intl.PluralRules</code>): <code>categories</code> in the order zero, one, two, few, many, other (only the ones the language uses), <code>select(n)</code> giving the category name and <code>index(n)</code> the position in <code>categories</code> (what a list of forms is indexed by).</td></tr><tr><td><a href="#entrykey"><code>entryKey</code></a></td><td>function</td><td>The stored name of a word in a context.</td></tr><tr><td><a href="#parsecsv"><code>parseCsv</code></a></td><td>function</td><td>Read comma-separated values (also tab-separated with <code>delimiter: '\t'</code>): quoted cells, doubled quotes, line breaks inside quotes, a byte-order mark, CRLF.</td></tr><tr><td><a href="#parsepluralexpression"><code>parsePluralExpression</code></a></td><td>function</td><td>Turn a gettext plural expression (<code>n != 1</code>, `n%10==1 &amp;&amp; n%100!=11 ?</td></tr><tr><td><a href="#parsepluralforms"><code>parsePluralForms</code></a></td><td>function</td><td>Read a header's <code>Plural-Forms</code> line: <code>{ count, index }</code> where <code>index(n)</code> is the form for a count.</td></tr></tbody></table></div>
+<p>| <a href="#parsepo"><code>parsePo</code></a> | function | Read a gettext <code>.po</code> file: <code>msgctxt</code> (context), <code>msgid</code>, <code>msgid_plural</code>, <code>msgstr</code> or <code>msgstr[0..n]</code>, strings continued over several lines, <code>#,</code> flags (fuzzy entries are marked) and the header (<code>Plural-Forms</code>, <code>Language</code>, ...). | | <a href="#pseudolocalize"><code>pseudoLocalize</code></a> | function | Make text look foreign but readable (&quot;Start game&quot; becomes &quot;[Šţáŕţ ĝáɱé ~~~]&quot;): letters get accents, the text grows by about a third (German and Finnish do), and the whole is bracketed so cut-off text shows. | | <a href="#tocsv"><code>toCsv</code></a> | function | Write rows as CSV (quoting only what needs it). |</p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="cldrrules"><code>cldrRules</code><a class="anchor" href="#cldrrules" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">cldrRules</span>(language)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The plural rules of a language from the CLDR data the platform ships (<code>Intl.PluralRules</code>): <code>categories</code> in the order zero, one, two, few, many, other (only the ones the language uses), <code>select(n)</code> giving the category name and <code>index(n)</code> the position in <code>categories</code> (what a list of forms is indexed by).</p>
+<p><sub>src/plural.js:79</sub></p>
+<h3 id="entrykey"><code>entryKey</code><a class="anchor" href="#entrykey" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">entryKey</span>(key, context)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The stored name of a word in a context.</p>
+<p><sub>src/localizer.js:11</sub></p>
+<h3 id="parsecsv"><code>parseCsv</code><a class="anchor" href="#parsecsv" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">parseCsv</span>(source, { delimiter = <span class="tk-s">','</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read comma-separated values (also tab-separated with <code>delimiter: '\t'</code>): quoted cells, doubled quotes, line breaks inside quotes, a byte-order mark, CRLF.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>source</code></td><td><code>string</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{ delimiter?: string }</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>string[][]</code> — rows of cells</p>
+<p><sub>src/formats.js:75</sub></p>
+<h3 id="parsepluralexpression"><code>parsePluralExpression</code><a class="anchor" href="#parsepluralexpression" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">parsePluralExpression</span>(source)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Turn a gettext plural expression (<code>n != 1</code>, <code>n%10==1 &amp;&amp; n%100!=11 ? 0 : 1</code>, ...) into a function from a count to a form number. Only <code>n</code>, whole numbers, <code>( ) ! * / % + - &lt; &gt; &lt;= &gt;= == != &amp;&amp; || ? :</code> are allowed.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>source</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>(n: number) =&gt; number</code></p>
+<p><sub>src/plural.js:12</sub></p>
+<h3 id="parsepluralforms"><code>parsePluralForms</code><a class="anchor" href="#parsepluralforms" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">parsePluralForms</span>(line)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read a header's <code>Plural-Forms</code> line: <code>{ count, index }</code> where <code>index(n)</code> is the form for a count.</p>
+<p><sub>src/plural.js:66</sub></p>
+<h3 id="parsepo"><code>parsePo</code><a class="anchor" href="#parsepo" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">parsePo</span>(source)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read a gettext <code>.po</code> file: <code>msgctxt</code> (context), <code>msgid</code>, <code>msgid_plural</code>, <code>msgstr</code> or <code>msgstr[0..n]</code>, strings continued over several lines, <code>#,</code> flags (fuzzy entries are marked) and the header (<code>Plural-Forms</code>, <code>Language</code>, ...). The entry with an empty <code>msgid</code> is the header and is not in <code>entries</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>source</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>PoFile</code></p>
+<p><sub>src/formats.js:20</sub></p>
+<h3 id="pseudolocalize"><code>pseudoLocalize</code><a class="anchor" href="#pseudolocalize" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">pseudoLocalize</span>(text)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Make text look foreign but readable (&quot;Start game&quot; becomes &quot;[Šţáŕţ ĝáɱé ~~~]&quot;): letters get accents, the text grows by about a third (German and Finnish do), and the whole is bracketed so cut-off text shows. <code>{placeholders}</code> are left alone.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>text</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/localizer.js:25</sub></p>
+<h3 id="tocsv"><code>toCsv</code><a class="anchor" href="#tocsv" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">toCsv</span>(rows, { delimiter = <span class="tk-s">','</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Write rows as CSV (quoting only what needs it).</p>
+<p><sub>src/formats.js:103</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-localizer"><code>class Localizer</code><a class="anchor" href="#class-localizer" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Localizer</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The words of a game in several languages: <code>add</code> tables (or <code>addPo</code> / <code>addCsv</code> files), <code>setLanguage</code>, then <code>t</code>, <code>tn</code> (with a count), <code>tc</code> and <code>tcn</code> (in a context). Falls back from <code>pt-BR</code> to <code>pt</code> to the default language, reports missing words, and can pseudo-localise.</p>
+<h4 id="localizerconstructor"><code>Localizer.constructor</code><a class="anchor" href="#localizerconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ language = <span class="tk-s">''</span>, fallback = <span class="tk-s">''</span>, pseudo = <span class="tk-k">false</span>, missing = <span class="tk-s">'key'</span>, onMissing = <span class="tk-k">null</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>LocalizerOptions</code></td><td></td></tr><tr><td><code>o.language</code> (optional)</td><td><code>string</code></td><td>The language to show ('' until <code>setLanguage</code>).</td></tr><tr><td><code>o.fallback</code> (optional)</td><td><code>string</code></td><td>The language to use for words the chosen one lacks (the first one added).</td></tr><tr><td><code>o.pseudo</code> (optional)</td><td><code>boolean</code></td><td>Show every string as pseudo-text.</td></tr><tr><td><code>o.missing</code> (optional)</td><td><code>'key' | 'brackets'</code></td><td>What a word that is nowhere shows: the key itself (default, like gettext) or <code>[key]</code>.</td></tr><tr><td><code>o.onMissing</code> (optional)</td><td><code>Function</code></td><td>Called once for each word that could not be found (language, key, context): log it or collect it.</td></tr></tbody></table></div>
+<h4 id="localizerlanguages"><code>Localizer.languages</code><a class="anchor" href="#localizerlanguages" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> languages</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The language codes that have words.</p>
+<h4 id="localizeradd"><code>Localizer.add</code><a class="anchor" href="#localizeradd" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">add</span>(language, entries)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Add words for a language. Keys may carry a context after <code>\u0004</code> (see <code>entryKey</code>); <code>thing.one</code> / <code>thing.other</code> keys are joined into one word with forms (so a table written for the arcade kit works). Later calls replace earlier words.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>language</code></td><td><code>string</code></td><td></td></tr><tr><td><code>entries</code></td><td><code>Record&lt;string, Entry&gt;</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>this</code></p>
+<h4 id="localizeraddentry"><code>Localizer.addEntry</code><a class="anchor" href="#localizeraddentry" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addEntry</span>(language, key, value, context = <span class="tk-k">null</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Add one word, optionally in a context.</p>
+<p><strong>Returns</strong> <code>this</code></p>
+<h4 id="localizersetplural"><code>Localizer.setPlural</code><a class="anchor" href="#localizersetplural" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setPlural</span>(language, rule, count = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Say how many forms a language has and which one a count uses, as a function or a gettext rule (<code>'nplurals=2; plural=(n != 1);'</code>). Without this the language's built-in rules (CLDR, from <code>Intl.PluralRules</code>) are used.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>language</code></td><td><code>string</code></td><td></td></tr><tr><td><code>rule</code></td><td><code>string | ((n: number) =&gt; number)</code></td><td></td></tr><tr><td><code>count</code> (optional)</td><td><code>number</code></td><td>Number of forms when <code>rule</code> is a function.</td></tr></tbody></table></div>
+<h4 id="localizeraddpo"><code>Localizer.addPo</code><a class="anchor" href="#localizeraddpo" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addPo</span>(source, { language, fuzzy = <span class="tk-k">false</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Add the translations of a gettext <code>.po</code> file (<code>msgctxt</code>, plurals and the <code>Plural-Forms</code> header are understood). Untranslated and fuzzy entries are skipped unless <code>fuzzy: true</code>. The language is the file's <code>Language:</code> header unless you give one. Returns how many words were added.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>source</code></td><td><code>string</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{ language?: string, fuzzy?: boolean }</code></td><td></td></tr></tbody></table></div>
+<h4 id="localizeraddcsv"><code>Localizer.addCsv</code><a class="anchor" href="#localizeraddcsv" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addCsv</span>(source, { delimiter = <span class="tk-s">','</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Add translations from a spreadsheet saved as CSV. The first row names the columns: <code>key</code>, an optional <code>context</code>, then one column per language code. Rows named <code>thing.one</code> / <code>thing.other</code> are the forms of one word. Empty cells are left untranslated. Returns the language codes found.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>source</code></td><td><code>string</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{ delimiter?: string }</code></td><td></td></tr></tbody></table></div>
+<h4 id="localizerhas"><code>Localizer.has</code><a class="anchor" href="#localizerhas" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">has</span>(key, context = <span class="tk-k">null</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Is there a word for this key (and context) in the chosen language or its fallbacks?</p>
+<h4 id="localizersetlanguage"><code>Localizer.setLanguage</code><a class="anchor" href="#localizersetlanguage" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setLanguage</span>(choice = <span class="tk-s">'auto'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Choose the language: a code (<code>'fr'</code>, <code>'pt-BR'</code>), or <code>'auto'</code> for the language of the player's device when there are words for it. Returns the code chosen.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>choice</code> (optional)</td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<h4 id="localizert"><code>Localizer.t</code><a class="anchor" href="#localizert" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">t</span>(key, params)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The words for <code>key</code> in the chosen language, with <code>{name}</code> places filled from <code>params</code>. A word nowhere shows the key.</p>
+<h4 id="localizertc"><code>Localizer.tc</code><a class="anchor" href="#localizertc" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tc</span>(context, key, params)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The words for <code>key</code> used in a context (the same English word can need two different translations: &quot;Open&quot; a door, &quot;Open&quot; status).</p>
+<h4 id="localizertn"><code>Localizer.tn</code><a class="anchor" href="#localizertn" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tn</span>(key, n, params)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The right plural form for a count: <code>tn('coins', 3)</code> is &quot;3 coins&quot;; <code>{n}</code> is the count unless <code>params</code> gives one.</p>
+<h4 id="localizertcn"><code>Localizer.tcn</code><a class="anchor" href="#localizertcn" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tcn</span>(context, key, n, params)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Plural form of a word in a context.</p>
+<h4 id="localizermissing"><code>Localizer.missing</code><a class="anchor" href="#localizermissing" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">missing</span>(language)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Keys that the fallback language has and <code>language</code> lacks: what is still to translate.</p>
+<p><strong>Returns</strong> <code>string[]</code></p>
+<h4 id="localizertocsv"><code>Localizer.toCsv</code><a class="anchor" href="#localizertocsv" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">toCsv</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>All the words as rows for a spreadsheet: <code>key</code>, <code>context</code>, then a column per language (plural forms as <code>key.one</code>, <code>key.other</code>).</p>
+<p><sub>src/localizer.js:47</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="context_separator"><code>CONTEXT_SEPARATOR</code><a class="anchor" href="#context_separator" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> CONTEXT_SEPARATOR</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The separator gettext puts between a context and a word (the &quot;end of transmission&quot; character).</p>
+<p>Value: <code>'\u0004'</code></p>
+<p><sub>src/localizer.js:8</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="entry"><code>Entry</code><a class="anchor" href="#entry" aria-label="Link to this section">#</a></h3>
+<p>What a word can be in a table: plain text, a list of forms in the language's plural order (what gettext files give), or the forms by name.</p>
+<p>Type: <code>string \| string[] \| Partial&lt;Record&lt;'zero' \| 'one' \| 'two' \| 'few' \| 'many' \| 'other', string&gt;&gt;</code></p>
+<h3 id="localizeroptions"><code>LocalizerOptions</code><a class="anchor" href="#localizeroptions" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>{ language?: string, fallback?: string, pseudo?: boolean, missing?: 'key' \| 'brackets', onMissing?: (language: string, key: string, context: string \| null) =&gt; void }</code></p>
+<h3 id="poentry"><code>PoEntry</code><a class="anchor" href="#poentry" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>{ context: string \| null, id: string, plural: string \| null, forms: string[], fuzzy: boolean, comments: string[] }</code></p>
+<h3 id="pofile"><code>PoFile</code><a class="anchor" href="#pofile" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>{ header: Record&lt;string, string&gt;, entries: PoEntry[] }</code></p><div class="pager"><a href="audio.html"><small>Previous</small>audio</a><a class="next" href="assets.html"><small>Next</small>assets</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-10-of-10-documented">Contents (10 of 10 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#cldrrules">cldrRules</a><a class="l3" href="#entrykey">entryKey</a><a class="l3" href="#parsecsv">parseCsv</a><a class="l3" href="#parsepluralexpression">parsePluralExpression</a><a class="l3" href="#parsepluralforms">parsePluralForms</a><a class="l3" href="#parsepo">parsePo</a><a class="l3" href="#pseudolocalize">pseudoLocalize</a><a class="l3" href="#tocsv">toCsv</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-localizer">class Localizer</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#context_separator">CONTEXT_SEPARATOR</a><a class="l2" href="#types">Types</a><a class="l3" href="#entry">Entry</a><a class="l3" href="#localizeroptions">LocalizerOptions</a><a class="l3" href="#poentry">PoEntry</a><a class="l3" href="#pofile">PoFile</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

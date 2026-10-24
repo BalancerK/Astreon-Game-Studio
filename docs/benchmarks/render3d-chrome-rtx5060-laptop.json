@@ -1,0 +1,680 @@
+{
+  "env": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "cores": 16,
+    "webgpu": {
+      "vendor": "nvidia",
+      "architecture": "blackwell"
+    }
+  },
+  "width": 1280,
+  "height": 720,
+  "results": [
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "cubes (12 triangles each)",
+      "n": 1000,
+      "triangles": 12000,
+      "submit": {
+        "median": 0.09999999403953552
+      },
+      "pipelinedMs": 0.15666666666666668,
+      "spread": [
+        0.14933333337306975,
+        0.15733333349227904
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "cubes (12 triangles each)",
+      "n": 10000,
+      "triangles": 120000,
+      "submit": {
+        "median": 0.30000001192092896
+      },
+      "pipelinedMs": 0.20666666666666667,
+      "spread": [
+        0.20399999996026358,
+        0.21666666666666667
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "cubes (12 triangles each)",
+      "n": 50000,
+      "triangles": 600000,
+      "submit": {
+        "median": 1.300000011920929
+      },
+      "pipelinedMs": 1.1060000000397365,
+      "spread": [
+        1.0539999999602636,
+        1.1986666667461394
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "cubes (12 triangles each)",
+      "n": 100000,
+      "triangles": 1200000,
+      "submit": {
+        "median": 2.300000011920929
+      },
+      "pipelinedMs": 1.99,
+      "spread": [
+        1.9593333333730698,
+        2.054666666587194
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "cubes (12 triangles each)",
+      "n": 200000,
+      "triangles": 2400000,
+      "submit": {
+        "median": 4
+      },
+      "pipelinedMs": 5.782666666706403,
+      "spread": [
+        5.723333333333334,
+        5.805333333412806
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 1000,
+      "triangles": 192000,
+      "submit": {
+        "median": 0.09999999403953552
+      },
+      "pipelinedMs": 0.12399999996026358,
+      "spread": [
+        0.11600000003973643,
+        0.12666666666666668
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 10000,
+      "triangles": 1920000,
+      "submit": {
+        "median": 0.30000001192092896
+      },
+      "pipelinedMs": 0.28133333325386045,
+      "spread": [
+        0.27733333349227907,
+        0.2866666666666667
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 50000,
+      "triangles": 9600000,
+      "submit": {
+        "median": 1.300000011920929
+      },
+      "pipelinedMs": 1.2713333334525425,
+      "spread": [
+        1.26,
+        1.3306666666269302
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 100,
+      "triangles": 614400,
+      "submit": {
+        "median": 0.09999999403953552
+      },
+      "pipelinedMs": 0.10333333333333333,
+      "spread": [
+        0.09666666666666666,
+        0.10600000003973643
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 1000,
+      "triangles": 6144000,
+      "submit": {
+        "median": 0.09999999403953552
+      },
+      "pipelinedMs": 0.7266666666666667,
+      "spread": [
+        0.7220000000794728,
+        0.7353333332141241
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": false,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 4000,
+      "triangles": 24576000,
+      "submit": {
+        "median": 0.19999998807907104
+      },
+      "pipelinedMs": 2.80066666662693,
+      "spread": [
+        2.7893333331743877,
+        2.8019999998807905
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "cubes (12 triangles each)",
+      "n": 1000,
+      "triangles": 12000,
+      "submit": {
+        "median": 0.09999999403953552
+      },
+      "pipelinedMs": 0.13600000003973642,
+      "spread": [
+        0.12200000007947286,
+        0.1453333334128062
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "cubes (12 triangles each)",
+      "n": 10000,
+      "triangles": 120000,
+      "submit": {
+        "median": 0.30000001192092896
+      },
+      "pipelinedMs": 0.22933333317438762,
+      "spread": [
+        0.2153333334128062,
+        0.2520000000794729
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "cubes (12 triangles each)",
+      "n": 50000,
+      "triangles": 600000,
+      "submit": {
+        "median": 1.2999999821186066
+      },
+      "pipelinedMs": 0.9853333334128062,
+      "spread": [
+        0.94,
+        1.1233333333333333
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "cubes (12 triangles each)",
+      "n": 100000,
+      "triangles": 1200000,
+      "submit": {
+        "median": 2.199999988079071
+      },
+      "pipelinedMs": 2.052000000079473,
+      "spread": [
+        1.9839999999602635,
+        2.112666666507721
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "cubes (12 triangles each)",
+      "n": 200000,
+      "triangles": 2400000,
+      "submit": {
+        "median": 4
+      },
+      "pipelinedMs": 5.826000000039737,
+      "spread": [
+        5.807333333293597,
+        5.875333333412806
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 1000,
+      "triangles": 192000,
+      "submit": {
+        "median": 0.09999999403953552
+      },
+      "pipelinedMs": 0.1353333334128062,
+      "spread": [
+        0.13200000007947285,
+        0.13600000003973642
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 10000,
+      "triangles": 1920000,
+      "submit": {
+        "median": 0.30000001192092896
+      },
+      "pipelinedMs": 0.31466666658719383,
+      "spread": [
+        0.3106666666269302,
+        0.3446666665871938
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 50000,
+      "triangles": 9600000,
+      "submit": {
+        "median": 1.300000011920929
+      },
+      "pipelinedMs": 1.3453333334128061,
+      "spread": [
+        1.3433333333333333,
+        1.3593333331743875
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 100,
+      "triangles": 614400,
+      "submit": {
+        "median": 0.09999999403953552
+      },
+      "pipelinedMs": 0.1253333334128062,
+      "spread": [
+        0.1253333334128062,
+        0.14066666662693023
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 1000,
+      "triangles": 6144000,
+      "submit": {
+        "median": 0.09999999403953552
+      },
+      "pipelinedMs": 0.7206666666269302,
+      "spread": [
+        0.7126666667064031,
+        0.7279999999205271
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "aa": true,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 4000,
+      "triangles": 24576000,
+      "submit": {
+        "median": 0.19999998807907104
+      },
+      "pipelinedMs": 2.7293333333730696,
+      "spread": [
+        2.72,
+        2.7293333333730696
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "cubes (12 triangles each)",
+      "n": 1000,
+      "triangles": 12000,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 0.0753333334128062,
+      "spread": [
+        0.07066666662693023,
+        0.1073333332935969
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "cubes (12 triangles each)",
+      "n": 10000,
+      "triangles": 120000,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 0.4313333332538605,
+      "spread": [
+        0.3946666665871938,
+        0.4513333332538605
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "cubes (12 triangles each)",
+      "n": 50000,
+      "triangles": 600000,
+      "submit": {
+        "median": 0.29999998211860657
+      },
+      "pipelinedMs": 1.7333333333333334,
+      "spread": [
+        1.6986666665474575,
+        1.8779999999205272
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "cubes (12 triangles each)",
+      "n": 100000,
+      "triangles": 1200000,
+      "submit": {
+        "median": 0.5999999940395355
+      },
+      "pipelinedMs": 3.6766666666666667,
+      "spread": [
+        3.5713333334525426,
+        3.704666666587194
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "cubes (12 triangles each)",
+      "n": 200000,
+      "triangles": 2400000,
+      "submit": {
+        "median": 1.0999999940395355
+      },
+      "pipelinedMs": 8.86199999988079,
+      "spread": [
+        7.76066666662693,
+        10.106000000039737
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 1000,
+      "triangles": 192000,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 0.07066666682561239,
+      "spread": [
+        0.06666666666666667,
+        0.08533333341280619
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 10000,
+      "triangles": 1920000,
+      "submit": {
+        "median": 0.09999999403953552
+      },
+      "pipelinedMs": 0.5086666667461395,
+      "spread": [
+        0.5086666667461395,
+        0.5113333332538604
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 50000,
+      "triangles": 9600000,
+      "submit": {
+        "median": 0.29999998211860657
+      },
+      "pipelinedMs": 2.977333333293597,
+      "spread": [
+        2.89,
+        3.066666666666667
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 100,
+      "triangles": 614400,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 0.10199999988079071,
+      "spread": [
+        0.1,
+        0.14466666678587595
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 1000,
+      "triangles": 6144000,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 0.8653333332141241,
+      "spread": [
+        0.8653333332141241,
+        0.9013333334525426
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": false,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 4000,
+      "triangles": 24576000,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 3.4013333334525426,
+      "spread": [
+        3.39933333337307,
+        3.4186666667461396
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "cubes (12 triangles each)",
+      "n": 1000,
+      "triangles": 12000,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 0.056666666666666664,
+      "spread": [
+        0.05466666658719381,
+        0.05733333349227905
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "cubes (12 triangles each)",
+      "n": 10000,
+      "triangles": 120000,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 0.29133333325386046,
+      "spread": [
+        0.28799999992052716,
+        0.4953333334128062
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "cubes (12 triangles each)",
+      "n": 50000,
+      "triangles": 600000,
+      "submit": {
+        "median": 0.29999998211860657
+      },
+      "pipelinedMs": 1.5839999999602636,
+      "spread": [
+        1.5546666665871938,
+        1.6113333334525426
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "cubes (12 triangles each)",
+      "n": 100000,
+      "triangles": 1200000,
+      "submit": {
+        "median": 0.5
+      },
+      "pipelinedMs": 3.5293333331743875,
+      "spread": [
+        3.4086666667461394,
+        3.664666666587194
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "cubes (12 triangles each)",
+      "n": 200000,
+      "triangles": 2400000,
+      "submit": {
+        "median": 1.0999999940395355
+      },
+      "pipelinedMs": 7.875333333412806,
+      "spread": [
+        7.757999999920528,
+        7.878666666547457
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 1000,
+      "triangles": 192000,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 0.06933333317438761,
+      "spread": [
+        0.06866666654745737,
+        0.07133333325386047
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 10000,
+      "triangles": 1920000,
+      "submit": {
+        "median": 0.09999999403953552
+      },
+      "pipelinedMs": 0.51,
+      "spread": [
+        0.5060000000397364,
+        0.5133333333333333
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "low-poly spheres (192 triangles each)",
+      "n": 50000,
+      "triangles": 9600000,
+      "submit": {
+        "median": 0.29999998211860657
+      },
+      "pipelinedMs": 3.03,
+      "spread": [
+        2.8986666667461396,
+        3.06933333337307
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 100,
+      "triangles": 614400,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 0.10799999992052714,
+      "spread": [
+        0.10466666658719381,
+        0.11066666662693024
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 1000,
+      "triangles": 6144000,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 0.86,
+      "spread": [
+        0.86,
+        0.8706666666269303
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "aa": true,
+      "scenario": "high-poly spheres (6,144 triangles each)",
+      "n": 4000,
+      "triangles": 24576000,
+      "submit": {
+        "median": 0
+      },
+      "pipelinedMs": 3.375333333214124,
+      "spread": [
+        3.355999999841054,
+        3.507999999920527
+      ]
+    }
+  ],
+  "init": {
+    "webgpu": 193.40000000596046,
+    "webgpu+msaa": 73.90000000596046,
+    "webgl2": 51.30000001192093,
+    "webgl2+msaa": 12
+  }
+}

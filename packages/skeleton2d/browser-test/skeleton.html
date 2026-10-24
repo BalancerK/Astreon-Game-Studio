@@ -1,0 +1,97 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Skeleton self-test</title>
+<body style="background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { Atlas, Camera, SpriteBatch, MeshBatch2D, createRenderer } from '../../render/src/index.js';
+import { parseSkeleton, Skeleton, AnimationState, drawSkeleton, skeletonBounds } from '../src/index.js';
+
+const W = 200, H = 140;
+
+/** A ribbon of two bones (a, then b at its end) that bends when b turns, plus a red square riding on b and a green one on the root. */
+const RIG = {
+  bones: [{ name: 'root' }, { name: 'a', parent: 'root', length: 40 }, { name: 'b', parent: 'a', x: 40, length: 40 }],
+  slots: [{ name: 'ribbon', bone: 'root', attachment: 'ribbon' }, { name: 'tip', bone: 'b', attachment: 'tip' }, { name: 'base', bone: 'root', attachment: 'base' }],
+  skins: [{ name: 'default', attachments: {
+    ribbon: { ribbon: { type: 'mesh', path: 'ribbon', uvs: [0, 0, 0, 1, 0.5, 0, 0.5, 1, 1, 0, 1, 1], triangles: [0, 1, 2, 1, 3, 2, 2, 3, 4, 3, 5, 4],
+      vertices: [] } },
+    tip: { tip: { type: 'region', path: 'red', width: 12, height: 12, x: 40 } },
+    base: { base: { type: 'region', path: 'green', width: 12, height: 12, x: -20, y: -30 } },
+  } }],
+  animations: { bend: { bones: { b: { rotate: [{ time: 0, value: 0 }, { time: 1, value: 90 }] } } }, slide: { bones: { root: { translate: [{ time: 0, x: 0, y: 0 }, { time: 1, x: 30, y: 0 }] } } } },
+};
+// the weighted ribbon: bone numbers are 1 (a) and 2 (b); written out point by point
+RIG.skins[0].attachments.ribbon.ribbon.vertices = [
+  1, 1, 0, -8, 1,                 // (0,-8) on a
+  1, 1, 0, 8, 1,                  // (0, 8) on a
+  2, 1, 40, -8, 0.5, 2, 0, -8, 0.5,   // (40,-8): half a, half b
+  2, 1, 40, 8, 0.5, 2, 0, 8, 0.5,
+  1, 2, 40, -8, 1,                // (80,-8) on b
+  1, 2, 40, 8, 1,
+];
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const atlas = new Atlas({ size: 256 });
+    atlas.add('red', 8, 8, (g, x, y, w, h) => { g.fillStyle = '#ff0000'; g.fillRect(x, y, w, h); });
+    atlas.add('green', 8, 8, (g, x, y, w, h) => { g.fillStyle = '#00ff00'; g.fillRect(x, y, w, h); });
+    atlas.add('ribbon', 16, 8, (g, x, y) => { g.fillStyle = '#0000ff'; g.fillRect(x, y, 8, 8); g.fillStyle = '#ffff00'; g.fillRect(x + 8, y, 8, 8); });
+    const renderer = await createRenderer({ atlas, prefer: [kind], transparent: true });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const data = parseSkeleton(RIG), skeleton = new Skeleton(data), state = new AnimationState(data);
+    skeleton.x = 50; skeleton.y = 60;
+    const cam = Camera.screen(W, H), meshes = new MeshBatch2D(), empty = new SpriteBatch(4);
+    const read = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(renderer.canvas, 0, 0); return (x, y) => Array.from(g.getImageData(Math.round(x), Math.round(y), 1, 1).data); };
+    const near = (a, b, t = 14) => a.every((v, i) => Math.abs(v - b[i]) <= t);
+    const frame = () => { skeleton.updateWorldTransform(); meshes.clear(); drawSkeleton(skeleton, meshes, atlas); renderer.render({ camera: cam, batch: empty, meshes, clear: [0, 0, 0, 1] }); return read(); };
+
+    // ---- the rest pose: a straight ribbon from (50,60) to (130,60), blue then yellow, a red square at its end and a green one above its start
+    let px = frame();
+    add('rest pose: the first half of the ribbon is blue', near(px(60, 60), [0, 0, 255, 255]), px(60, 60), 'blue');
+    add('rest pose: the second half is yellow', near(px(110, 60), [255, 255, 0, 255]), px(110, 60), 'yellow');
+    add('rest pose: the ribbon is as tall as its points say', near(px(60, 54), [0, 0, 255, 255]) && near(px(60, 48), [0, 0, 0, 255]), [px(60, 54), px(60, 48)], 'blue inside 8, clear outside');
+    add('rest pose: the red square sits at the tip of bone b (130, 60)', near(px(128, 60), [255, 0, 0, 255]), px(128, 60), 'red');
+    add('rest pose: the green square rides the root', near(px(30, 30), [0, 255, 0, 255]), px(30, 30), 'green');
+    add('rest pose: nothing where there is nothing', near(px(170, 20), [0, 0, 0, 255]), px(170, 20), 'clear');
+
+    // ---- bend: bone b turns 90 degrees clockwise about (90,60): the far half of the ribbon now hangs down
+    state.setAnimation(0, 'bend'); state.update(1); state.apply(skeleton);
+    px = frame();
+    add('bent: the near half has not moved', near(px(60, 60), [0, 0, 255, 255]), px(60, 60), 'blue');
+    add('bent: the far half hangs down from the joint (90, 60)', near(px(90, 85), [255, 255, 0, 255]), px(90, 85), 'yellow');
+    add('bent: where the far half used to be is empty', near(px(120, 60), [0, 0, 0, 255]), px(120, 60), 'clear');
+    add('bent: the red square followed the bone to (90, 100)', near(px(90, 100), [255, 0, 0, 255]), px(90, 100), 'red');
+    add('bent: the weighted joint in the middle bends smoothly (a point near the elbow is still covered)', near(px(90, 62), [255, 255, 0, 255], 40) || near(px(89, 62), [0, 0, 255, 255], 40), [px(90, 62), px(89, 62)], 'covered');
+
+    // ---- half way: the angle is 45 degrees
+    state.setAnimation(0, 'bend'); state.update(0.5); state.apply(skeleton);
+    px = frame();
+    const mx = 90 + 20 * Math.cos(Math.PI / 4), my = 60 + 20 * Math.sin(Math.PI / 4), tx = 90 + 40 * Math.cos(Math.PI / 4), ty = 60 + 40 * Math.sin(Math.PI / 4);
+    add('half way: the far half lies along 45 degrees', near(px(mx, my), [255, 255, 0, 255], 40) && near(px(tx, ty), [255, 0, 0, 255]) && near(px(120, 62), [0, 0, 0, 255], 40), [px(mx, my), px(tx, ty), px(120, 62)], 'yellow on the line, red at the end, clear off it');
+
+    // ---- moving and mirroring the whole skeleton
+    state.clearTracks(); state.setAnimation(0, 'slide'); state.update(1); state.apply(skeleton);
+    px = frame(); add('the animation moves the root: everything shifts right by 30', near(px(90, 60), [0, 0, 255, 255]) && near(px(158, 60), [255, 0, 0, 255]), [px(90, 60), px(158, 60)], 'shifted');
+    state.clearTracks(); skeleton.setToSetupPose(); skeleton.x = 150; skeleton.scaleX = -1;
+    px = frame(); add('a negative scale mirrors the skeleton about its root', near(px(140, 60), [0, 0, 255, 255]) && near(px(85, 60), [255, 255, 0, 255], 14) && near(px(170, 30), [0, 255, 0, 255]), [px(140, 60), px(85, 60), px(170, 30)], 'mirrored');
+    skeleton.scaleX = 1; skeleton.x = 50; frame();
+    const b = skeletonBounds(skeleton, { atlas }); add('bounds follow the pose', Math.abs(b.x0 - 24) < 4 && Math.abs(b.x1 - 136) < 4, b, 'about 24..136');
+
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2', 'canvas2d']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

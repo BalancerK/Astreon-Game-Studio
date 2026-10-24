@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/turns · Astreon Engine</title>
+<meta name="description" content="Turn-based and card games: the rules as plain functions, a room that runs them on a server, and a client. It handles the parts every such game needs: whose turn it is, hiding other players' secrets, r">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html" class="on">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">All packages</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html" class="on">turns</a></nav><main><article><h1 id="engineturns">@engine/turns</h1>
+<p>Turn-based and card games: the rules as plain functions, a room that runs them on a server, and a client. It handles the parts every such game needs: whose turn it is, hiding other players' secrets, refusing illegal moves, robots to fill seats, turn timers, and reconnecting. <code>examples/crazy-eights</code> is a complete game built on it (and the <code>multiplayer</code> template of <code>create-game</code>).</p>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">import</span> { defineGame, Match } <span class="tk-k">from</span> <span class="tk-s">'@engine/turns'</span>;
+
+<span class="tk-k">export</span> <span class="tk-k">const</span> race = <span class="tk-f">defineGame</span>({
+  name: <span class="tk-s">'race'</span>, players: { min: <span class="tk-n">2</span>, max: <span class="tk-n">3</span> }, turnMs: <span class="tk-n">20_000</span>,
+  setup: ({ players, random }) =&gt; ({ total: <span class="tk-n">0</span>, secret: Object.<span class="tk-f">fromEntries</span>(players.<span class="tk-f">map</span>((p) =&gt; [p, random.<span class="tk-f">int</span>(<span class="tk-n">100</span>)])) }),
+  moves: {
+    <span class="tk-f">add</span>(G, ctx, n) { <span class="tk-k">if</span> (![<span class="tk-n">1</span>, <span class="tk-n">2</span>, <span class="tk-n">3</span>].<span class="tk-f">includes</span>(n)) ctx.<span class="tk-f">fail</span>(<span class="tk-s">'add 1, 2 or 3'</span>); G.total += n; ctx.<span class="tk-f">emit</span>(<span class="tk-s">'added'</span>, { by: ctx.player, n }); <span class="tk-k">if</span> (G.total &gt;= <span class="tk-n">10</span>) G.winner = ctx.player; <span class="tk-k">else</span> ctx.<span class="tk-f">endTurn</span>(); },
+  },
+  view: (G, player) =&gt; ({ total: G.total, mine: G.secret[player] }),         <span class="tk-c">// each player sees only their own secret</span>
+  endIf: (G) =&gt; (G.winner ? { winners: [G.winner] } : <span class="tk-k">null</span>),
+  legalMoves: () =&gt; [<span class="tk-n">1</span>, <span class="tk-n">2</span>, <span class="tk-n">3</span>].<span class="tk-f">map</span>((n) =&gt; ({ move: <span class="tk-s">'add'</span>, arg: n })),         <span class="tk-c">// for robots, hints and tests</span>
+});
+
+<span class="tk-k">const</span> match = <span class="tk-k">new</span> <span class="tk-f">Match</span>(race, { players: [<span class="tk-s">'ann'</span>, <span class="tk-s">'bob'</span>], seed: <span class="tk-n">7</span> });
+match.<span class="tk-f">move</span>(<span class="tk-s">'ann'</span>, <span class="tk-s">'add'</span>, <span class="tk-n">2</span>);    <span class="tk-c">// { ok: true, seq: 1, events: [...] }   a refused move is { ok: false, error } and changes nothing</span>
+match.<span class="tk-f">viewFor</span>(<span class="tk-s">'bob'</span>);           <span class="tk-c">// what bob may see</span>
+match.<span class="tk-f">save</span>();                   <span class="tk-c">// plain data; Match.load(race, data) carries on exactly where it stopped</span></code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h2 id="the-rules-definegame">The rules: <code>defineGame</code><a class="anchor" href="#the-rules-definegame" aria-label="Link to this section">#</a></h2>
+<p><code>setup</code> makes the starting state (plain JSON), each entry of <code>moves</code> changes it in place, <code>view(state, player)</code> says what a player may see, <code>endIf</code> says whether and how it ended. A move can <code>ctx.emit</code> events for animations (everyone sees them), <code>ctx.emitTo(player, …)</code> for private ones (the card you drew), <code>ctx.endTurn(next?)</code> and <code>ctx.fail(reason)</code>. The random numbers (<code>ctx.random</code>) are seeded: the same seed and moves always give the same game, and a refused move does not use any. <code>turnMs</code> and <code>onTimeout</code> play for a slow player; <code>bot</code> says how a computer chooses (default: a random legal move); <code>isActive</code> skips players who are out. The rules know nothing about networks or screens, so they are tested like any function.</p>
+<h2 id="on-the-server-turnroom">On the server: <code>turnRoom</code><a class="anchor" href="#on-the-server-turnroom" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-js"><span class="tk-c">// room.js: what the server's RoomManager loads, in a thread or process of its own</span>
+<span class="tk-k">import</span> { turnRoom } <span class="tk-k">from</span> <span class="tk-s">'@engine/turns/src/node.js'</span>;
+<span class="tk-k">export</span> <span class="tk-k">const</span> createRoom = <span class="tk-f">turnRoom</span>(race);</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Create a table with <code>manager.ensureRoom('t1', { expect: [{ id: 'ann' }, { id: 'bob' }], seats: 4 })</code>: only those players may join (with a <code>JoinTokens</code> token for that room, see <code>@engine/matchmaking</code>), the game starts when they are all there, robots take the other seats, and a player who is away gets a robot after <code>graceMs</code>. Without <code>expect</code>, players join until the table is full or <code>startWaitMs</code> has passed. After the game, players vote for a rematch; the room closes after <code>lingerMs</code>. <code>stats().lastResult</code> carries the finished game's result (winners, scores, players) so the server can record it once: ratings, a leaderboard (see <code>@engine/persist</code>).</p>
+<h2 id="in-the-browser-turnclient">In the browser: <code>TurnClient</code><a class="anchor" href="#in-the-browser-turnclient" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> client = <span class="tk-k">new</span> <span class="tk-f">TurnClient</span>({ createTransport: () =&gt; <span class="tk-f">connectWebSocket</span>(<span class="tk-s">`${url}?t=${token}`</span>), getToken: () =&gt; token });
+client.onChange = () =&gt; <span class="tk-f">draw</span>(client.view, client.current, client.legal);     <span class="tk-c">// legal: what you may do now</span>
+client.onEvents = (events) =&gt; <span class="tk-f">animate</span>(events);
+client.<span class="tk-f">start</span>();
+<span class="tk-k">await</span> client.<span class="tk-f">move</span>(<span class="tk-s">'add'</span>, <span class="tk-n">2</span>);                                                 <span class="tk-c">// resolves when accepted, rejects with the reason if refused</span></code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>It keeps the latest view, reconnects with a fresh token after a drop, and reports <code>state</code> (<code>connecting</code>, <code>waiting</code>, <code>playing</code>, <code>over</code>, <code>reconnecting</code>, <code>closed</code>).</p>
+<p>The wire format is one small JSON message per frame (<code>protocol.js</code>); the room checks every incoming message and limits how fast a player may send.</p>
+<h2 id="every-export">Every export<a class="anchor" href="#every-export" aria-label="Link to this section">#</a></h2>
+<p>The complete, generated list of this package's exports (every function, class and option) is on its <span class="src">API page</span>.</p><div class="pager"><a href="persist.html"><small>Previous</small>persist</a><span></span></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#the-rules-definegame">The rules: defineGame</a><a class="l2" href="#on-the-server-turnroom">On the server: turnRoom</a><a class="l2" href="#in-the-browser-turnclient">In the browser: TurnClient</a><a class="l2" href="#every-export">Every export</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

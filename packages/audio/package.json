@@ -1,0 +1,31 @@
+{
+  "name": "@engine/audio",
+  "version": "0.1.0",
+  "description": "Web Audio mixer with buses and a limiter, positional sound, voice limits, music cross-fades, and sounds made in code (no files needed)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "API.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "game-engine",
+    "javascript",
+    "webgpu",
+    "multiplayer",
+    "audio"
+  ]
+}

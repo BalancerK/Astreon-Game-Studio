@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Platformer (tutorial game) · Astreon Engine</title>
+<meta name="description" content="A small 2D platformer: three levels, running and jumping with coyote time, jump buffering and variable height, walking enemies you can stomp, springs, spikes, coins, sound made in code, and best times">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html" class="on">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><h4>Tutorials</h4><a href="../tutorials/2d-platformer.html">a 2D platformer</a><a href="../tutorials/3d-shooter.html">a 3D first-person shooter</a><a href="../tutorials/multiplayer-card-game.html">a multiplayer card game</a><h4>Example games</h4><a href="arena.html">arena</a><a href="arena3d.html">arena3d</a><a href="platformer.html" class="on">platformer</a><a href="shooter.html">shooter</a></nav><main><article><h1 id="platformer-tutorial-game">Platformer (tutorial game)</h1>
+<p>A small 2D platformer: three levels, running and jumping with coyote time, jump buffering and variable height, walking enemies you can stomp, springs, spikes, coins, sound made in code, and best times kept in the browser. Walkthrough: <a href="../tutorials/2d-platformer.html"><code>docs/tutorials/2d-platformer.md</code></a>.</p>
+<div class="code"><pre><code class="lang-text">npm run platformer      # then open the printed address</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Arrows or A/D run, Space / W / Up jump, R restarts the level, N goes to the next, Esc shows the level list. A gamepad works too.</p>
+<div class="table"><table><thead><tr><th>File</th><th>What it is</th></tr></thead><tbody><tr><td><code>src/level.js</code></td><td>Reads levels written as rows of letters; merges ground tiles into boxes</td></tr><tr><td><code>src/game.js</code></td><td>The rules: <code>createGame</code>, <code>step(game, bits)</code>, <code>replay</code>, <code>botInput</code>. No screen, no clock</td></tr><tr><td><code>src/main.js</code></td><td>The page: drawing, input, sound, saved times</td></tr><tr><td><code>levels/*.json</code></td><td>The levels (add a file and list it in <code>levels/index.json</code>)</td></tr><tr><td><code>test/game.test.js</code></td><td>The rules, every level finished by a bot, replays</td></tr></tbody></table></div>
+<p>Tests: <code>npm test</code> runs <code>test/game.test.js</code>; <code>node tools/platformer-test.js</code> plays a level in Chrome with real key presses on both renderers.</p><div class="pager"><a href="arena3d.html"><small>Previous</small>arena3d</a><a class="next" href="shooter.html"><small>Next</small>shooter</a></div></article></main><aside class="toc"></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

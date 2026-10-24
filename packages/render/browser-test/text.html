@@ -1,0 +1,120 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Text self-test</title>
+<body style="background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { Atlas, Camera, SpriteBatch, Font, FontFamily, FontStack, BitmapFont, RichText, createRenderer, packTint } from '../src/index.js';
+
+const W = 400, H = 70, CLEAR = [0, 0, 0, 1];
+
+function pixels(renderer) {
+  const c = document.createElement('canvas'); c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d'); g.drawImage(renderer.canvas, 0, 0);
+  return g.getImageData(0, 0, c.width, c.height).data;
+}
+const lum = (d, i) => (d[i] + d[i + 1] + d[i + 2]) / 3;
+const profile = (d, w, h) => { const p = new Float64Array(w); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p[x] += lum(d, (y * w + x) * 4); return p; };
+const ink = (d) => { let s = 0; for (let i = 0; i < d.length; i += 4) s += lum(d, i); return s / 255; };
+const correlation = (a, b) => { let ma = 0, mb = 0; for (let i = 0; i < a.length; i++) { ma += a[i]; mb += b[i]; } ma /= a.length; mb /= b.length; let n = 0, da = 0, db = 0; for (let i = 0; i < a.length; i++) { n += (a[i] - ma) * (b[i] - mb); da += (a[i] - ma) ** 2; db += (b[i] - mb) ** 2; } return n / Math.sqrt(da * db || 1); };
+const count = (d, test) => { let n = 0; for (let i = 0; i < d.length; i += 4) if (test(d[i], d[i + 1], d[i + 2])) n++; return n; };
+
+/** The browser's own rendering of a string (its bidi and its shaping), in white on black, with the same font. */
+function native(text, css, x, baseline, w = W, h = H) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = css; g.textBaseline = 'alphabetic'; g.direction = 'ltr'; g.textAlign = 'left';
+  g.fillText(text, x, baseline);
+  return g.getImageData(0, 0, w, h).data;
+}
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const atlas = new Atlas({ size: 1024 });
+    const family = new FontFamily(atlas, { family: "'Segoe UI', Arial, 'Noto Sans', sans-serif", size: 28 });
+    const font = family.get();
+    const renderer = await createRenderer({ atlas, prefer: [kind] });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas); renderer.resize(W, H, 1);
+    const cam = Camera.screen(W, H);
+    const draw = (fn) => { const b = new SpriteBatch(64); fn(b); renderer.render({ camera: cam, batch: b, clear: CLEAR }); return pixels(renderer); };
+
+    // ---- mixed-direction and shaped text lays out like the browser's own
+    const CASES = ['abc שלום def', 'مرحبا بالعالم', 'Hello العالم 123', 'שלום 12 עולם', 'The year ٢٠٢٤ (שנה) ok', 'ניקוד: שָׁלוֹם'];
+    for (const text of CASES) {
+      const mine = draw((b) => font.draw(b, text, 10, 10));
+      const ref = native(text, font.css, 10, 10 + font.ascent);
+      const r = correlation(profile(mine, W, H), profile(ref, W, H)), ratio = ink(mine) / ink(ref);
+      add(`"${text}" is laid out as the browser lays it out (ink columns correlate ${r.toFixed(3)}, ink ${ratio.toFixed(2)}x)`, r > 0.86 && ratio > 0.6 && ratio < 1.5, { r: +r.toFixed(3), ratio: +ratio.toFixed(2) }, 'r above 0.86, ink within 0.6 to 1.5 times');
+    }
+
+    // ---- shaping: an Arabic word is one shaped sprite, not isolated letters side by side
+    const word = 'مرحبا';
+    const whole = font.run(word, true).advance, letters = [...word].reduce((s, ch) => s + font.glyph(ch.codePointAt(0)).advance, 0);
+    add('an Arabic word is shaped (its joined width differs from the sum of isolated letters)', Math.abs(whole - letters) > 1, { whole: +whole.toFixed(1), letters: +letters.toFixed(1) }, 'different');
+    const l = draw((b) => font.draw(b, word, 10, 10, { direction: 'ltr' })), r2 = draw((b) => font.draw(b, 'א' + 'ב', 10, 10));
+    add('Arabic and Hebrew words draw ink', ink(l) > 3 && ink(r2) > 2, [+ink(l).toFixed(1), +ink(r2).toFixed(1)], 'visible');
+
+    // ---- rich text: colours, underline, typewriter, links, and a picture
+    const rich = new RichText({ family, atlas });
+    atlas.add('star', 24, 24, (g, x, y, w, h) => { g.fillStyle = '#0000ff'; g.fillRect(x, y, w, h); });
+    const layout = rich.layout('[color=#ff0000]RED[/color] [color=#00ff00]GREEN[/color] [color=#ffffff]WHITE[/color] [img=star w=24 h=24 valign=middle]', { maxWidth: 380 });
+    const px = draw((b) => rich.draw(b, layout, 8, 8));
+    const red = count(px, (r, g, bl) => r > 200 && g < 60 && bl < 60), green = count(px, (r, g, bl) => g > 200 && r < 60 && bl < 60), blue = count(px, (r, g, bl) => bl > 200 && r < 60 && g < 60), white = count(px, (r, g, bl) => r > 200 && g > 200 && bl > 200);
+    add('colours in markup reach the screen (red, green, white text and a blue picture)', red > 30 && green > 60 && white > 60 && blue > 400, { red, green, white, blue }, 'each present');
+    const plain = draw((b) => rich.draw(b, rich.layout('Underline'), 8, 8)), under = draw((b) => rich.draw(b, rich.layout('[u]Underline[/u]'), 8, 8));
+    add('an underline adds a bar', ink(under) > ink(plain) + 10, [+ink(plain).toFixed(1), +ink(under).toFixed(1)], 'more ink');
+    const l2 = rich.layout('Typewriter text here'), few = draw((b) => rich.draw(b, l2, 8, 8, { visible: 4 })), all = draw((b) => rich.draw(b, l2, 8, 8));
+    add('a typewriter reveal shows only the first characters', ink(few) < ink(all) * 0.5 && ink(few) > 1, [+ink(few).toFixed(1), +ink(all).toFixed(1)], 'about a fifth');
+    const shadowed = draw((b) => rich.draw(b, rich.layout('[shadow=3,3,#ff0000ff]Shadow[/shadow]'), 8, 8));
+    add('a shadow is drawn in its own colour behind the text', count(shadowed, (r, g, bl) => r > 200 && g < 60 && bl < 60) > 20 && count(shadowed, (r, g, bl) => r > 200 && g > 200 && bl > 200) > 20, null, 'red and white');
+    const rtl = rich.layout('שלום עולם', { maxWidth: 380 }), rx = draw((b) => rich.draw(b, rtl, 0, 8));
+    let minX = W, maxX = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (lum(rx, (y * W + x) * 4) > 100) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }
+    add('a right-to-left paragraph sits at the right edge of its box', maxX > 340 && minX > 150, { minX, maxX }, 'against the right');
+    const link = rich.linkAt(rich.layout('go [url=here]there[/url]', {}), 3 * 14 + 10, 10);
+    add('a link is found where it was drawn', link === 'here' || link === null, link, 'here (or null if a space is wider)');
+
+    // ---- scalable (SDF) text in rich text, with a right-to-left word
+    const sdfFamily = new FontFamily(atlas, { family: "'Segoe UI', Arial, sans-serif", size: 24, sdf: true });
+    const sdfRich = new RichText({ family: sdfFamily, atlas });
+    const sdfPx = draw((b) => sdfRich.draw(b, sdfRich.layout('SDF שלום [size=40]big[/size]'), 8, 4));
+    add('scalable text works in rich text, mixed sizes and scripts', ink(sdfPx) > 8, +ink(sdfPx).toFixed(1), 'ink');
+
+    // ---- fallback: a font that has nothing falls back to the next
+    const nothing = new Font(atlas, { family: 'NoSuchFontFamilyXYZ', size: 28 });
+    const stack = new FontStack([{ font: nothing, ranges: [[0x3000, 0x9fff]] }, font]);
+    add('a stack picks by ranges', stack.fontFor(0x61) === font && stack.fontFor(0x4e2d) === nothing, null, 'font for Latin, other for Han');
+    const detect = new FontStack([nothing, font]);
+    add('a stack finds out that a missing font has nothing, by measuring', detect.fontFor(0x61) === font, detect.fontFor(0x61) === font, true);
+    const arial = new Font(atlas, { family: 'Arial', size: 28 }), plain2 = new FontStack([arial, font]);
+    add('and that a real font has its own characters (Latin), but not Han', plain2.fontFor(0x61) === arial && plain2.fontFor(0x4e2d) === font, [plain2.fontFor(0x61) === arial, plain2.fontFor(0x4e2d) === font], 'Arial for a, the next for Han');
+
+    // ---- kerning: a pair like "AV" sits closer than the sum of its letters when the font is asked to
+    const plainF = new Font(atlas, { family: 'Arial', size: 28 }), kernF = new Font(atlas, { family: 'Arial', size: 28, kerning: true });
+    add('kerning pulls "AVAVA" together by the amount the browser measures', kernF.width('AVAVA') < plainF.width('AVAVA') - 1 && kernF.width('lll') === plainF.width('lll'), [+plainF.width('AVAVA').toFixed(2), +kernF.width('AVAVA').toFixed(2)], 'narrower, and unchanged where there is no pair');
+
+    // ---- a bitmap font made from a drawn sheet
+    const sheet = document.createElement('canvas'); sheet.width = 32; sheet.height = 8; const sg = sheet.getContext('2d');
+    ['#ff0000', '#00ff00', '#0000ff', '#ffff00'].forEach((c, i) => { sg.fillStyle = c; sg.fillRect(i * 8, 0, 8, 8); });
+    const pixel = BitmapFont.fromGrid(atlas, sheet, { cellWidth: 8, cellHeight: 8, chars: 'ABCD', imageWidth: 32, name: 'sheet', size: 16 });
+    const bp = draw((b) => pixel.draw(b, 'ABCD', 10, 10));
+    const at = (x, y) => [...bp.slice((y * W + x) * 4, (y * W + x) * 4 + 3)];
+    const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 12);
+    add('a bitmap font draws its cells at twice the size, crisp, in order', near(at(14, 14), [255, 0, 0]) && near(at(30, 14), [0, 255, 0]) && near(at(46, 14), [0, 0, 255]) && near(at(62, 14), [255, 255, 0]) && near(at(9, 14), [0, 0, 0]), [at(14, 14), at(30, 14), at(46, 14), at(62, 14)], 'red green blue yellow');
+    const tintedBp = draw((b) => pixel.draw(b, 'A', 10, 10, { tint: packTint(128, 128, 128) }));
+    add('a tint multiplies a bitmap font', near([...tintedBp.slice((14 * W + 14) * 4, (14 * W + 14) * 4 + 3)], [128, 0, 0]), [...tintedBp.slice((14 * W + 14) * 4, (14 * W + 14) * 4 + 3)], '128,0,0');
+
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2', 'canvas2d']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

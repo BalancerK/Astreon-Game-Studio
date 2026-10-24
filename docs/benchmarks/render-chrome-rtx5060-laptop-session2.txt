@@ -1,0 +1,54 @@
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36
+canvas 1280x720, 16 logical CPUs, headless
+WebGPU adapter: {"vendor":"nvidia","architecture":"blackwell","device":"","description":"","isFallback":false}
+WebGL2 renderer: {"vendor":"Google Inc. (NVIDIA)","renderer":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D59) Direct3D11 vs_5_0 ps_5_0, D3D11)"}
+
+CPU (any backend): fill the batch / sort it, median ms
+    10000 sprites: fill    0.70   sort    0.50
+    50000 sprites: fill    3.20   sort    3.20
+   200000 sprites: fill   11.40   sort   21.00
+startup (create the renderer and show the first frame), median ms: webgl2 42, webgpu 127, canvas2d 72
+
+GPU throughput: ms per frame with frames submitted back to back (fps); median of 3 runs, [min-max] across runs
+scenario                                                   webgl2                         webgpu                       canvas2d
+   1000 small                            0.05 21127 fps [0.0-0.1]       0.20  5000 fps [0.1-0.2]   215.6     5 fps [11.8-220.2]
+  10000 small                            0.34  2907 fps [0.3-0.4]       0.24  4190 fps [0.2-0.3]  4831.0     0 fps [4563.7-8229.6]
+  50000 small                            1.03   974 fps [1.0-1.7]       0.76  1312 fps [0.7-0.8]                              -
+ 100000 small                            2.00   501 fps [1.9-2.5]       3.56   281 fps [3.4-3.6]                              -
+ 200000 small                            4.38   228 fps [4.4-4.5]       5.69   176 fps [5.6-5.8]                              -
+    500 large (overdraw)                 0.32  3119 fps [0.3-0.3]       0.34  2976 fps [0.3-0.3]    291.0     3 fps [4.0-308.6]
+   2000 large (overdraw)                 1.29   777 fps [1.2-1.3]       1.26   792 fps [1.3-1.3]                              -
+   8000 large (overdraw)                 5.18   193 fps [5.2-5.3]       5.07   197 fps [5.0-5.2]                              -
+  50000 small, sorted each frame         5.01   200 fps [4.7-5.9]       4.62   217 fps [4.6-4.9]                              -
+CPU time inside render(), median ms (p95): what the main thread pays
+scenario                                                   webgl2                         webgpu                       canvas2d
+   1000 small                                         0.00 (0.10)                    0.10 (0.20)                    2.80 (3.80)
+  10000 small                                         0.00 (0.10)                    0.20 (0.40)                4139.8 (4553.7)
+  50000 small                                         0.10 (0.20)                    0.80 (1.20)                              -
+ 100000 small                                         0.30 (0.40)                    0.60 (0.80)                              -
+ 200000 small                                         0.60 (0.70)                    1.00 (1.40)                              -
+    500 large (overdraw)                              0.00 (0.10)                    0.10 (0.20)                    1.10 (8.20)
+   2000 large (overdraw)                              0.00 (0.10)                    0.10 (0.20)                              -
+   8000 large (overdraw)                              0.10 (0.10)                    0.20 (0.30)                              -
+  50000 small, sorted each frame                      3.80 (5.40)                    4.60 (5.80)                              -
+Synchronised frame, median ms: render and wait for the GPU every frame (includes each API own wait latency, so not comparable at small counts)
+scenario                                                   webgl2                         webgpu                       canvas2d
+   1000 small                                                0.20                           3.00                           19.9
+  10000 small                                                0.40                           3.30                         4609.0
+  50000 small                                                1.40                           4.00                              -
+ 100000 small                                                2.40                           5.90                              -
+ 200000 small                                                4.60                           7.40                              -
+    500 large (overdraw)                                     0.60                           3.00                          277.4
+   2000 large (overdraw)                                     1.50                           3.40                              -
+   8000 large (overdraw)                                     5.50                           6.90                              -
+  50000 small, sorted each frame                             5.40                           8.20                              -
+
+requestAnimationFrame while rendering (what a player sees): fps / worst frame gap ms
+  webgl2     10000 small               144 fps   worst gap 13.9 ms   p99 gap 7.1 ms
+  webgl2     50000 small               144 fps   worst gap 7.2 ms   p99 gap 7.1 ms
+  webgl2      2000 large (overdraw)    144 fps   worst gap 7.3 ms   p99 gap 7.1 ms
+  webgpu     10000 small               144 fps   worst gap 7.2 ms   p99 gap 7.1 ms
+  webgpu     50000 small               144 fps   worst gap 7.2 ms   p99 gap 7.1 ms
+  webgpu      2000 large (overdraw)    144 fps   worst gap 7.2 ms   p99 gap 7.1 ms
+
+wrote bench-clean.json

@@ -1,0 +1,33 @@
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36
+canvas 1280x720, WebGPU adapter {"vendor":"nvidia","architecture":"blackwell"}, median of 3 runs
+startup ms: webgpu 193, webgpu+msaa 74, webgl2 51, webgl2+msaa 12
+
+GPU time per frame, ms (frames submitted back to back; fps in brackets)
+scenario                                                       webgpu           webgl2     webgpu +MSAA     webgl2 +MSAA
+   1000 cubes (12 triangles each) (0.01M tris)            0.16 (6383)     0.08 (13274)      0.14 (7353)     0.06 (17647)
+  10000 cubes (12 triangles each) (0.12M tris)            0.21 (4839)      0.43 (2318)      0.23 (4360)      0.29 (3432)
+  50000 cubes (12 triangles each) (0.60M tris)             1.11 (904)       1.73 (577)      0.99 (1015)       1.58 (631)
+ 100000 cubes (12 triangles each) (1.20M tris)             1.99 (503)       3.68 (272)       2.05 (487)       3.53 (283)
+ 200000 cubes (12 triangles each) (2.40M tris)             5.78 (173)       8.86 (113)       5.83 (172)       7.88 (127)
+   1000 low-poly spheres (192 triangles each) (0.19M      0.12 (8065)     0.07 (14151)      0.14 (7389)     0.07 (14423)
+  10000 low-poly spheres (192 triangles each) (1.92M      0.28 (3555)      0.51 (1966)      0.31 (3178)      0.51 (1961)
+  50000 low-poly spheres (192 triangles each) (9.60M       1.27 (787)       2.98 (336)       1.35 (743)       3.03 (330)
+    100 high-poly spheres (6,144 triangles each) (0.      0.10 (9677)      0.10 (9804)      0.13 (7979)      0.11 (9259)
+   1000 high-poly spheres (6,144 triangles each) (6.      0.73 (1376)      0.87 (1156)      0.72 (1388)      0.86 (1163)
+   4000 high-poly spheres (6,144 triangles each) (24       2.80 (357)       3.40 (294)       2.73 (366)       3.38 (296)
+
+CPU time inside render(), ms
+scenario                                                       webgpu           webgl2     webgpu +MSAA     webgl2 +MSAA
+   1000 cubes (12 triangles each) (0.01M tris)                   0.10             0.00             0.10             0.00
+  10000 cubes (12 triangles each) (0.12M tris)                   0.30             0.00             0.30             0.00
+  50000 cubes (12 triangles each) (0.60M tris)                   1.30             0.30             1.30             0.30
+ 100000 cubes (12 triangles each) (1.20M tris)                   2.30             0.60             2.20             0.50
+ 200000 cubes (12 triangles each) (2.40M tris)                   4.00             1.10             4.00             1.10
+   1000 low-poly spheres (192 triangles each) (0.19M             0.10             0.00             0.10             0.00
+  10000 low-poly spheres (192 triangles each) (1.92M             0.30             0.10             0.30             0.10
+  50000 low-poly spheres (192 triangles each) (9.60M             1.30             0.30             1.30             0.30
+    100 high-poly spheres (6,144 triangles each) (0.             0.10             0.00             0.10             0.00
+   1000 high-poly spheres (6,144 triangles each) (6.             0.10             0.00             0.10             0.00
+   4000 high-poly spheres (6,144 triangles each) (24             0.20             0.00             0.20             0.00
+
+wrote docs/benchmarks/render3d-chrome-rtx5060-laptop.json

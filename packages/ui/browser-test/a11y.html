@@ -1,0 +1,71 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>UI accessibility self-test</title>
+<body style="margin:0;background:#000">
+<div id="stage" style="width:800px;height:600px;position:relative"></div>
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { Ui, Panel, Label, Button, Toggle, Slider, TextInput, createRecordingPainter, attachDom, attachAccessibility } from '../src/index.js';
+
+const out = { kind: 'chrome', checks: {} };
+const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+const tick = () => new Promise((r) => setTimeout(r, 30));
+try {
+  const stage = document.getElementById('stage');
+  const ui = new Ui({ painter: createRecordingPainter(), width: 800, height: 600 });
+  let volume = 0.5, clicks = 0, sound = false, typed = '';
+  const slider = new Slider('Music', { value: volume, step: 0.1, onChange: (v) => { volume = v; } });
+  const toggle = new Toggle('Sound', false, (v) => { sound = v; });
+  const play = new Button('Play', { onClick: () => { clicks++; } });
+  const name = new TextInput({ value: '', placeholder: 'Your name', onChange: (v) => { typed = v; } });
+  const panel = new Panel({ gap: 6, padding: 10 }); panel.add(new Label('Options', { heading: 1 }), slider, toggle, new Label('Name'), name, play);
+  ui.push(panel, { modal: true });
+  const dom = attachDom(ui, stage);
+  const a11y = attachAccessibility(ui, { host: stage, field: () => dom.input });
+  const root = a11y.element;
+  const sync = async () => { a11y.update(); await tick(); };
+  await sync();
+
+  const q = (sel) => [...root.querySelectorAll(sel)];
+  add('the mirror is a labelled region holding a dialog, its heading and the controls', root.getAttribute('role') === 'region' && q('[role=dialog]').length === 1 && q('[role=heading]')[0]?.textContent === 'Options' && q('[role=slider]').length === 1 && q('[role=switch]').length === 1 && q('[role=textbox]').length === 1 && q('button').length === 1,
+    q('[role]').map((e) => e.getAttribute('role')).join(' '), 'region dialog heading slider switch textbox + a button');
+  const s = q('[role=slider]')[0], sw = q('[role=switch]')[0], tb = q('[role=textbox]')[0];
+  add('the slider says its name, value and range', s.getAttribute('aria-label') === 'Music' && s.getAttribute('aria-valuenow') === '0.5' && s.getAttribute('aria-valuemin') === '0' && s.getAttribute('aria-valuemax') === '1' && s.getAttribute('aria-valuetext') === '50%', [s.getAttribute('aria-label'), s.getAttribute('aria-valuenow'), s.getAttribute('aria-valuetext')], 'Music 0.5 50%');
+  add('the text field is named by the label beside it', tb.getAttribute('aria-label') === 'Name', tb.getAttribute('aria-label'), 'Name');
+  add('the mirror is hidden from sight but still in the page (not display:none)', getComputedStyle(root).display !== 'none' && root.getBoundingClientRect().width <= 2, [getComputedStyle(root).display, root.getBoundingClientRect().width], 'clipped to a pixel');
+
+  // a screen reader moves its cursor onto the switch: the UI focus follows
+  sw.focus(); await sync();
+  add('moving the screen reader onto a control moves the UI focus there', ui.focus === toggle && document.activeElement === sw, ui.focus === toggle, true);
+  // pressing a key while it is focused goes through the normal key handling (here: right arrow turns the switch on)
+  sw.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowRight', bubbles: true, cancelable: true })); await sync();
+  add('a key pressed on a control reaches the widget, and the mirror shows the result', sound === true && sw.getAttribute('aria-checked') === 'true', [sound, sw.getAttribute('aria-checked')], 'on');
+  s.focus(); await sync();
+  for (let i = 0; i < 3; i++) s.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowRight', bubbles: true, cancelable: true }));
+  await sync();
+  add('arrow keys on the slider change it and aria-valuenow follows', Math.abs(volume - 0.8) < 1e-9 && s.getAttribute('aria-valuenow') === '0.8' && s.getAttribute('aria-valuetext') === '80%', [volume, s.getAttribute('aria-valuenow')], '0.8 / 80%');
+  // activating (a click, as assistive technology does) presses the button
+  q('button')[0].click(); await sync();
+  add('activating the button runs it', clicks === 1, clicks, 1);
+  // the page's own text field is named after the field being edited
+  ui.setFocus(name); await sync();
+  add('the hidden typing field is labelled with what is being edited', dom.input?.getAttribute('aria-label') === 'Name', dom.input?.getAttribute('aria-label'), 'Name');
+  ui.insertText('Ann'); await sync();
+  add('typed text appears in the mirror', tb.textContent === 'Ann' && typed === 'Ann', [tb.textContent, typed], 'Ann');
+  // announcements
+  ui.announce('Saved'); await tick();
+  const live = q('[aria-live=polite]')[0], alert = q('[aria-live=assertive]')[0];
+  add('announcements reach the live regions', live.textContent === 'Saved', live.textContent, 'Saved');
+  ui.announce('Low health!', { assertive: true }); await tick();
+  add('urgent ones go to the alert region', alert.textContent === 'Low health!' && alert.getAttribute('role') === 'alert', alert.textContent, 'Low health!');
+  // taking things away
+  ui.closeAll(); await sync();
+  add('closing the screen takes its elements away', q('[role=dialog]').length === 0 && q('button').length === 0, q('[role]').length, 0);
+  a11y.detach(); dom.detach();
+  add('detaching removes the mirror from the page', !document.body.contains(root), true, true);
+  out.ok = Object.values(out.checks).every((c) => c.ok);
+} catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results: [out], userAgent: navigator.userAgent }) });
+</script>

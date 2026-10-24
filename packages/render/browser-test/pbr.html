@@ -1,0 +1,299 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Physically based materials self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import {
+  createRenderer3D, Camera3D, DrawList3D, createLighting, createSphere, createBox, createMesh, createSkinnedMesh, TextureSet, MaterialSet,
+  pbrLight, pbrAmbient, srgbToLinear, linearToSrgb, parseGltf, loadGltfTextures, loadGltfMaterials, addGltfToDrawList,
+} from '../src/index.js';
+
+const W = 320, H = 240;
+const CLEAR = [0.12, 0.14, 0.2, 1];
+const clearBytes = CLEAR.slice(0, 3).map((v) => Math.round(v * 255));
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const norm = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const toLinear3 = (c) => c.map(srgbToLinear);
+const byte = (v) => Math.round(255 * Math.max(0, Math.min(1, linearToSrgb(v))));
+
+/**
+ * The shading model written out on the CPU, for a surface with these properties at world point p with unit normal n, seen from the camera:
+ * the colour (0..255, display encoded) the pixel must have. Matches what the shaders do, step for step.
+ */
+function expected(s, n, p, cam, L, { occlusion = 1, emissive = [0, 0, 0], fog = true } = {}) {
+  const v = norm([cam.x - p[0], cam.y - p[1], cam.z - p[2]]);
+  const amb = pbrAmbient(s, n, v, L.ambientSky, L.ambientGround);
+  const sun = pbrLight(s, n, v, norm(L.direction), L.color);
+  const col = [0, 1, 2].map((k) => (amb.diffuse[k] + amb.specular[k]) * occlusion + sun.diffuse[k] + sun.specular[k] + emissive[k]);
+  for (const pl of L.pointLights ?? []) {
+    const to = sub([pl.x, pl.y, pl.z], p), d = Math.hypot(...to);
+    if (d >= pl.radius) continue;
+    const q = d / pl.radius, att = (1 - q * q) ** 2;
+    const pc = (pl.color ?? [1, 1, 1]).map((c) => c * (pl.intensity ?? 1) * att);
+    const r = pbrLight(s, n, v, norm(to), pc);
+    for (let k = 0; k < 3; k++) col[k] += r.diffuse[k] + r.specular[k];
+  }
+  const out = col.map((c) => linearToSrgb(Math.max(0, c)));
+  if (fog && L.fogDensity > 0) {
+    const fd = Math.hypot(cam.x - p[0], cam.y - p[1], cam.z - p[2]) * L.fogDensity;
+    const f = 1 - Math.exp(-(fd * fd));
+    for (let k = 0; k < 3; k++) out[k] += (L.fogColor[k] - out[k]) * f;
+  }
+  return out.map((c) => Math.round(255 * Math.max(0, Math.min(1, c))));
+}
+
+function read(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(renderer.canvas, 0, 0);
+  const img = g.getImageData(0, 0, c.width, c.height);
+  return { px: (x, y) => [...img.data.slice((y * c.width + x) * 4, (y * c.width + x) * 4 + 3)] };
+}
+const worst = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+const solid = (size, f) => {
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) data.set(f(x / size, y / size), (y * size + x) * 4);
+  return { width: size, height: size, data };
+};
+const enc = (t) => Math.round((t * 0.5 + 0.5) * 255);
+
+// a one-metre square facing +z with texture coordinates (0, 0) top left, as glTF has them
+const quad = createMesh([-1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, -1, 0, 0, 0, 1, -1, -1, 0, 0, 0, 1], [0, 3, 2, 0, 2, 1], 'quad', [0, 0, 1, 0, 1, 1, 0, 1]);
+const skinnedBox = (() => {
+  const b = createBox(1, 1, 1);
+  const n = b.vertexCount;
+  return createSkinnedMesh(b.vertices, b.indices, new Array(n * 4).fill(0), Array.from({ length: n * 4 }, (_, i) => (i % 4 === 0 ? 1 : 0)), 1, 'skinned-box');
+})();
+const sphere = createSphere(0.5, 64, 40);
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer3D({ prefer: [kind], antialias: false });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const L = { ...createLighting(), direction: [0.45, 0.55, 0.7], color: [1, 0.95, 0.9], ambientSky: [0.3, 0.35, 0.5], ambientGround: [0.1, 0.08, 0.06], fogDensity: 0, pointLights: [] };
+    const list = new DrawList3D();
+    const draw = (camera, lighting = L) => { camera.update(); renderer.render({ camera, list, clear: CLEAR, lighting }); return read(renderer); };
+
+    // ---- 1. metal and roughness: ten spheres, three pixels each ----
+    const textures = new TextureSet({ size: 64, maxLayers: 8 });
+    const materials = new MaterialSet();
+    renderer.setTextures(textures);
+    renderer.setMaterials(materials);
+    const gold = [1.0, 0.77, 0.34];
+    const row = [];
+    for (let i = 0; i < 5; i++) row.push({ metallic: i / 4, roughness: 0.35, id: materials.add({ baseColor: [...gold, 1], metallic: i / 4, roughness: 0.35 }) });
+    for (let i = 0; i < 5; i++) row.push({ metallic: 1, roughness: 0.1 + i * 0.22, id: materials.add({ baseColor: [...gold, 1], metallic: 1, roughness: 0.1 + i * 0.22 }) });
+    const cam = new Camera3D({ x: 0, y: 0, z: 8, fovY: 0.7, viewW: W, viewH: H });
+    list.clear();
+    const centres = row.map((s, i) => [((i % 5) - 2) * 1.2, i < 5 ? 0.65 : -0.65, 0]);
+    row.forEach((s, i) => { list.setSurface(s.id); list.addTransform(sphere, ...centres[i], null, 1, 1, 1); });
+    list.setSurface(0);
+    let img = draw(cam);
+    let maxErr = 0, where = '';
+    const rays = (c) => (sx, sy) => cam.screenToRay(sx, sy);
+    for (const [i, s] of row.entries()) {
+      const c = centres[i], proj = cam.worldToScreen(...c), rpx = (cam.worldToScreen(c[0] + 0.5, c[1], c[2]).x - proj.x);
+      for (const [dx, dy] of [[0, 0], [-0.55, -0.5], [0.5, 0.45]]) {
+        const sx = Math.round(proj.x + dx * rpx), sy = Math.round(proj.y + dy * rpx);
+        const { origin, dir } = cam.screenToRay(sx + 0.5, sy + 0.5);
+        const oc = sub(origin, c), b = dot(oc, dir), cc = dot(oc, oc) - 0.25, disc = b * b - cc;
+        if (disc < 0) continue;
+        const t = -b - Math.sqrt(disc), p = [origin[0] + dir[0] * t, origin[1] + dir[1] * t, origin[2] + dir[2] * t], n = norm(sub(p, c));
+        const want = expected({ baseColor: gold, metallic: s.metallic, roughness: s.roughness }, n, p, cam, L);
+        const got = img.px(sx, sy), err = worst(got, want);
+        if (err > maxErr) { maxErr = err; where = `sphere ${i} at (${dx}, ${dy}): got ${got} want ${want}`; }
+      }
+    }
+    add('metal and roughness: 30 pixels on ten spheres match the shading model', maxErr <= 6, [maxErr, where], 'within 6/255');
+    const pixelOf = (i) => { const pr = cam.worldToScreen(...centres[i]); return img.px(Math.round(pr.x), Math.round(pr.y)); };
+    add('more metallic looks different from less metallic', worst(pixelOf(0), pixelOf(4)) > 20, [pixelOf(0), pixelOf(4)], 'differ');
+    // roughness: the highlight is smaller and brighter on a smooth sphere than on a rough one (compare the brightest pixel of each)
+    const brightest = (i) => {
+      const pr = cam.worldToScreen(...centres[i]);
+      let best = 0;
+      for (let y = Math.round(pr.y - 22); y <= Math.round(pr.y + 22); y++) for (let x = Math.round(pr.x - 22); x <= Math.round(pr.x + 22); x++) best = Math.max(best, ...img.px(x, y));
+      return best;
+    };
+    add('a smooth sphere has a sharper, brighter highlight than a rough one', brightest(5) >= brightest(9) || brightest(5) > 200, [brightest(5), brightest(9)], 'smooth >= rough');
+
+    // ---- 2. the pictures: four quadrants, each with its own base colour, metal, roughness, bump, occlusion and glow ----
+    const flat = [128, 128, 255], tilt = norm([0.6, -0.3, 0.74]);
+    const tiltBytes = [enc(tilt[0]), enc(tilt[1]), enc(tilt[2])];
+    const tilted = tiltBytes.map((b) => b / 255 * 2 - 1);
+    const layers = {
+      base: textures.add(solid(64, (u, v) => (u < 0.5 ? [230, 70, 50, 255] : [50, 120, 230, 255])), 'base'),
+      mr: textures.add(solid(64, (u) => (u < 0.5 ? [0, 51, 255, 255] : [0, 204, 0, 255])), 'mr'),
+      normal: textures.add(solid(64, (u, v) => (v < 0.5 ? [...flat, 255] : [...tiltBytes, 255])), 'normal'),
+      occlusion: textures.add(solid(64, (u, v) => (u >= 0.5 && v >= 0.5 ? [51, 0, 0, 255] : [255, 0, 0, 255])), 'occlusion'),
+      emissive: textures.add(solid(64, (u, v) => (u < 0.5 && v >= 0.5 ? [255, 140, 0, 255] : [0, 0, 0, 255])), 'emissive'),
+      cutout: textures.add(solid(64, (u) => (u < 0.5 ? [200, 200, 200, 255] : [200, 200, 200, 0])), 'cutout'),
+    };
+    const painted = materials.add({
+      baseColorTexture: layers.base, metallic: 1, roughness: 1, metallicRoughnessTexture: layers.mr, normalTexture: layers.normal, normalScale: 1,
+      occlusionTexture: layers.occlusion, occlusionStrength: 1, emissive: [1, 1, 1], emissiveTexture: layers.emissive,
+    });
+    const cam2 = new Camera3D({ x: 0, y: 0, z: 3.2, fovY: 1.0, viewW: W, viewH: H });
+    list.clear();
+    list.setSurface(painted);
+    list.add(quad, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+    list.setSurface(0);
+    img = draw(cam2);
+    const probe = (u, v) => { const wp = [-1 + 2 * u, 1 - 2 * v, 0], s = cam2.worldToScreen(...wp); return { wp, sx: Math.round(s.x), sy: Math.round(s.y) }; };
+    let qErr = 0, qWhere = '';
+    for (const [u, v] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) {
+      const { wp, sx, sy } = probe(u, v), left = u < 0.5, top = v < 0.5;
+      const base = left ? [230, 70, 50] : [50, 120, 230];
+      const surface = { baseColor: toLinear3(base.map((c) => c / 255)), metallic: left ? 1 : 0, roughness: left ? 51 / 255 : 204 / 255 };
+      const n = top ? [0, 0, 1] : norm(tilted);
+      const occ = !left && !top ? 51 / 255 : 1;
+      const emissive = left && !top ? toLinear3([1, 140 / 255, 0]) : [0, 0, 0];
+      const want = expected(surface, n, wp, cam2, L, { occlusion: occ, emissive });
+      const got = img.px(sx, sy), err = worst(got, want);
+      if (err > qErr) { qErr = err; qWhere = `quadrant (${u}, ${v}): got ${got} want ${want}`; }
+    }
+    add('base colour, metal, roughness, bump, occlusion and emission pictures: each quadrant matches the shading model', qErr <= 6, [qErr, qWhere], 'within 6/255');
+    const topPx = img.px(probe(0.75, 0.25).sx, probe(0.75, 0.25).sy), botPx = img.px(probe(0.75, 0.75).sx, probe(0.75, 0.75).sy);
+    add('a tilted normal (bump) changes the lighting of a flat surface', worst(topPx, botPx) > 12, [topPx, botPx], 'differ');
+    if (kind === 'webgpu') out.hasQuadImage = true;
+
+    // ---- 3. cut-outs ----
+    const cut = materials.add({ baseColorTexture: layers.cutout, baseColor: [1, 1, 1, 1], alphaCutoff: 0.5, roughness: 0.8 });
+    list.clear();
+    list.setSurface(cut);
+    list.add(quad, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+    list.setSurface(0);
+    img = draw(cam2);
+    const l = probe(0.25, 0.5), r = probe(0.75, 0.5);
+    add('alpha cut-out: the solid half is drawn and the transparent half is not drawn at all', worst(img.px(r.sx, r.sy), clearBytes) <= 2 && worst(img.px(l.sx, l.sy), clearBytes) > 30,
+      [img.px(l.sx, l.sy), img.px(r.sx, r.sy)], 'left drawn, right = clear colour');
+
+    // ---- 4. point lights and fog light PBR surfaces too ----
+    const matte = materials.add({ baseColor: [0.8, 0.8, 0.8, 1], metallic: 0, roughness: 0.6 });
+    const Lp = { ...L, color: [0.05, 0.05, 0.05], pointLights: [{ x: 1.5, y: 1.2, z: 2.5, radius: 6, color: [1, 0.6, 0.3], intensity: 1.4 }], fogDensity: 0.05, fogColor: [0.5, 0.55, 0.6] };
+    list.clear();
+    list.setSurface(matte);
+    list.addTransform(sphere, 0, 0, 0, null, 2, 2, 2);
+    list.setSurface(0);
+    img = draw(cam2, Lp);
+    const sc = cam2.worldToScreen(0, 0, 0), rp = cam2.worldToScreen(1, 0, 0).x - sc.x;
+    let pErr = 0, pWhere = '', pCount = 0;
+    for (const [dx, dy] of [[0.3, -0.4], [-0.5, 0.2], [0.55, 0.5]]) {
+      const sx = Math.round(sc.x + dx * rp), sy = Math.round(sc.y + dy * rp);
+      const { origin, dir } = cam2.screenToRay(sx + 0.5, sy + 0.5);
+      const b = dot(origin, dir), cc = dot(origin, origin) - 1, disc = b * b - cc;
+      if (disc < 0) continue;
+      const t = -b - Math.sqrt(disc), p = [origin[0] + dir[0] * t, origin[1] + dir[1] * t, origin[2] + dir[2] * t];
+      const want = expected({ baseColor: [0.8, 0.8, 0.8], metallic: 0, roughness: 0.6 }, norm(p), p, cam2, Lp);
+      const got = img.px(sx, sy), err = worst(got, want);
+      pCount++;
+      pWhere = `${pCount} pixels, last: got ${got} want ${want}`;
+      if (err > pErr) pErr = err;
+    }
+    add('point lights and fog: pixels match the shading model', pCount === 3 && pErr <= 6, [pErr, pWhere], 'within 6/255');
+    out.pointSamples = [];
+    for (let y = 4; y < H; y += 12) for (let x = 4; x < W; x += 12) out.pointSamples.push(...img.px(x, y));
+
+    // ---- 5. a skinned mesh takes the same material ----
+    const box = materials.add({ baseColor: [0.9, 0.3, 0.3, 1], metallic: 0, roughness: 0.5 });
+    list.clear();
+    list.setSurface(box);
+    list.addSkinned(skinnedBox, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]));
+    list.setSurface(0);
+    img = draw(cam2);
+    const face = cam2.worldToScreen(0, 0, 0.5);
+    const wantBox = expected({ baseColor: [0.9, 0.3, 0.3], metallic: 0, roughness: 0.5 }, [0, 0, 1], [0, 0, 0.5], cam2, L);
+    const gotBox = img.px(Math.round(face.x), Math.round(face.y));
+    add('a skinned mesh with a material is lit the same way', worst(gotBox, wantBox) <= 6, gotBox, wantBox);
+
+    // ---- 6. changing a material changes the picture ----
+    list.clear();
+    list.setSurface(matte);
+    list.addTransform(sphere, 0, 0, 0, null, 2, 2, 2);
+    list.setSurface(0);
+    img = draw(cam2);
+    const before = img.px(Math.round(sc.x), Math.round(sc.y));
+    materials.set(matte, { baseColor: [0.1, 0.5, 0.9, 1] });
+    img = draw(cam2);
+    const after = img.px(Math.round(sc.x), Math.round(sc.y));
+    add('changing a material in the set shows at the next render', worst(before, after) > 30 && after[2] > after[0], [before, after], 'it turned blue');
+
+    // ---- 7. simple lighting beside it is as before ----
+    list.clear();
+    list.addTransform(sphere, -1.2, 0, 0, null, 1, 1, 1, 0.8, 0.2, 0.2);               // simple lighting
+    list.setSurface(matte);
+    list.addTransform(sphere, 1.2, 0, 0, null, 1, 1, 1);                               // a material
+    list.setSurface(0);
+    img = draw(cam2);
+    const simple = img.px(Math.round(cam2.worldToScreen(-1.2, 0, 0.5).x), Math.round(cam2.worldToScreen(-1.2, 0, 0.5).y));
+    add('surfaces with and without a material can share a scene', simple[0] > simple[2] + 40, simple, 'the simple one is still red');
+
+    // ---- 8. a real glTF file: embedded PNG pictures decoded by the browser, then materials, then drawn ----
+    const png = (rgb) => { const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d'); g.fillStyle = `rgb(${rgb})`; g.fillRect(0, 0, 16, 16); return c.toDataURL('image/png'); };
+    const f32 = (a) => new Uint8Array(Float32Array.from(a).buffer);
+    const bin = new Uint8Array([...f32([-1, 1, 0, 1, 1, 0, 1, -1, 0, -1, -1, 0]), ...f32([0, 0, 1, 0, 1, 1, 0, 1]), ...new Uint8Array(Uint16Array.from([0, 3, 2, 0, 2, 1]).buffer)]);
+    const gltf = {
+      asset: { version: '2.0' },
+      buffers: [{ byteLength: bin.length, uri: `data:application/octet-stream;base64,${btoa(String.fromCharCode(...bin))}` }],
+      bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 48 }, { buffer: 0, byteOffset: 48, byteLength: 32 }, { buffer: 0, byteOffset: 80, byteLength: 12 }],
+      accessors: [{ bufferView: 0, componentType: 5126, count: 4, type: 'VEC3', min: [-1, -1, 0], max: [1, 1, 0] }, { bufferView: 1, componentType: 5126, count: 4, type: 'VEC2' }, { bufferView: 2, componentType: 5123, count: 6, type: 'SCALAR' }],
+      images: [{ uri: png('200,100,50') }, { uri: png('128,128,255') }, { uri: png('255,0,0') }],
+      textures: [{ source: 0 }, { source: 1 }, { source: 2 }],
+      materials: [{ pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicFactor: 0.2, roughnessFactor: 0.4 }, normalTexture: { index: 1 }, emissiveTexture: { index: 2 }, emissiveFactor: [0.1, 0.05, 0] }],
+      meshes: [{ primitives: [{ attributes: { POSITION: 0, TEXCOORD_0: 1 }, indices: 2, material: 0 }] }],
+      nodes: [{ mesh: 0 }], scenes: [{ nodes: [0] }], scene: 0,
+    };
+    const model = parseGltf(gltf);
+    const fileTextures = new TextureSet({ size: 16, maxLayers: 8 });
+    const fileMaterials = new MaterialSet();
+    const fileLayers = await loadGltfTextures(model, fileTextures);
+    const fileIds = loadGltfMaterials(model, fileLayers, fileMaterials);
+    renderer.setTextures(fileTextures);
+    renderer.setMaterials(fileMaterials);
+    list.clear();
+    addGltfToDrawList(list, model, undefined, {}, fileLayers, fileIds);
+    img = draw(cam2);
+    const mid = cam2.worldToScreen(0, 0, 0);
+    // the emissive picture is pure red, so its colour is the red of the factor: 0.1 (a picture is read as sRGB, and 255 is 1 in linear light too)
+    const fileWant = expected({ baseColor: toLinear3([200 / 255, 100 / 255, 50 / 255]), metallic: 0.2, roughness: 0.4 }, [0, 0, 1], [0, 0, 0], cam2, L, { emissive: [0.1, 0, 0] });
+    const fileGot = img.px(Math.round(mid.x), Math.round(mid.y));
+    add('a real glTF file (PNG pictures, normal map, emissive) loads and draws as the shading model says', worst(fileGot, fileWant) <= 6 && fileLayers.size === 3 && fileMaterials.materials.length === 1, [fileGot, fileWant, fileLayers.size], 'within 6/255');
+    renderer.setTextures(textures);
+    renderer.setMaterials(materials);
+
+    // ---- the whole standard scene, subsampled, so the two backends can be compared ----
+    list.clear();
+    row.forEach((s, i) => { list.setSurface(s.id); list.addTransform(sphere, ...centres[i], null, 1, 1, 1); });
+    list.setSurface(0);
+    img = draw(cam);
+    out.samples = [];
+    for (let y = 2; y < H; y += 8) for (let x = 2; x < W; x += 8) out.samples.push(...img.px(x, y));
+    list.clear();
+    list.setSurface(painted);
+    list.add(quad, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+    list.setSurface(0);
+    img = draw(cam2);
+    out.textureSamples = [];
+    for (let y = 2; y < H; y += 8) for (let x = 2; x < W; x += 8) out.textureSamples.push(...img.px(x, y));
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) {
+    out.unavailable = String(e.message ?? e);
+    out.stack = String(e.stack ?? '');
+  }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

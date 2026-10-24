@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Game</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0d1017; overflow: hidden; }
+  #dbg { position: fixed; left: 6px; top: 6px; z-index: 6; margin: 0; padding: 5px 8px; max-width: calc(100% - 20px); pointer-events: none; white-space: pre-wrap;
+    font: 11px/1.4 ui-monospace, Consolas, monospace; color: #d7e3ff; background: rgba(8, 12, 22, 0.78); border: 1px solid rgba(120, 140, 200, 0.4); border-radius: 6px; }
+  #dbg[hidden] { display: none; }
+  #stage, canvas { display: block; width: 100%; height: 100%; }
+  canvas { object-fit: contain; image-rendering: pixelated; outline: none; }
+  canvas:focus-visible { outline: 3px solid #7cb8ff; outline-offset: -3px; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<pre id="dbg" hidden aria-hidden="true"></pre>
+<script type="module" src="./runner.js"></script>
+</body>
+</html>

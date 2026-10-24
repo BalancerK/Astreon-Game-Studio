@@ -1,0 +1,9 @@
+{
+  "id": "kill-feed",
+  "version": "1.0.0",
+  "name": "Kill feed",
+  "description": "Announces eliminations to everyone.",
+  "tier": "script",
+  "entry": "main.js",
+  "limits": { "tickEvery": 6 }
+}

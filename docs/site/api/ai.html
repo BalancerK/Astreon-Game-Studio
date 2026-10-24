@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/ai · Astreon Engine</title>
+<meta name="description" content="Navigation grid built from the level, A paths (resumable), steering, behaviour trees and perception; the arena's bots are built from it.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html" class="on">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="engineai">@engine/ai</h1>
+<p>Navigation grid built from the level, A* paths (resumable), steering, behaviour trees and perception; the arena's bots are built from it.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/ai</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/ai.html">packages/ai</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-49-of-49-documented">Contents (49 of 49 documented)<a class="anchor" href="#contents-49-of-49-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-action"><code>Action</code></a></td><td>class</td><td>Runs a function: <code>(ctx) =&gt; status | boolean | void</code>.</td></tr><tr><td><a href="#class-behaviortree"><code>BehaviorTree</code></a></td><td>class</td><td>One agent's instance of a tree: its blackboard, its memory, its random generator.</td></tr><tr><td><a href="#class-condition"><code>Condition</code></a></td><td>class</td><td>Asks a yes/no question: <code>(ctx) =&gt; boolean</code>.</td></tr><tr><td><a href="#class-cooldown"><code>Cooldown</code></a></td><td>class</td><td>After the child has run (to success or failure), refuses to run it again for <code>seconds</code>.</td></tr><tr><td><a href="#class-crowd"><code>Crowd</code></a></td><td>class</td><td>Agents walking a <code>NavMesh</code>.</td></tr><tr><td><a href="#directions"><code>DIRECTIONS</code></a></td><td>constant</td><td>The eight directions: 0 = +x, then clockwise seen from above (+z is 2).</td></tr><tr><td><a href="#failure"><code>FAILURE</code></a></td><td>constant</td><td>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</td></tr><tr><td><a href="#class-guard"><code>Guard</code></a></td><td>class</td><td>Runs <code>child</code> only while <code>condition</code> holds; if the condition stops holding the child is abandoned (FAILURE).</td></tr><tr><td><a href="#class-inverter"><code>Inverter</code></a></td><td>class</td><td>Swaps success and failure.</td></tr><tr><td><a href="#class-memory"><code>Memory</code></a></td><td>class</td><td>What an agent remembers about things it has noticed: where it last saw each, how long ago, and how sure it is.</td></tr><tr><td><a href="#class-navgrid"><code>NavGrid</code></a></td><td>class</td><td>A grid of the walkable floor in a level, built once from its collision triangles: a height per cell, several floors per column (stairs, bridges), cells too close to walls removed for the agent's radius, and links for drops and small gaps.</td></tr><tr><td><a href="#class-navmesh"><code>NavMesh</code></a></td><td>class</td><td>The walkable surface of a level as a mesh of triangles.</td></tr><tr><td><a href="#class-node"><code>Node</code></a></td><td>class</td><td>Base class.</td></tr><tr><td><a href="#class-parallel"><code>Parallel</code></a></td><td>class</td><td>Runs all children every tick.</td></tr><tr><td><a href="#class-pathfollower"><code>PathFollower</code></a></td><td>class</td><td>Walks an agent along a path (the points from <code>findPath</code>): head for the next point, move on when close, slow down at the end.</td></tr><tr><td><a href="#class-pathquery"><code>PathQuery</code></a></td><td>class</td><td>One path request: <code>step(n)</code> expands up to n nodes, <code>status</code> is 'running', 'found', 'partial' or 'none'.</td></tr><tr><td><a href="#running"><code>RUNNING</code></a></td><td>constant</td><td>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</td></tr><tr><td><a href="#class-randomselector"><code>RandomSelector</code></a></td><td>class</td><td>Picks one child at random (by weight) when started and keeps running it until it finishes.</td></tr><tr><td><a href="#class-repeater"><code>Repeater</code></a></td><td>class</td><td>Repeats its child <code>times</code> times (Infinity: forever, always RUNNING); stops early with FAILURE if the child fails.</td></tr><tr><td><a href="#class-retry"><code>Retry</code></a></td><td>class</td><td>Tries the child up to <code>times</code> times until it succeeds.</td></tr><tr><td><a href="#status_names"><code>STATUS_NAMES</code></a></td><td>constant</td><td>The status numbers as readable names (<code>1: &quot;success&quot;</code>), for logs and debug views.</td></tr><tr><td><a href="#success"><code>SUCCESS</code></a></td><td>constant</td><td>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</td></tr><tr><td><a href="#class-selector"><code>Selector</code></a></td><td>class</td><td>Tries children in order until one succeeds: the first that works wins.</td></tr><tr><td><a href="#class-sequence"><code>Sequence</code></a></td><td>class</td><td>Runs children in order until one fails: all must succeed.</td></tr><tr><td><a href="#class-steeringagent"><code>SteeringAgent</code></a></td><td>class</td><td>A moving thing to steer.</td></tr><tr><td><a href="#class-succeeder"><code>Succeeder</code></a></td><td>class</td><td>Always succeeds (unless still running).</td></tr><tr><td><a href="#class-timeout"><code>Timeout</code></a></td><td>class</td><td>Fails the child if it is still running after <code>seconds</code>.</td></tr><tr><td><a href="#class-wait"><code>Wait</code></a></td><td>class</td><td>Waits <code>seconds</code> (RUNNING until then, then SUCCESS).</td></tr><tr><td><a href="#accelerate"><code>accelerate</code></a></td><td>function</td><td>Change the agent's velocity toward a desired one, no faster than its acceleration allows.</td></tr><tr><td><a href="#alignment"><code>alignment</code></a></td><td>function</td><td>Match the average heading of neighbours.</td></tr><tr><td><a href="#arrive"><code>arrive</code></a></td><td>function</td><td>Like seek, but slow down inside <code>slowRadius</code> and stop at the point (speed falls off linearly with the distance left).</td></tr><tr><td><a href="#avoidobstacles"><code>avoidObstacles</code></a></td><td>function</td><td>Steer around things ahead: probe along the way you are heading with <code>blocked(fromX, fromZ, toX, toZ)</code> (a ray cast or a nav line-of-walk test returning true if something is in the way) and swerve to whichever side is clear.</td></tr><tr><td><a href="#blend"><code>blend</code></a></td><td>function</td><td>The weighted sum of desired velocities, limited to the agent's top speed.</td></tr><tr><td><a href="#bt"><code>bt</code></a></td><td>constant</td><td>Short builders: <code>bt.sequence(bt.condition(canSee), bt.action(shoot))</code>.</td></tr><tr><td><a href="#canhear"><code>canHear</code></a></td><td>function</td><td>Did a sound at (x, y, z) of this loudness (metres it carries in the open) reach the listener?</td></tr><tr><td><a href="#cansee"><code>canSee</code></a></td><td>function</td><td>Can an agent at <code>eye</code> looking along (fx, fz) see a point?</td></tr><tr><td><a href="#cohesion"><code>cohesion</code></a></td><td>function</td><td>Move toward the middle of the neighbours.</td></tr><tr><td><a href="#describe"><code>describe</code></a></td><td>function</td><td>A readable outline of a tree (for debugging).</td></tr><tr><td><a href="#evade"><code>evade</code></a></td><td>function</td><td>Run from where a moving target will be.</td></tr><tr><td><a href="#findpath"><code>findPath</code></a></td><td>function</td><td>Find a path, all at once.</td></tr><tr><td><a href="#flee"><code>flee</code></a></td><td>function</td><td>Walk away from a point at full speed.</td></tr><tr><td><a href="#fromdata"><code>fromData</code></a></td><td>function</td><td>Build a tree from plain data (so a tree can live in a JSON file, be edited, or come from a mod).</td></tr><tr><td><a href="#limit"><code>limit</code></a></td><td>function</td><td>Clamp a vector to a length.</td></tr><tr><td><a href="#pathisclear"><code>pathIsClear</code></a></td><td>function</td><td>Whether a path still looks valid: every node of it is still walkable and unblocked (after <code>nav.version</code> changed).</td></tr><tr><td><a href="#pursue"><code>pursue</code></a></td><td>function</td><td>Seek where a moving target will be (looking ahead by the time it takes to reach it).</td></tr><tr><td><a href="#seek"><code>seek</code></a></td><td>function</td><td>Walk straight toward a point at full speed.</td></tr><tr><td><a href="#separation"><code>separation</code></a></td><td>function</td><td>Push away from neighbours that are too close (each pushes harder the closer it is).</td></tr><tr><td><a href="#smoothnodes"><code>smoothNodes</code></a></td><td>function</td><td>Drop the nodes of a path that a straight walk can skip: from each point, jump to the farthest one it can walk to in a line.</td></tr><tr><td><a href="#wander"><code>wander</code></a></td><td>function</td><td>Meander: keep going roughly the way you were going, turning a little at random.</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="accelerate"><code>accelerate</code><a class="anchor" href="#accelerate" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">accelerate</span>(agent, desired, dt)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Change the agent's velocity toward a desired one, no faster than its acceleration allows.</p>
+<p><sub>src/steering.js:135</sub></p>
+<h3 id="alignment"><code>alignment</code><a class="anchor" href="#alignment" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">alignment</span>(agent, neighbours, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Match the average heading of neighbours.</p>
+<p><sub>src/steering.js:87</sub></p>
+<h3 id="arrive"><code>arrive</code><a class="anchor" href="#arrive" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">arrive</span>(agent, tx, tz, slowRadius = <span class="tk-n">2</span>, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Like seek, but slow down inside <code>slowRadius</code> and stop at the point (speed falls off linearly with the distance left).</p>
+<p><sub>src/steering.js:36</sub></p>
+<h3 id="avoidobstacles"><code>avoidObstacles</code><a class="anchor" href="#avoidobstacles" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">avoidObstacles</span>(agent, blocked, lookAhead = <span class="tk-n">2</span>, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Steer around things ahead: probe along the way you are heading with <code>blocked(fromX, fromZ, toX, toZ)</code> (a ray cast or a nav line-of-walk test returning true if something is in the way) and swerve to whichever side is clear.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>blocked</code></td><td><code>(x0: number, z0: number, x1: number, z1: number) =&gt; boolean</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/steering.js:106</sub></p>
+<h3 id="blend"><code>blend</code><a class="anchor" href="#blend" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">blend</span>(agent, parts, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The weighted sum of desired velocities, limited to the agent's top speed.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>parts</code></td><td><code>[{x: number, z: number}, number][]</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/steering.js:128</sub></p>
+<h3 id="canhear"><code>canHear</code><a class="anchor" href="#canhear" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">canHear</span>(listener, sound, { sensitivity = <span class="tk-n">1</span>, muffled = <span class="tk-k">null</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Did a sound at (x, y, z) of this loudness (metres it carries in the open) reach the listener? <code>muffled(…)</code> may say a wall is between.</p>
+<p><sub>src/perception.js:21</sub></p>
+<h3 id="cansee"><code>canSee</code><a class="anchor" href="#cansee" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">canSee</span>(eye, fx, fz, target, { range = <span class="tk-n">40</span>, cosFov = <span class="tk-n">0.5</span>, blocked = <span class="tk-k">null</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Can an agent at <code>eye</code> looking along (fx, fz) see a point? A cone (<code>cosFov</code>: the cosine of half the field of view, from <code>cos</code> in @engine/math), a range, and <code>blocked(x0, y0, z0, x1, y1, z1)</code> true when something solid is in the way.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>eye</code></td><td><code>{x: number, y: number, z: number}</code></td><td></td></tr><tr><td><code>fx</code></td><td><code>number</code></td><td></td></tr><tr><td><code>fz</code></td><td><code>number</code></td><td>Unit facing direction on the ground plane.</td></tr><tr><td><code>target</code></td><td><code>{x: number, y: number, z: number}</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{range?: number, cosFov?: number, blocked?: (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) =&gt; boolean}</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/perception.js:12</sub></p>
+<h3 id="cohesion"><code>cohesion</code><a class="anchor" href="#cohesion" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">cohesion</span>(agent, neighbours, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Move toward the middle of the neighbours.</p>
+<p><sub>src/steering.js:95</sub></p>
+<h3 id="describe"><code>describe</code><a class="anchor" href="#describe" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">describe</span>(node, depth = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A readable outline of a tree (for debugging).</p>
+<p><sub>src/bt.js:288</sub></p>
+<h3 id="evade"><code>evade</code><a class="anchor" href="#evade" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">evade</span>(agent, target, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Run from where a moving target will be.</p>
+<p><sub>src/steering.js:52</sub></p>
+<h3 id="findpath"><code>findPath</code><a class="anchor" href="#findpath" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">findPath</span>(nav, <span class="tk-k">from</span>, to, o = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Find a path, all at once.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>nav</code></td><td><code>import('./navgrid.js').NavGrid</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>PathOptions</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>PathQuery</code> — With <code>status</code>, <code>path</code> (points) and <code>length</code>.</p>
+<p><sub>src/path.js:184</sub></p>
+<h3 id="flee"><code>flee</code><a class="anchor" href="#flee" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">flee</span>(agent, fx, fz, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Walk away from a point at full speed.</p>
+<p><sub>src/steering.js:30</sub></p>
+<h3 id="fromdata"><code>fromData</code><a class="anchor" href="#fromdata" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">fromData</span>(spec, registry)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Build a tree from plain data (so a tree can live in a JSON file, be edited, or come from a mod). Leaves name functions in <code>registry</code>. <code>{ type: 'selector', children: [ { type: 'sequence', children: [ { type: 'condition', name: 'canSeeEnemy' }, { type: 'action', name: 'shoot' } ] }, { type: 'action', name: 'patrol' } ] }</code></p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>spec</code></td><td><code>object</code></td><td></td></tr><tr><td><code>registry</code></td><td><code>Record&lt;string, (ctx: TickContext) =&gt; any&gt;</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/bt.js:265</sub></p>
+<h3 id="limit"><code>limit</code><a class="anchor" href="#limit" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">limit</span>(out, max)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Clamp a vector to a length.</p>
+<p><sub>src/steering.js:16</sub></p>
+<h3 id="pathisclear"><code>pathIsClear</code><a class="anchor" href="#pathisclear" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">pathIsClear</span>(nav, path, <span class="tk-k">from</span> = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Whether a path still looks valid: every node of it is still walkable and unblocked (after <code>nav.version</code> changed).</p>
+<p><sub>src/path.js:191</sub></p>
+<h3 id="pursue"><code>pursue</code><a class="anchor" href="#pursue" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">pursue</span>(agent, target, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Seek where a moving target will be (looking ahead by the time it takes to reach it). target: {x, z, vx, vz}.</p>
+<p><sub>src/steering.js:45</sub></p>
+<h3 id="seek"><code>seek</code><a class="anchor" href="#seek" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">seek</span>(agent, tx, tz, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Walk straight toward a point at full speed.</p>
+<p><sub>src/steering.js:23</sub></p>
+<h3 id="separation"><code>separation</code><a class="anchor" href="#separation" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">separation</span>(agent, neighbours, distance = <span class="tk-n">1.5</span>, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Push away from neighbours that are too close (each pushes harder the closer it is).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>neighbours</code></td><td><code>{x: number, z: number, radius?: number}[]</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/steering.js:75</sub></p>
+<h3 id="smoothnodes"><code>smoothNodes</code><a class="anchor" href="#smoothnodes" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">smoothNodes</span>(nav, nodes)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Drop the nodes of a path that a straight walk can skip: from each point, jump to the farthest one it can walk to in a line.</p>
+<p><sub>src/path.js:158</sub></p>
+<h3 id="wander"><code>wander</code><a class="anchor" href="#wander" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">wander</span>(agent, state, rng, turn = <span class="tk-n">0.3</span>, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Meander: keep going roughly the way you were going, turning a little at random. <code>state</code> is <code>{dx, dz}</code> (create with <code>{dx: 1, dz: 0}</code>).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>rng</code></td><td><code>() =&gt; number</code></td><td>0..1</td></tr><tr><td><code>turn</code> (optional)</td><td><code>number</code></td><td>How much the heading may change per call, 0..1 (0.3).</td></tr></tbody></table></div>
+<p><sub>src/steering.js:62</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-action"><code>class Action</code><a class="anchor" href="#class-action" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Action <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Runs a function: <code>(ctx) =&gt; status | boolean | void</code>.</p>
+<h4 id="actionconstructor"><code>Action.constructor</code><a class="anchor" href="#actionconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(fn, name = <span class="tk-s">'action'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="actiontick"><code>Action.tick</code><a class="anchor" href="#actiontick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:37</sub></p>
+<h3 id="class-behaviortree"><code>class BehaviorTree</code><a class="anchor" href="#class-behaviortree" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> BehaviorTree</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>One agent's instance of a tree: its blackboard, its memory, its random generator.</p>
+<h4 id="behaviortreeconstructor"><code>BehaviorTree.constructor</code><a class="anchor" href="#behaviortreeconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(root, { bb = {}, agent = <span class="tk-k">null</span>, rng = () =&gt; <span class="tk-n">0.5</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>root</code></td><td><code>Node</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{bb?: object, agent?: any, rng?: () =&gt; number}</code></td><td></td></tr></tbody></table></div>
+<h4 id="behaviortreebb"><code>BehaviorTree.bb</code><a class="anchor" href="#behaviortreebb" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> bb</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="behaviortreetick"><code>BehaviorTree.tick</code><a class="anchor" href="#behaviortreetick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(dt)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Run the tree once.</p>
+<p><strong>Returns</strong> <code>number</code> — the root's status</p>
+<h4 id="behaviortreesave"><code>BehaviorTree.save</code><a class="anchor" href="#behaviortreesave" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">save</span>(bbKeys = [])</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What the tree is in the middle of, as plain data: which child is running, timers, counters, and the blackboard entries you name. Nodes are identified by their position in the tree, so a save loads into any tree built the same way (node numbers are not stable between sessions).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bbKeys</code> (optional)</td><td><code>string[]</code></td><td>Blackboard entries to keep (only plain data).</td></tr></tbody></table></div>
+<h4 id="behaviortreeload"><code>BehaviorTree.load</code><a class="anchor" href="#behaviortreeload" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">load</span>(data)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Put the tree back where <code>save()</code> found it (into a tree of the same shape).</p>
+<h4 id="behaviortreereset"><code>BehaviorTree.reset</code><a class="anchor" href="#behaviortreereset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">reset</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Forget what every node was doing (start over).</p>
+<p><sub>src/bt.js:197</sub></p>
+<h3 id="class-condition"><code>class Condition</code><a class="anchor" href="#class-condition" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Condition <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Asks a yes/no question: <code>(ctx) =&gt; boolean</code>.</p>
+<h4 id="conditionconstructor"><code>Condition.constructor</code><a class="anchor" href="#conditionconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(fn, name = <span class="tk-s">'condition'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="conditiontick"><code>Condition.tick</code><a class="anchor" href="#conditiontick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:43</sub></p>
+<h3 id="class-cooldown"><code>class Cooldown</code><a class="anchor" href="#class-cooldown" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Cooldown <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>After the child has run (to success or failure), refuses to run it again for <code>seconds</code>.</p>
+<h4 id="cooldownconstructor"><code>Cooldown.constructor</code><a class="anchor" href="#cooldownconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, seconds, name = <span class="tk-s">'cooldown'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="cooldowntick"><code>Cooldown.tick</code><a class="anchor" href="#cooldowntick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:145</sub></p>
+<h3 id="class-crowd"><code>class Crowd</code><a class="anchor" href="#class-crowd" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Crowd</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Agents walking a <code>NavMesh</code>.</p>
+<h4 id="crowdconstructor"><code>Crowd.constructor</code><a class="anchor" href="#crowdconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(mesh, { horizon = <span class="tk-n">2.5</span>, neighborDistance = <span class="tk-n">6</span>, arriveDistance = <span class="tk-n">0.25</span>, repathDelay = <span class="tk-n">0.5</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>mesh</code></td><td><code>import('./navmesh.js').NavMesh</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.horizon</code> (optional)</td><td><code>number</code></td><td>Seconds ahead agents look for collisions (2.5).</td></tr><tr><td><code>o.neighborDistance</code> (optional)</td><td><code>number</code></td><td>How far away other agents are taken into account (6 metres).</td></tr><tr><td><code>o.arriveDistance</code> (optional)</td><td><code>number</code></td><td>How close to its goal an agent has to get (0.25 metres).</td></tr><tr><td><code>o.repathDelay</code> (optional)</td><td><code>number</code></td><td>Least seconds between an agent's searches for a new path (0.5).</td></tr></tbody></table></div>
+<h4 id="crowdaddagent"><code>Crowd.addAgent</code><a class="anchor" href="#crowdaddagent" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addAgent</span>({ x, y = <span class="tk-n">0</span>, z, radius = <span class="tk-n">0.4</span>, maxSpeed = <span class="tk-n">3.5</span>, maxAccel = <span class="tk-n">8</span>, userData = <span class="tk-k">null</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Put an agent on the mesh (at the nearest place to the position given).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>{x: number, y?: number, z: number, radius?: number, maxSpeed?: number, maxAccel?: number, userData?: any}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>CrowdAgent</code></p>
+<h4 id="crowdremoveagent"><code>Crowd.removeAgent</code><a class="anchor" href="#crowdremoveagent" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">removeAgent</span>(agent)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="crowdmoveto"><code>Crowd.moveTo</code><a class="anchor" href="#crowdmoveto" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">moveTo</span>(agent, x, y, z)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Send an agent to a place; it finds its own way, and finds another if the way is closed on the road.</p>
+<h4 id="crowdstop"><code>Crowd.stop</code><a class="anchor" href="#crowdstop" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">stop</span>(agent)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Stop an agent where it is.</p>
+<h4 id="crowdupdate"><code>Crowd.update</code><a class="anchor" href="#crowdupdate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">update</span>(dt)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Advance every agent by <code>dt</code> seconds (call it with a fixed step, like the rest of the simulation).</p>
+<p><sub>src/crowd.js:37</sub></p>
+<h3 id="class-guard"><code>class Guard</code><a class="anchor" href="#class-guard" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Guard <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Runs <code>child</code> only while <code>condition</code> holds; if the condition stops holding the child is abandoned (FAILURE).</p>
+<h4 id="guardconstructor"><code>Guard.constructor</code><a class="anchor" href="#guardconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(condition, child, name = <span class="tk-s">'guard'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="guardtick"><code>Guard.tick</code><a class="anchor" href="#guardtick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:188</sub></p>
+<h3 id="class-inverter"><code>class Inverter</code><a class="anchor" href="#class-inverter" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Inverter <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Swaps success and failure.</p>
+<h4 id="inverterconstructor"><code>Inverter.constructor</code><a class="anchor" href="#inverterconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, name = <span class="tk-s">'not'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="invertertick"><code>Inverter.tick</code><a class="anchor" href="#invertertick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:108</sub></p>
+<h3 id="class-memory"><code>class Memory</code><a class="anchor" href="#class-memory" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Memory</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What an agent remembers about things it has noticed: where it last saw each, how long ago, and how sure it is.</p>
+<h4 id="memoryconstructor"><code>Memory.constructor</code><a class="anchor" href="#memoryconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(forgetAfter = <span class="tk-n">10</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>forgetAfter</code> (optional)</td><td><code>number</code></td><td>Seconds until a memory is dropped (10).</td></tr></tbody></table></div>
+<h4 id="memorysee"><code>Memory.see</code><a class="anchor" href="#memorysee" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">see</span>(id, x, y, z, vx = <span class="tk-n">0</span>, vz = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Note that <code>id</code> was seen at a place now (with its velocity, if known).</p>
+<h4 id="memorysuspect"><code>Memory.suspect</code><a class="anchor" href="#memorysuspect" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">suspect</span>(id, x, y, z)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Note a sound or a hint: a place worth checking, less certain than a sighting.</p>
+<h4 id="memoryget"><code>Memory.get</code><a class="anchor" href="#memoryget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="memoryforget"><code>Memory.forget</code><a class="anchor" href="#memoryforget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">forget</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="memoryupdate"><code>Memory.update</code><a class="anchor" href="#memoryupdate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">update</span>(dt)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Age everything; things not seen this tick lose their &quot;currently visible&quot; flag. Call once per tick after the <code>see</code> calls.</p>
+<h4 id="memoryguess"><code>Memory.guess</code><a class="anchor" href="#memoryguess" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">guess</span>(id, maxExtrapolate = <span class="tk-n">1.5</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Where something probably is now: the last known place, carried forward by its last known velocity for a moment.</p>
+<h4 id="memorysave"><code>Memory.save</code><a class="anchor" href="#memorysave" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">save</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The memories as plain data.</p>
+<h4 id="memoryload"><code>Memory.load</code><a class="anchor" href="#memoryload" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">load</span>(data)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="memoryfreshest"><code>Memory.freshest</code><a class="anchor" href="#memoryfreshest" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">freshest</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The remembered thing seen most recently, or null.</p>
+<p><sub>src/perception.js:29</sub></p>
+<h3 id="class-navgrid"><code>class NavGrid</code><a class="anchor" href="#class-navgrid" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> NavGrid</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A grid of the walkable floor in a level, built once from its collision triangles: a height per cell, several floors per column (stairs, bridges), cells too close to walls removed for the agent's radius, and links for drops and small gaps. Create it with <code>NavGrid.build(world, options)</code> and search it with <code>findPath</code>.</p>
+<h4 id="navgridconstructor"><code>NavGrid.constructor</code><a class="anchor" href="#navgridconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(o)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Use <code>NavGrid.build(world, options)</code>.</p>
+<h4 id="navgridbuild"><code>NavGrid.build</code><a class="anchor" href="#navgridbuild" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">static</span> <span class="tk-f">build</span>(world, options)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>world</code></td><td><code>import('../../physics/src/tri-world.js').TriWorld</code></td><td>A built world. Triangles should be wound so their normal points out of the solid (boxes and glTF meshes are); a floor below another surface counts only if it faces up.</td></tr><tr><td><code>options</code></td><td><code>NavOptions</code></td><td></td></tr></tbody></table></div>
+<h4 id="navgridwalkablecount"><code>NavGrid.walkableCount</code><a class="anchor" href="#navgridwalkablecount" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> walkableCount</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Number of nodes an agent can stand on.</p>
+<h4 id="navgridcolumnat"><code>NavGrid.columnAt</code><a class="anchor" href="#navgridcolumnat" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">columnAt</span>(x, z)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The cell column holding a world position, or -1 outside the grid.</p>
+<h4 id="navgridnearest"><code>NavGrid.nearest</code><a class="anchor" href="#navgridnearest" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">nearest</span>(x, y, z, maxCells = <span class="tk-n">6</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The walkable node nearest a point: the best floor in its column (preferring one at about the same height), else the nearest cell in rings around it, up to <code>maxCells</code> away.</p>
+<p><strong>Returns</strong> <code>number</code> — node index, or -1</p>
+<h4 id="navgridsetarea"><code>NavGrid.setArea</code><a class="anchor" href="#navgridsetarea" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setArea</span>(minX, minY, minZ, maxX, maxY, maxZ, kind)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Set the kind of ground inside a box (e.g. water, mud) and give each kind a cost multiplier with <code>areaCost[kind] = 3</code>.</p>
+<h4 id="navgridblock"><code>NavGrid.block</code><a class="anchor" href="#navgridblock" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">block</span>(minX, minY, minZ, maxX, maxY, maxZ, margin = <span class="tk-k">this</span>.agentRadius)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Keep agents out of a box (a closed door, a barricade, a spreading fire). Nodes within <code>margin</code> of it become impassable until <code>unblock</code>. Returns a handle.</p>
+<h4 id="navgridunblock"><code>NavGrid.unblock</code><a class="anchor" href="#navgridunblock" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">unblock</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="navgridaddlink"><code>NavGrid.addLink</code><a class="anchor" href="#navgridaddlink" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addLink</span>(<span class="tk-k">from</span>, to, { cost = <span class="tk-k">null</span>, bidirectional = <span class="tk-k">true</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Connect two nodes by something that is not walking: a jump, a ladder, a teleporter. <code>cost</code> is in metres of walking it is worth.</p>
+<h4 id="navgridlineofwalk"><code>NavGrid.lineOfWalk</code><a class="anchor" href="#navgridlineofwalk" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">lineOfWalk</span>(a, b, costLimit = Infinity)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Can an agent walk in a straight line between two nodes along the grid (every step of the line is a real connection)? Used to smooth paths and to test &quot;can I just go there&quot;. <code>costLimit</code>: refuse to walk through ground costlier than this (a swamp).</p>
+<p><sub>src/navgrid.js:35</sub></p>
+<h3 id="class-navmesh"><code>class NavMesh</code><a class="anchor" href="#class-navmesh" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> NavMesh</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The walkable surface of a level as a mesh of triangles. Make it with <code>NavMesh.build(vertices, indices, options)</code>.</p>
+<h4 id="navmeshbuild"><code>NavMesh.build</code><a class="anchor" href="#navmeshbuild" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">static</span> <span class="tk-f">build</span>(vertices, indices, options = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Make a navigation mesh from triangles (the level's collision triangles will do: it keeps the ones an agent can stand on).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>vertices</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td>x, y, z for each vertex</td></tr><tr><td><code>indices</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td>three vertex numbers for each triangle</td></tr><tr><td><code>options</code> (optional)</td><td><code>NavMeshOptions</code></td><td></td></tr></tbody></table></div>
+<h4 id="navmeshconstructor"><code>NavMesh.constructor</code><a class="anchor" href="#navmeshconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(vertices, indices, { maxSlope = <span class="tk-n">45</span>, maxEdge = Infinity, agentRadius = <span class="tk-n">0.4</span>, weld = <span class="tk-n">0.0001</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="navmeshedge"><code>NavMesh.edge</code><a class="anchor" href="#navmeshedge" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">edge</span>(p, e)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The corners of a triangle's edge <code>e</code> (the edge from corner e to corner e + 1, both vertex numbers).</p>
+<h4 id="navmeshcontains"><code>NavMesh.contains</code><a class="anchor" href="#navmeshcontains" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">contains</span>(p, x, z)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Whether (x, z) is over triangle p.</p>
+<h4 id="navmeshheightat"><code>NavMesh.heightAt</code><a class="anchor" href="#navmeshheightat" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">heightAt</span>(p, x, z)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The height of triangle p at (x, z).</p>
+<h4 id="navmeshpolyat"><code>NavMesh.polyAt</code><a class="anchor" href="#navmeshpolyat" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">polyAt</span>(x, y, z, maxDy = Infinity)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The triangle under a point: the one whose surface at (x, z) is nearest to height y, within <code>maxDy</code> (so a bridge and the ground under it are told apart). -1 if there is none.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>maxDy</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="navmeshnearest"><code>NavMesh.nearest</code><a class="anchor" href="#navmeshnearest" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">nearest</span>(x, y, z, radius = <span class="tk-n">2</span>, blocked = <span class="tk-k">false</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The nearest place on the mesh to a point (not counting blocked triangles unless <code>blocked</code>), looking up to <code>radius</code> away.</p>
+<p><strong>Returns</strong> <code>{poly: number, x: number, y: number, z: number, distance: number} \| null</code></p>
+<h4 id="navmeshrandompoint"><code>NavMesh.randomPoint</code><a class="anchor" href="#navmeshrandompoint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">randomPoint</span>(random)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A point on the mesh chosen with <code>random()</code> (a function giving numbers from 0 up to 1; pass your game's seeded generator) from a triangle that is not blocked, or null.</p>
+<h4 id="navmeshblock"><code>NavMesh.block</code><a class="anchor" href="#navmeshblock" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">block</span>(minX, minY, minZ, maxX, maxY, maxZ, margin = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Block everything inside a box (a crate, a barricade, a closed door) so paths go round. Triangles the box touches cannot be entered, so cut big triangles smaller with <code>maxEdge</code> when you build the mesh to keep the blocked patch close to the shape. Returns a number for <code>unblock</code>.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>margin</code></td><td><code>number</code></td><td>Make the box this much bigger on every side</td></tr></tbody></table></div>
+<h4 id="navmeshblockcircle"><code>NavMesh.blockCircle</code><a class="anchor" href="#navmeshblockcircle" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">blockCircle</span>(x, z, radius, minY = -Infinity, maxY = Infinity)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Block a circle on the ground (a pillar, a stopped vehicle) between two heights. Returns a number for <code>unblock</code>.</p>
+<h4 id="navmeshunblock"><code>NavMesh.unblock</code><a class="anchor" href="#navmeshunblock" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">unblock</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Take an obstacle away.</p>
+<h4 id="navmeshsetarea"><code>NavMesh.setArea</code><a class="anchor" href="#navmeshsetarea" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setArea</span>(minX, minY, minZ, maxX, maxY, maxZ, kind)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Mark the ground inside a box as a kind (0 normal; give a kind a cost with <code>areaCost[kind] = 3</code> for mud, water, a road to keep to).</p>
+<h4 id="navmeshfindpath"><code>NavMesh.findPath</code><a class="anchor" href="#navmeshfindpath" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">findPath</span>(<span class="tk-k">from</span>, to, { radius = <span class="tk-k">this</span>.agentRadius, partial = <span class="tk-k">false</span>, snap = <span class="tk-n">2</span>, maxNodes = <span class="tk-n">100000</span>, smooth = <span class="tk-k">true</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The shortest walk from one place to another, held off the corners of walls by the agent's radius.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>from</code></td><td><code>{x: number, y: number, z: number}</code></td><td></td></tr><tr><td><code>to</code></td><td><code>{x: number, y: number, z: number}</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.radius</code> (optional)</td><td><code>number</code></td><td>Distance to keep from corners (default: the mesh's <code>agentRadius</code>).</td></tr><tr><td><code>o.partial</code> (optional)</td><td><code>boolean</code></td><td>When the goal cannot be reached, go as near as possible instead of failing.</td></tr><tr><td><code>o.snap</code> (optional)</td><td><code>number</code></td><td>How far from the mesh the start and goal may be and still count (2 metres).</td></tr><tr><td><code>o.maxNodes</code> (optional)</td><td><code>number</code></td><td>Give up after looking at this many triangles (100000).</td></tr><tr><td><code>o.smooth</code> (optional)</td><td><code>boolean</code></td><td>Cut out corners that a straight walk the width of the agent can skip (default true): the corridor search is close to the shortest route but not exact.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>NavPath</code></p>
+<h4 id="navmeshcanwalk"><code>NavMesh.canWalk</code><a class="anchor" href="#navmeshcanwalk" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">canWalk</span>(x, y, z, tx, tz, radius = <span class="tk-k">this</span>.agentRadius)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Whether an agent <code>radius</code> wide standing at (x, y, z) can walk straight to (tx, tz) without a wall in the way (see <code>isVisible</code> for a point-sized one).</p>
+<h4 id="navmeshmove"><code>NavMesh.move</code><a class="anchor" href="#navmeshmove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">move</span>(poly, x, z, tx, tz)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Move along the surface from a place in triangle <code>poly</code> toward (tx, tz): the walk passes from triangle to triangle and slides along a wall it meets instead of passing through.</p>
+<p><strong>Returns</strong> <code>{poly: number, x: number, y: number, z: number, hit: boolean}</code> — where it ended up; <code>hit</code> says a wall stopped it</p>
+<h4 id="navmeshraycast"><code>NavMesh.raycast</code><a class="anchor" href="#navmeshraycast" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">raycast</span>(<span class="tk-k">from</span>, to)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Walk a straight line over the mesh from a point to another and report where a wall stops it, if one does.</p>
+<p><strong>Returns</strong> <code>{hit: boolean, t: number, x: number, y: number, z: number, poly: number}</code> — <code>t</code> is how far along the line (0 to 1) it got</p>
+<h4 id="navmeshisvisible"><code>NavMesh.isVisible</code><a class="anchor" href="#navmeshisvisible" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">isVisible</span>(<span class="tk-k">from</span>, to)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Whether a straight walk between two points is free of walls (the path can be shortened to it).</p>
+<p><sub>src/navmesh.js:75</sub></p>
+<h3 id="class-node"><code>class Node</code><a class="anchor" href="#class-node" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Base class. Subclasses implement <code>tick(ctx)</code>; <code>reset(ctx)</code> clears memory when a node is abandoned.</p>
+<h4 id="nodeconstructor"><code>Node.constructor</code><a class="anchor" href="#nodeconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(name = <span class="tk-s">''</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="nodetick"><code>Node.tick</code><a class="anchor" href="#nodetick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ctx</code></td><td><code>TickContext</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code></p>
+<h4 id="nodereset"><code>Node.reset</code><a class="anchor" href="#nodereset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">reset</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:29</sub></p>
+<h3 id="class-parallel"><code>class Parallel</code><a class="anchor" href="#class-parallel" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Parallel <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Runs all children every tick. <code>policy: 'all'</code> succeeds when all succeed (fails when any fails); <code>'one'</code> succeeds when any succeeds.</p>
+<h4 id="parallelconstructor"><code>Parallel.constructor</code><a class="anchor" href="#parallelconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(children, { policy = <span class="tk-s">'all'</span>, name = <span class="tk-s">'parallel'</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="paralleltick"><code>Parallel.tick</code><a class="anchor" href="#paralleltick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:97</sub></p>
+<h3 id="class-pathfollower"><code>class PathFollower</code><a class="anchor" href="#class-pathfollower" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> PathFollower</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Walks an agent along a path (the points from <code>findPath</code>): head for the next point, move on when close, slow down at the end. <code>stuck</code> turns true when it has made no progress for <code>stuckTime</code> seconds (a moved obstacle, a blocked door): ask for a new path.</p>
+<h4 id="pathfollowerconstructor"><code>PathFollower.constructor</code><a class="anchor" href="#pathfollowerconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(path = [], { reach = <span class="tk-n">0.35</span>, slowRadius = <span class="tk-n">1.5</span>, stuckTime = <span class="tk-n">1.2</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>path</code></td><td><code>{x: number, y: number, z: number}[]</code></td><td></td></tr></tbody></table></div>
+<h4 id="pathfollowerset"><code>PathFollower.set</code><a class="anchor" href="#pathfollowerset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span>(path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="pathfollowertarget"><code>PathFollower.target</code><a class="anchor" href="#pathfollowertarget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> target</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The point being walked to, or null.</p>
+<h4 id="pathfollowerremaining"><code>PathFollower.remaining</code><a class="anchor" href="#pathfollowerremaining" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">remaining</span>(agent)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Metres left along the path from the agent.</p>
+<h4 id="pathfollowerdesired"><code>PathFollower.desired</code><a class="anchor" href="#pathfollowerdesired" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">desired</span>(agent, dt, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The velocity to walk with this tick.</p>
+<p><strong>Returns</strong> <code>{x: number, z: number}</code> — out</p>
+<p><sub>src/steering.js:147</sub></p>
+<h3 id="class-pathquery"><code>class PathQuery</code><a class="anchor" href="#class-pathquery" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> PathQuery</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>One path request: <code>step(n)</code> expands up to n nodes, <code>status</code> is 'running', 'found', 'partial' or 'none'.</p>
+<h4 id="pathqueryconstructor"><code>PathQuery.constructor</code><a class="anchor" href="#pathqueryconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(nav, <span class="tk-k">from</span>, to, o = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>nav</code></td><td><code>import('./navgrid.js').NavGrid</code></td><td></td></tr><tr><td><code>from</code></td><td><code>{x: number, y: number, z: number}</code></td><td></td></tr><tr><td><code>to</code></td><td><code>{x: number, y: number, z: number}</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>PathOptions</code></td><td></td></tr></tbody></table></div>
+<h4 id="pathquerystep"><code>PathQuery.step</code><a class="anchor" href="#pathquerystep" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">step</span>(budget = <span class="tk-n">500</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Expand up to <code>budget</code> nodes. Returns the status.</p>
+<h4 id="pathquerycancel"><code>PathQuery.cancel</code><a class="anchor" href="#pathquerycancel" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">cancel</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Give up on a running query (its search memory goes back to the pool).</p>
+<p><sub>src/path.js:55</sub></p>
+<h3 id="class-randomselector"><code>class RandomSelector</code><a class="anchor" href="#class-randomselector" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> RandomSelector <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Picks one child at random (by weight) when started and keeps running it until it finishes.</p>
+<h4 id="randomselectorconstructor"><code>RandomSelector.constructor</code><a class="anchor" href="#randomselectorconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(children, weights = <span class="tk-k">null</span>, name = <span class="tk-s">'random'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="randomselectortick"><code>RandomSelector.tick</code><a class="anchor" href="#randomselectortick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:171</sub></p>
+<h3 id="class-repeater"><code>class Repeater</code><a class="anchor" href="#class-repeater" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Repeater <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Repeats its child <code>times</code> times (Infinity: forever, always RUNNING); stops early with FAILURE if the child fails.</p>
+<h4 id="repeaterconstructor"><code>Repeater.constructor</code><a class="anchor" href="#repeaterconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, times = Infinity, name = <span class="tk-s">'repeat'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="repeatertick"><code>Repeater.tick</code><a class="anchor" href="#repeatertick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:119</sub></p>
+<h3 id="class-retry"><code>class Retry</code><a class="anchor" href="#class-retry" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Retry <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Tries the child up to <code>times</code> times until it succeeds.</p>
+<h4 id="retryconstructor"><code>Retry.constructor</code><a class="anchor" href="#retryconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, times = <span class="tk-n">3</span>, name = <span class="tk-s">'retry'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="retrytick"><code>Retry.tick</code><a class="anchor" href="#retrytick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:132</sub></p>
+<h3 id="class-selector"><code>class Selector</code><a class="anchor" href="#class-selector" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Selector <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Tries children in order until one succeeds: the first that works wins. Without <code>memory</code> (default) it re-checks from the top every tick, so a more important behaviour can interrupt a less important one that is still running.</p>
+<h4 id="selectorconstructor"><code>Selector.constructor</code><a class="anchor" href="#selectorconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(children, { memory = <span class="tk-k">false</span>, name = <span class="tk-s">'selector'</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="selectortick"><code>Selector.tick</code><a class="anchor" href="#selectortick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:78</sub></p>
+<h3 id="class-sequence"><code>class Sequence</code><a class="anchor" href="#class-sequence" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Sequence <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Runs children in order until one fails: all must succeed. With <code>memory</code> (default) a running child is resumed, not restarted.</p>
+<h4 id="sequenceconstructor"><code>Sequence.constructor</code><a class="anchor" href="#sequenceconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(children, { memory = <span class="tk-k">true</span>, name = <span class="tk-s">'sequence'</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="sequencetick"><code>Sequence.tick</code><a class="anchor" href="#sequencetick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:60</sub></p>
+<h3 id="class-steeringagent"><code>class SteeringAgent</code><a class="anchor" href="#class-steeringagent" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> SteeringAgent</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A moving thing to steer. Positions in metres, velocities in m/s.</p>
+<h4 id="steeringagentconstructor"><code>SteeringAgent.constructor</code><a class="anchor" href="#steeringagentconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ x = <span class="tk-n">0</span>, y = <span class="tk-n">0</span>, z = <span class="tk-n">0</span>, maxSpeed = <span class="tk-n">4</span>, maxAccel = <span class="tk-n">25</span>, radius = <span class="tk-n">0.4</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/steering.js:6</sub></p>
+<h3 id="class-succeeder"><code>class Succeeder</code><a class="anchor" href="#class-succeeder" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Succeeder <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Always succeeds (unless still running).</p>
+<h4 id="succeederconstructor"><code>Succeeder.constructor</code><a class="anchor" href="#succeederconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, name = <span class="tk-s">'always'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="succeedertick"><code>Succeeder.tick</code><a class="anchor" href="#succeedertick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:113</sub></p>
+<h3 id="class-timeout"><code>class Timeout</code><a class="anchor" href="#class-timeout" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Timeout <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Fails the child if it is still running after <code>seconds</code>.</p>
+<h4 id="timeoutconstructor"><code>Timeout.constructor</code><a class="anchor" href="#timeoutconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, seconds, name = <span class="tk-s">'timeout'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="timeouttick"><code>Timeout.tick</code><a class="anchor" href="#timeouttick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:158</sub></p>
+<h3 id="class-wait"><code>class Wait</code><a class="anchor" href="#class-wait" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Wait <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Waits <code>seconds</code> (RUNNING until then, then SUCCESS).</p>
+<h4 id="waitconstructor"><code>Wait.constructor</code><a class="anchor" href="#waitconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(seconds, name = <span class="tk-s">'wait'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="waittick"><code>Wait.tick</code><a class="anchor" href="#waittick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bt.js:49</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="directions"><code>DIRECTIONS</code><a class="anchor" href="#directions" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> DIRECTIONS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The eight directions: 0 = +x, then clockwise seen from above (+z is 2). Even numbers are straight, odd are diagonal.</p>
+<p>Value: <code>Object.freeze({ dx: DX, dz: DZ })</code></p>
+<p><sub>src/navgrid.js:14</sub></p>
+<h3 id="failure"><code>FAILURE</code><a class="anchor" href="#failure" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> FAILURE</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</p>
+<p><sub>src/bt.js:10</sub></p>
+<h3 id="running"><code>RUNNING</code><a class="anchor" href="#running" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> RUNNING</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</p>
+<p><sub>src/bt.js:10</sub></p>
+<h3 id="status_names"><code>STATUS_NAMES</code><a class="anchor" href="#status_names" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> STATUS_NAMES</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The status numbers as readable names (<code>1: &quot;success&quot;</code>), for logs and debug views.</p>
+<p>Value: <code>{ 1: 'success', 2: 'failure', 3: 'running' }</code></p>
+<p><sub>src/bt.js:12</sub></p>
+<h3 id="success"><code>SUCCESS</code><a class="anchor" href="#success" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> SUCCESS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</p>
+<p>Value: <code>1, FAILURE = 2, RUNNING = 3</code></p>
+<p><sub>src/bt.js:10</sub></p>
+<h3 id="bt"><code>bt</code><a class="anchor" href="#bt" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> bt</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Short builders: <code>bt.sequence(bt.condition(canSee), bt.action(shoot))</code>.</p>
+<p>Value: <code>{</code></p>
+<p><sub>src/bt.js:241</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="crowdagent"><code>CrowdAgent</code><a class="anchor" href="#crowdagent" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td><code>number</code></td><td></td></tr><tr><td><code>x</code></td><td><code>number</code></td><td></td></tr><tr><td><code>y</code></td><td><code>number</code></td><td></td></tr><tr><td><code>z</code></td><td><code>number</code></td><td>Position on the mesh.</td></tr><tr><td><code>vx</code></td><td><code>number</code></td><td></td></tr><tr><td><code>vz</code></td><td><code>number</code></td><td>Velocity (metres per second).</td></tr><tr><td><code>radius</code></td><td><code>number</code></td><td></td></tr><tr><td><code>maxSpeed</code></td><td><code>number</code></td><td></td></tr><tr><td><code>maxAccel</code></td><td><code>number</code></td><td></td></tr><tr><td><code>state</code></td><td><code>'idle' | 'moving' | 'arrived' | 'blocked' | 'lost'</code></td><td><code>idle</code>: no goal; <code>moving</code>: on its way; <code>arrived</code>: at its goal (or as near as the crowd let it get); <code>blocked</code>: no route to the goal (it went as near as it could); <code>lost</code>: pushed off the mesh with nowhere to stand.</td></tr><tr><td><code>path</code></td><td><code>number[]</code></td><td>The corners it is following (x, y, z, ...).</td></tr><tr><td><code>userData</code></td><td><code>any</code></td><td>Anything you want to keep with the agent.</td></tr></tbody></table></div>
+<h3 id="navmeshoptions"><code>NavMeshOptions</code><a class="anchor" href="#navmeshoptions" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>maxSlope</code> (optional)</td><td><code>number</code></td><td>Steepest slope walked, in degrees (45); steeper triangles, and ceilings, are not part of the mesh.</td></tr><tr><td><code>maxEdge</code> (optional)</td><td><code>number</code></td><td>Cut triangles with a side longer than this into smaller ones (default: leave them). Obstacles and ground kinds work on whole triangles, so smaller triangles mean finer shapes; a few metres is usually right for big flat areas.</td></tr><tr><td><code>agentRadius</code> (optional)</td><td><code>number</code></td><td>The default distance paths keep from the corners of walls and obstacles (0.4); <code>findPath</code> can ask for another.</td></tr><tr><td><code>weld</code> (optional)</td><td><code>number</code></td><td>Vertices closer than this are joined (0.0001).</td></tr><tr><td><code>found</code></td><td><code>boolean</code></td><td>A route to the goal was found.</td></tr><tr><td><code>partial</code></td><td><code>boolean</code></td><td>No route to the goal exists; <code>points</code> lead to the nearest place that can be reached (only with <code>partial: true</code>).</td></tr><tr><td><code>points</code></td><td><code>number[]</code></td><td>The way, as x, y, z, x, y, z, ...: the start, the corners to turn at, and the end.</td></tr><tr><td><code>polys</code></td><td><code>number[]</code></td><td>The triangles crossed.</td></tr><tr><td><code>length</code></td><td><code>number</code></td><td>Metres.</td></tr></tbody></table></div>
+<h3 id="navoptions"><code>NavOptions</code><a class="anchor" href="#navoptions" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bounds</code></td><td><code>{minX: number, minZ: number, maxX: number, maxZ: number}</code></td><td>Area to cover (metres).</td></tr><tr><td><code>cellSize</code> (optional)</td><td><code>number</code></td><td>Grid spacing (0.5). Smaller finds narrower gaps and costs more memory and build time.</td></tr><tr><td><code>agentRadius</code> (optional)</td><td><code>number</code></td><td>Keep this far from walls and ledges (0.4).</td></tr><tr><td><code>agentHeight</code> (optional)</td><td><code>number</code></td><td>Headroom needed above a floor (1.8).</td></tr><tr><td><code>stepHeight</code> (optional)</td><td><code>number</code></td><td>Highest step it climbs (0.4).</td></tr><tr><td><code>maxSlope</code> (optional)</td><td><code>number</code></td><td>Steepest slope it walks, in degrees (45).</td></tr><tr><td><code>maxDrop</code> (optional)</td><td><code>number</code></td><td>Longest drop it will step off, one way (1.2); 0 for none.</td></tr><tr><td><code>maxGap</code> (optional)</td><td><code>number</code></td><td>Widest gap (a crack between two platforms, a missing step) it will step across (0.6 m); 0 for none.</td></tr><tr><td><code>top</code> (optional)</td><td><code>number</code></td><td>Highest floor to look for (default 60) and <code>bottom</code> the lowest (-5).</td></tr><tr><td><code>maxLayers</code> (optional)</td><td><code>number</code></td><td>Floors kept per column (6).</td></tr></tbody></table></div>
+<h3 id="navpath"><code>NavPath</code><a class="anchor" href="#navpath" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>maxSlope</code> (optional)</td><td><code>number</code></td><td>Steepest slope walked, in degrees (45); steeper triangles, and ceilings, are not part of the mesh.</td></tr><tr><td><code>maxEdge</code> (optional)</td><td><code>number</code></td><td>Cut triangles with a side longer than this into smaller ones (default: leave them). Obstacles and ground kinds work on whole triangles, so smaller triangles mean finer shapes; a few metres is usually right for big flat areas.</td></tr><tr><td><code>agentRadius</code> (optional)</td><td><code>number</code></td><td>The default distance paths keep from the corners of walls and obstacles (0.4); <code>findPath</code> can ask for another.</td></tr><tr><td><code>weld</code> (optional)</td><td><code>number</code></td><td>Vertices closer than this are joined (0.0001).</td></tr><tr><td><code>found</code></td><td><code>boolean</code></td><td>A route to the goal was found.</td></tr><tr><td><code>partial</code></td><td><code>boolean</code></td><td>No route to the goal exists; <code>points</code> lead to the nearest place that can be reached (only with <code>partial: true</code>).</td></tr><tr><td><code>points</code></td><td><code>number[]</code></td><td>The way, as x, y, z, x, y, z, ...: the start, the corners to turn at, and the end.</td></tr><tr><td><code>polys</code></td><td><code>number[]</code></td><td>The triangles crossed.</td></tr><tr><td><code>length</code></td><td><code>number</code></td><td>Metres.</td></tr></tbody></table></div>
+<h3 id="pathoptions"><code>PathOptions</code><a class="anchor" href="#pathoptions" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>maxExpansions</code> (optional)</td><td><code>number</code></td><td>Give up after expanding this many nodes (default 20000); the result is then the best partial path.</td></tr><tr><td><code>smooth</code> (optional)</td><td><code>boolean</code></td><td>Pull the path straight where agents can walk in a line (default true).</td></tr><tr><td><code>partial</code> (optional)</td><td><code>boolean</code></td><td>If the goal cannot be reached, return the path to the closest reachable node (default true).</td></tr><tr><td><code>searchRadius</code> (optional)</td><td><code>number</code></td><td>Nearest-node search range in cells for the start and goal (6).</td></tr></tbody></table></div>
+<h3 id="tickcontext"><code>TickContext</code><a class="anchor" href="#tickcontext" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>dt</code></td><td><code>number</code></td><td>Seconds since the last tick.</td></tr><tr><td><code>bb</code></td><td><code>Record&lt;string, any&gt;</code></td><td>The blackboard: the agent's facts (&quot;target&quot;, &quot;hp&quot;, &quot;path&quot;).</td></tr><tr><td><code>agent</code></td><td><code>any</code></td><td>Whatever the game wants leaves to act on.</td></tr><tr><td><code>rng</code></td><td><code>() =&gt; number</code></td><td>0..1</td></tr><tr><td><code>mem</code></td><td><code>Record&lt;number, any&gt;</code></td><td>Per-node memory (managed for you).</td></tr></tbody></table></div><div class="pager"><a href="physics.html"><small>Previous</small>physics</a><a class="next" href="fsm.html"><small>Next</small>fsm</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-49-of-49-documented">Contents (49 of 49 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#accelerate">accelerate</a><a class="l3" href="#alignment">alignment</a><a class="l3" href="#arrive">arrive</a><a class="l3" href="#avoidobstacles">avoidObstacles</a><a class="l3" href="#blend">blend</a><a class="l3" href="#canhear">canHear</a><a class="l3" href="#cansee">canSee</a><a class="l3" href="#cohesion">cohesion</a><a class="l3" href="#describe">describe</a><a class="l3" href="#evade">evade</a><a class="l3" href="#findpath">findPath</a><a class="l3" href="#flee">flee</a><a class="l3" href="#fromdata">fromData</a><a class="l3" href="#limit">limit</a><a class="l3" href="#pathisclear">pathIsClear</a><a class="l3" href="#pursue">pursue</a><a class="l3" href="#seek">seek</a><a class="l3" href="#separation">separation</a><a class="l3" href="#smoothnodes">smoothNodes</a><a class="l3" href="#wander">wander</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-action">class Action</a><a class="l3" href="#class-behaviortree">class BehaviorTree</a><a class="l3" href="#class-condition">class Condition</a><a class="l3" href="#class-cooldown">class Cooldown</a><a class="l3" href="#class-crowd">class Crowd</a><a class="l3" href="#class-guard">class Guard</a><a class="l3" href="#class-inverter">class Inverter</a><a class="l3" href="#class-memory">class Memory</a><a class="l3" href="#class-navgrid">class NavGrid</a><a class="l3" href="#class-navmesh">class NavMesh</a><a class="l3" href="#class-node">class Node</a><a class="l3" href="#class-parallel">class Parallel</a><a class="l3" href="#class-pathfollower">class PathFollower</a><a class="l3" href="#class-pathquery">class PathQuery</a><a class="l3" href="#class-randomselector">class RandomSelector</a><a class="l3" href="#class-repeater">class Repeater</a><a class="l3" href="#class-retry">class Retry</a><a class="l3" href="#class-selector">class Selector</a><a class="l3" href="#class-sequence">class Sequence</a><a class="l3" href="#class-steeringagent">class SteeringAgent</a><a class="l3" href="#class-succeeder">class Succeeder</a><a class="l3" href="#class-timeout">class Timeout</a><a class="l3" href="#class-wait">class Wait</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#directions">DIRECTIONS</a><a class="l3" href="#failure">FAILURE</a><a class="l3" href="#running">RUNNING</a><a class="l3" href="#status_names">STATUS_NAMES</a><a class="l3" href="#success">SUCCESS</a><a class="l3" href="#bt">bt</a><a class="l2" href="#types">Types</a><a class="l3" href="#crowdagent">CrowdAgent</a><a class="l3" href="#navmeshoptions">NavMeshOptions</a><a class="l3" href="#navoptions">NavOptions</a><a class="l3" href="#navpath">NavPath</a><a class="l3" href="#pathoptions">PathOptions</a><a class="l3" href="#tickcontext">TickContext</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

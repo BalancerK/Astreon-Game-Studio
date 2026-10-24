@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/ui · Astreon Engine</title>
+<meta name="description" content="Menus and HUDs on the 2D renderer: flexbox-style layout, buttons, sliders, switches, text fields, lists, themes, keyboard / gamepad / mouse / touch navigation, and ready-made pause, settings (key rebi">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html" class="on">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="engineui">@engine/ui</h1>
+<p>Menus and HUDs on the 2D renderer: flexbox-style layout, buttons, sliders, switches, text fields, lists, themes, keyboard / gamepad / mouse / touch navigation, and ready-made pause, settings (key rebinding) and room-browser screens.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/ui</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/ui.html">packages/ui</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-47-of-47-documented">Contents (47 of 47 documented)<a class="anchor" href="#contents-47-of-47-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-button"><code>Button</code></a></td><td>class</td><td>A clickable button.</td></tr><tr><td><a href="#class-choice"><code>Choice</code></a></td><td>class</td><td>Pick one of several options with the arrow keys, a stick, or by clicking the arrows.</td></tr><tr><td><a href="#class-control"><code>Control</code></a></td><td>class</td><td>Shared look of a labelled row: the label on the left, the control in the rest.</td></tr><tr><td><a href="#class-label"><code>Label</code></a></td><td>class</td><td>Static text.</td></tr><tr><td><a href="#class-panel"><code>Panel</code></a></td><td>class</td><td>A container that draws a panel behind its children.</td></tr><tr><td><a href="#class-progressbar"><code>ProgressBar</code></a></td><td>class</td><td>A bar for health, loading, cooldowns.</td></tr><tr><td><a href="#class-scrolllist"><code>ScrollList</code></a></td><td>class</td><td>A list of rows to pick from (rooms, saves, servers).</td></tr><tr><td><a href="#class-separator"><code>Separator</code></a></td><td>class</td><td>A thin dividing line.</td></tr><tr><td><a href="#class-slider"><code>Slider</code></a></td><td>class</td><td>A value between <code>min</code> and <code>max</code>: drag it, or use left / right.</td></tr><tr><td><a href="#class-spacer"><code>Spacer</code></a></td><td>class</td><td>Empty space that takes the remaining room (or a fixed size).</td></tr><tr><td><a href="#class-textinput"><code>TextInput</code></a></td><td>class</td><td>A single line of editable text with a caret and selection.</td></tr><tr><td><a href="#class-toggle"><code>Toggle</code></a></td><td>class</td><td>An on / off switch.</td></tr></tbody></table></div>
+<p>| <a href="#class-ui"><code>Ui</code></a> | class | Immediate-feeling, retained-mode UI: build a tree of widgets once, change their state when something happens, and call <code>update(dt)</code> and <code>draw()</code> every frame. | | <a href="#class-widget"><code>Widget</code></a> | class | A node in the UI tree. | | <a href="#accessibilitytree"><code>accessibilityTree</code></a> | function | Everything on screen as a screen reader should see it: the open screens (each a <code>dialog</code>, named by its first heading; only the top modal one and what is above it while a modal screen is open, since what is below is blocked) and the permanent HUD. | | <a href="#arrange"><code>arrange</code></a> | function | Place a widget in the box (x, y, w, h) and lay its children out inside it. | | <a href="#attachaccessibility"><code>attachAccessibility</code></a> | function | Mirror the UI in the page for assistive technology. | | <a href="#attachdom"><code>attachDom</code></a> | function | Connect a <code>Ui</code> to a page: pointer, touch, wheel and keyboard events go to the UI, and what the UI uses is kept from the game (so a click on a menu button is not also a shot). | | <a href="#audittheme"><code>auditTheme</code></a> | function | Check a theme against the contrast the accessibility guidelines (WCAG 2.1 AA) ask for: text and what it sits on (4.5 to 1), the focus ring against the panel and the controls (3 to 1), and the filled part of a slider against its track (3 to 1). | | <a href="#bindingrows"><code>bindingRows</code></a> | function | Rows that rebind button actions: the action's name, its keyboard / mouse control and its gamepad control. | | <a href="#confirmdialog"><code>confirmDialog</code></a> | function | A question with two answers. | | <a href="#contrastratio"><code>contrastRatio</code></a> | function | The contrast ratio between two colours, 1 (none) to 21 (black on white). | | <a href="#createcanvaspainter"><code>createCanvasPainter</code></a> | function | Draw with a 2D canvas context (<code>CanvasRenderingContext2D</code>): for a UI over a plain canvas, or an overlay on a game that has no sprite renderer. | | <a href="#createmenupump"><code>createMenuPump</code></a> | function | Call <code>pump.update(dt)</code> every frame after <code>input.update(dt)</code>. | | <a href="#createrecordingpainter"><code>createRecordingPainter</code></a> | function | A painter that records what it was asked to draw, with a fixed-width fake font. | | <a href="#createspritepainter"><code>createSpritePainter</code></a> | function | Draw into a sprite batch (the engine's 2D renderer), so the UI costs no extra draw calls and works in all three backends. | | <a href="#createtheme"><code>createTheme</code></a> | function | A theme from the dark one with your overrides on top (<code>colors</code> and <code>text</code> merge key by key). | | <a href="#css"><code>css</code></a> | function | A CSS colour string (for canvas painters and the DOM). | | <a href="#darktheme"><code>darkTheme</code></a> | constant | Everything a widget needs to look like part of one game: colours (packed, see color.js), text sizes and spacing, in logical pixels. | | <a href="#fade"><code>fade</code></a> | function | The colour with its alpha scaled (fading a whole widget). | | <a href="#hex"><code>hex</code></a> | function | Parse <code>#rgb</code>, <code>#rrggbb</code> or <code>#rrggbbaa</code>. | | <a href="#highcontrasttheme"><code>highContrastTheme</code></a> | constant | A theme for players who need strong contrast: white on black, yellow accents, thick borders and focus rings, a taller row. | | <a href="#lighttheme"><code>lightTheme</code></a> | constant | A lighter variant, mostly to show that a theme is only data. | | <a href="#luminance"><code>luminance</code></a> | function | The relative luminance of a colour, 0 (black) to 1 (white), as the accessibility guidelines (WCAG 2) define it. | | <a href="#menuactions"><code>menuActions</code></a> | function | Actions to add to <code>InputCore</code> / <code>createInput({ actions })</code>. | | <a href="#menuscreen"><code>menuScreen</code></a> | function | A vertical menu: a title and a column of buttons. | | <a href="#mix"><code>mix</code></a> | function | Blend two colours: <code>t</code> 0 gives <code>a</code>, 1 gives <code>b</code>. | | <a href="#nameof"><code>nameOf</code></a> | function | What a widget is called: its <code>a11y.label</code>, else its text or label, else (for a text field) its placeholder. | | <a href="#naturalsize"><code>naturalSize</code></a> | function | The size a widget would like, given that it may be at most <code>maxWidth</code> wide (so wrapped text gets taller as it gets narrower). | | <a href="#readsafeareainsets"><code>readSafeAreaInsets</code></a> | function | Safe-area insets (notches, rounded corners, home bars) in CSS pixels, read from <code>env(safe-area-inset-*)</code>. | | <a href="#rgba"><code>rgba</code></a> | function | Pack red, green, blue and alpha (0..255 each). | | <a href="#roleof"><code>roleOf</code></a> | function | The role a widget plays for assistive technology. | | <a href="#roombrowser"><code>roomBrowser</code></a> | function | Pick a room (or make one) and a name. | | <a href="#settingsscreen"><code>settingsScreen</code></a> | function | A settings screen: tabs of rows. | | <a href="#speak"><code>speak</code></a> | function | A sentence for a node, the way a screen reader would say it (&quot;Music volume, slider, 50%&quot;): for text-to-speech without a browser, and for tests. | | <a href="#unpack"><code>unpack</code></a> | function | [r, g, b, a] of a packed colour. | | <a href="#withalpha"><code>withAlpha</code></a> | function | The same colour with another alpha (0..1 or, when above 1, 0..255). |</p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="accessibilitytree"><code>accessibilityTree</code><a class="anchor" href="#accessibilitytree" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">accessibilityTree</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Everything on screen as a screen reader should see it: the open screens (each a <code>dialog</code>, named by its first heading; only the top modal one and what is above it while a modal screen is open, since what is below is blocked) and the permanent HUD. Plain data apart from each node's <code>widget</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ui</code></td><td><code>import('./ui.js').Ui</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{dialogs: A11yNode[], hud: A11yNode[], focused: A11yNode \| null}</code></p>
+<p><sub>src/a11y.js:111</sub></p>
+<h3 id="arrange"><code>arrange</code><a class="anchor" href="#arrange" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">arrange</span>(ui, wd, x, y, w, h)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Place a widget in the box (x, y, w, h) and lay its children out inside it.</p>
+<p><sub>src/layout.js:42</sub></p>
+<h3 id="attachaccessibility"><code>attachAccessibility</code><a class="anchor" href="#attachaccessibility" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">attachAccessibility</span>(ui, { document: doc = globalThis.document, host = <span class="tk-k">null</span>, label = <span class="tk-s">'Game menu'</span>, field = <span class="tk-k">null</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Mirror the UI in the page for assistive technology. The canvas is invisible to a screen reader; this builds a hidden, always up to date set of real elements with the right ARIA roles (buttons, switches, sliders, text fields, lists, headings, dialogs) that it can read and operate: activating one clicks the widget, the arrow keys on a slider go through the same key handling as for everyone else, and moving the screen reader's cursor onto a control moves the UI's focus there. Announcements (<code>ui.announce</code>) go to live regions; opening a screen announces its name. Also sets <code>ui.reducedMotion</code> from the system's reduced-motion setting. Call the returned <code>update()</code> once a frame (it only touches what changed).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ui</code></td><td><code>import('./ui.js').Ui</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.document</code> (optional)</td><td><code>Document</code></td><td></td></tr><tr><td><code>o.host</code> (optional)</td><td><code>HTMLElement</code></td><td>Where the mirror is put (default the end of the body).</td></tr><tr><td><code>o.label</code> (optional)</td><td><code>string</code></td><td>What the whole region is called (&quot;Game menu&quot;).</td></tr><tr><td><code>o.field</code> (optional)</td><td><code>() =&gt; HTMLElement | null</code></td><td>The page's hidden text field, if you use <code>attachDom</code> (<code>() =&gt; dom.input</code>), so it can be labelled with the widget it is editing.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{update: () =&gt; void, detach: () =&gt; void, element: HTMLElement}</code></p>
+<p><sub>src/a11y.js:158</sub></p>
+<h3 id="attachdom"><code>attachDom</code><a class="anchor" href="#attachdom" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">attachDom</span>(ui, element, { scale = <span class="tk-n">1</span>, safeArea = <span class="tk-k">true</span>, window: win = globalThis.window } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Connect a <code>Ui</code> to a page: pointer, touch, wheel and keyboard events go to the UI, and what the UI uses is kept from the game (so a click on a menu button is not also a shot). Typing goes through a hidden <code>&lt;input&gt;</code> so soft keyboards, paste, IME and accents work.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ui</code></td><td><code>import('./ui.js').Ui</code></td><td></td></tr><tr><td><code>element</code></td><td><code>HTMLElement</code></td><td>The element the UI covers (events are taken from it; its size is the viewport).</td></tr><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.scale</code> (optional)</td><td><code>number | ((width: number, height: number) =&gt; number)</code></td><td>UI zoom, fixed or from the viewport size (bigger on touch screens).</td></tr><tr><td><code>o.safeArea</code> (optional)</td><td><code>boolean</code></td><td>Keep the UI inside notches and home bars (default true).</td></tr><tr><td><code>o.window</code> (optional)</td><td><code>Window</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{detach: () =&gt; void, resize: () =&gt; void, sync: () =&gt; void, input: HTMLInputElement \| null}</code></p>
+<p><sub>src/dom.js:30</sub></p>
+<h3 id="audittheme"><code>auditTheme</code><a class="anchor" href="#audittheme" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">auditTheme</span>(theme, { boundaries = <span class="tk-k">false</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Check a theme against the contrast the accessibility guidelines (WCAG 2.1 AA) ask for: text and what it sits on (4.5 to 1), the focus ring against the panel and the controls (3 to 1), and the filled part of a slider against its track (3 to 1). With <code>boundaries: true</code> also the border against the panel (3 to 1), for a look that relies on outlines. Disabled text is exempt.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>theme</code></td><td><code>typeof darkTheme</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{boundaries?: boolean}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{passes: boolean, checks: {name: string, ratio: number, need: number, ok: boolean}[], failures: {name: string, ratio: number, need: number, ok: boolean}[]}</code></p>
+<p><sub>src/theme.js:80</sub></p>
+<h3 id="bindingrows"><code>bindingRows</code><a class="anchor" href="#bindingrows" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">bindingRows</span>(ui, { input, actions, status, onChange, slots = [{ id: <span class="tk-s">'keyboard'</span>, title: <span class="tk-s">'Keyboard / mouse'</span>, devices: [<span class="tk-s">'keyboard'</span>] }, { id: <span class="tk-s">'gamepad'</span>, title: <span class="tk-s">'Gamepad'</span>, devices: [<span class="tk-s">'gamepad'</span>] }] })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Rows that rebind button actions: the action's name, its keyboard / mouse control and its gamepad control. Click a control, press the new one (Escape cancels). A control already used by another action is taken from it, and the screen says so. Only <code>button</code> actions are listed (a movement vector is four keys and is set up by the game).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ui</code></td><td><code>import('./ui.js').Ui</code></td><td></td></tr><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.input</code></td><td><code>import('../../input/src/core.js').InputCore</code></td><td></td></tr><tr><td><code>o.actions</code></td><td><code>{action: string, label: string}[]</code></td><td></td></tr><tr><td><code>o.status</code></td><td><code>Label</code></td><td>A label to report conflicts and errors in.</td></tr><tr><td><code>o.onChange</code> (optional)</td><td><code>() =&gt; void</code></td><td>Called after any change (save the bindings here).</td></tr><tr><td><code>o.slots</code> (optional)</td><td><code>{id: string, title: string, devices: string[]}[]</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/screens.js:53</sub></p>
+<h3 id="confirmdialog"><code>confirmDialog</code><a class="anchor" href="#confirmdialog" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">confirmDialog</span>(ui, { title = <span class="tk-s">'Are you sure?'</span>, message = <span class="tk-s">''</span>, confirm = <span class="tk-s">'OK'</span>, cancel = <span class="tk-s">'Cancel'</span>, danger = <span class="tk-k">false</span>, onAnswer })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A question with two answers. <code>onAnswer(true | false)</code> is called after the dialog closes.</p>
+<p><sub>src/screens.js:29</sub></p>
+<h3 id="contrastratio"><code>contrastRatio</code><a class="anchor" href="#contrastratio" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">contrastRatio</span>(a, b, behind = <span class="tk-k">null</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The contrast ratio between two colours, 1 (none) to 21 (black on white). Text needs 4.5 to read comfortably (3 for large text, and for the edges and focus rings of controls). A colour with some transparency is first laid over <code>behind</code> (default: the other colour).</p>
+<p><sub>src/color.js:49</sub></p>
+<h3 id="createcanvaspainter"><code>createCanvasPainter</code><a class="anchor" href="#createcanvaspainter" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createCanvasPainter</span>(ctx, { family = <span class="tk-s">'system-ui, sans-serif'</span>, weight = <span class="tk-s">'normal'</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Draw with a 2D canvas context (<code>CanvasRenderingContext2D</code>): for a UI over a plain canvas, or an overlay on a game that has no sprite renderer.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ctx</code></td><td><code>CanvasRenderingContext2D</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{family?: string, weight?: string}</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/painter.js:79</sub></p>
+<h3 id="createmenupump"><code>createMenuPump</code><a class="anchor" href="#createmenupump" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createMenuPump</span>(ui, input, { repeatDelay = <span class="tk-n">0.4</span>, repeatRate = <span class="tk-n">0.11</span>, onPrev, onNext } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Call <code>pump.update(dt)</code> every frame after <code>input.update(dt)</code>. Presses become <code>ui.navigate / activate / cancel</code>; a held direction repeats.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ui</code></td><td><code>import('./ui.js').Ui</code></td><td></td></tr><tr><td><code>input</code></td><td><code>{pressed(a: string): boolean, held(a: string): boolean}</code></td><td>An <code>InputCore</code>.</td></tr><tr><td><code>o</code> (optional)</td><td><code>{repeatDelay?: number, repeatRate?: number, onPrev?: () =&gt; void, onNext?: () =&gt; void}</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/input-bridge.js:31</sub></p>
+<h3 id="createrecordingpainter"><code>createRecordingPainter</code><a class="anchor" href="#createrecordingpainter" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createRecordingPainter</span>({ charWidth = <span class="tk-n">0.6</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A painter that records what it was asked to draw, with a fixed-width fake font. For tests and bots: lay out a screen, press buttons, and check the commands, without a browser.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>{charWidth?: number}</code></td><td>Width of a character as a fraction of the font size.</td></tr></tbody></table></div>
+<p><sub>src/painter.js:45</sub></p>
+<h3 id="createspritepainter"><code>createSpritePainter</code><a class="anchor" href="#createspritepainter" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createSpritePainter</span>({ batch, dot, font, fontFor })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Draw into a sprite batch (the engine's 2D renderer), so the UI costs no extra draw calls and works in all three backends.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.batch</code></td><td><code>import('../../render/src/batch.js').SpriteBatch</code></td><td></td></tr><tr><td><code>o.dot</code></td><td><code>object</code></td><td>An atlas sprite that is plain white (any size; it is stretched).</td></tr><tr><td><code>o.font</code> (optional)</td><td><code>import('../../render/src/text.js').Font</code></td><td>The font; text is scaled to the requested size.</td></tr><tr><td><code>o.fontFor</code> (optional)</td><td><code>(size: number) =&gt; import('../../render/src/text.js').Font</code></td><td>Or a font per size (crisper than scaling one font). The batch is not cleared here: clear it yourself at the start of the frame, draw the game's own HUD into it, then call <code>ui.draw()</code>.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>import('./ui.js').Painter &amp; {batch: object}</code></p>
+<p><sub>src/painter.js:13</sub></p>
+<h3 id="createtheme"><code>createTheme</code><a class="anchor" href="#createtheme" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createTheme</span>(overrides = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A theme from the dark one with your overrides on top (<code>colors</code> and <code>text</code> merge key by key).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>overrides</code> (optional)</td><td><code>object</code></td><td>same shape as <code>darkTheme</code>; <code>colors</code> and <code>text</code> merge key by key.</td></tr></tbody></table></div>
+<p><sub>src/theme.js:33</sub></p>
+<h3 id="css"><code>css</code><a class="anchor" href="#css" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">css</span>(c)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A CSS colour string (for canvas painters and the DOM).</p>
+<p><sub>src/color.js:36</sub></p>
+<h3 id="fade"><code>fade</code><a class="anchor" href="#fade" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">fade</span>(c, k)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The colour with its alpha scaled (fading a whole widget).</p>
+<p><sub>src/color.js:33</sub></p>
+<h3 id="hex"><code>hex</code><a class="anchor" href="#hex" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">hex</span>(s)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Parse <code>#rgb</code>, <code>#rrggbb</code> or <code>#rrggbbaa</code>.</p>
+<p><sub>src/color.js:8</sub></p>
+<h3 id="luminance"><code>luminance</code><a class="anchor" href="#luminance" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">luminance</span>(c)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The relative luminance of a colour, 0 (black) to 1 (white), as the accessibility guidelines (WCAG 2) define it. Alpha is ignored.</p>
+<p><sub>src/color.js:39</sub></p>
+<h3 id="menuactions"><code>menuActions</code><a class="anchor" href="#menuactions" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">menuActions</span>(context = <span class="tk-s">'menu'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Actions to add to <code>InputCore</code> / <code>createInput({ actions })</code>. They live in the <code>menu</code> context (declare it with <code>contexts: { menu: { blocking: true } }</code> and push it while a screen is open).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>context</code> (optional)</td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/input-bridge.js:10</sub></p>
+<h3 id="menuscreen"><code>menuScreen</code><a class="anchor" href="#menuscreen" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">menuScreen</span>(ui, { title = <span class="tk-s">''</span>, subtitle = <span class="tk-s">''</span>, items, width = <span class="tk-n">320</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A vertical menu: a title and a column of buttons.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ui</code></td><td><code>import('./ui.js').Ui</code></td><td></td></tr><tr><td><code>o</code></td><td><code>{title?: string, items: {text: string, onClick: () =&gt; void, variant?: string, enabled?: boolean}[], width?: number, subtitle?: string}</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/screens.js:15</sub></p>
+<h3 id="mix"><code>mix</code><a class="anchor" href="#mix" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">mix</span>(a, b, t)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Blend two colours: <code>t</code> 0 gives <code>a</code>, 1 gives <code>b</code>.</p>
+<p><sub>src/color.js:27</sub></p>
+<h3 id="nameof"><code>nameOf</code><a class="anchor" href="#nameof" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">nameOf</span>(w, fromSibling = <span class="tk-s">''</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What a widget is called: its <code>a11y.label</code>, else its text or label, else (for a text field) its placeholder.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>w</code></td><td><code>Widget</code></td><td></td></tr><tr><td><code>fromSibling</code> (optional)</td><td><code>string</code></td><td>The text of the label next to it, if any.</td></tr></tbody></table></div>
+<p><sub>src/a11y.js:50</sub></p>
+<h3 id="naturalsize"><code>naturalSize</code><a class="anchor" href="#naturalsize" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">naturalSize</span>(ui, wd, maxWidth = Infinity)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The size a widget would like, given that it may be at most <code>maxWidth</code> wide (so wrapped text gets taller as it gets narrower).</p>
+<p><strong>Returns</strong> <code>{w: number, h: number}</code></p>
+<p><sub>src/layout.js:11</sub></p>
+<h3 id="readsafeareainsets"><code>readSafeAreaInsets</code><a class="anchor" href="#readsafeareainsets" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">readSafeAreaInsets</span>(doc = globalThis.document)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Safe-area insets (notches, rounded corners, home bars) in CSS pixels, read from <code>env(safe-area-inset-*)</code>. Needs <code>&lt;meta name=&quot;viewport&quot; content=&quot;..., viewport-fit=cover&quot;&gt;</code> to be non-zero.</p>
+<p><sub>src/dom.js:7</sub></p>
+<h3 id="rgba"><code>rgba</code><a class="anchor" href="#rgba" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">rgba</span>(r, g, b, a = <span class="tk-n">255</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Pack red, green, blue and alpha (0..255 each).</p>
+<p><sub>src/color.js:5</sub></p>
+<h3 id="roleof"><code>roleOf</code><a class="anchor" href="#roleof" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">roleOf</span>(w)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The role a widget plays for assistive technology.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>w</code></td><td><code>Widget</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/a11y.js:33</sub></p>
+<h3 id="roombrowser"><code>roomBrowser</code><a class="anchor" href="#roombrowser" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">roomBrowser</span>(ui, { fetchRooms, onJoin, title = <span class="tk-s">'Play online'</span>, name = <span class="tk-s">''</span>, roomPattern = /^[a-z0-<span class="tk-n">9_</span>-]{<span class="tk-n">1</span>,<span class="tk-n">24</span>}$/, onName, onClose })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Pick a room (or make one) and a name. <code>fetchRooms()</code> returns <code>[{name, players, max?}]</code>; <code>onJoin(room, name)</code> is called with the choice.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ui</code></td><td><code>import('./ui.js').Ui</code></td><td></td></tr><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.fetchRooms</code></td><td><code>() =&gt; Promise&lt;{name: string, players?: number, max?: number}[]&gt;</code></td><td></td></tr><tr><td><code>o.onJoin</code></td><td><code>(room: string, name: string) =&gt; void</code></td><td></td></tr><tr><td><code>o.title</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>o.name</code> (optional)</td><td><code>string | null</code></td><td>Starting player name; <code>null</code> hides the name field (a game without names).</td></tr><tr><td><code>o.roomPattern</code> (optional)</td><td><code>RegExp</code></td><td>What a room name may look like.</td></tr><tr><td><code>o.onName</code> (optional)</td><td><code>(name: string) =&gt; void</code></td><td>Called when the name changes (save it).</td></tr><tr><td><code>o.onClose</code> (optional)</td><td><code>() =&gt; void</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/screens.js:195</sub></p>
+<h3 id="settingsscreen"><code>settingsScreen</code><a class="anchor" href="#settingsscreen" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">settingsScreen</span>(ui, { title = <span class="tk-s">'Settings'</span>, tabs, onClose, closeText = <span class="tk-s">'Back'</span>, width = <span class="tk-n">560</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A settings screen: tabs of rows. A row is one of <code>{type: 'slider', label, min, max, step, get, set, format}</code>, <code>{type: 'toggle', label, get, set}</code>, <code>{type: 'choice', label, options, get, set}</code>, <code>{type: 'text', label, get, set, placeholder, maxLength}</code>, <code>{type: 'button', text, onClick}</code>, <code>{type: 'label', text}</code>, <code>{type: 'separator'}</code>, or <code>{type: 'bindings', input, actions: [{action, label}], onChange}</code> (see <code>bindingRows</code>).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ui</code></td><td><code>import('./ui.js').Ui</code></td><td></td></tr><tr><td><code>o</code></td><td><code>{title?: string, tabs: {title: string, rows: object[]}[], onClose?: () =&gt; void, closeText?: string, width?: number}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Panel &amp; {showTab(i: number): void, nextTab(): void, prevTab(): void, tab: number}</code></p>
+<p><sub>src/screens.js:115</sub></p>
+<h3 id="speak"><code>speak</code><a class="anchor" href="#speak" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">speak</span>(n)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A sentence for a node, the way a screen reader would say it (&quot;Music volume, slider, 50%&quot;): for text-to-speech without a browser, and for tests.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>n</code></td><td><code>A11yNode</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/a11y.js:129</sub></p>
+<h3 id="unpack"><code>unpack</code><a class="anchor" href="#unpack" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">unpack</span>(c)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>[r, g, b, a] of a packed colour.</p>
+<p><sub>src/color.js:18</sub></p>
+<h3 id="withalpha"><code>withAlpha</code><a class="anchor" href="#withalpha" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">withAlpha</span>(c, a)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The same colour with another alpha (0..1 or, when above 1, 0..255).</p>
+<p><sub>src/color.js:21</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-button"><code>class Button</code><a class="anchor" href="#class-button" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Button <span class="tk-k">extends</span> Widget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A clickable button. Variants: 'normal', 'primary' (the main choice), 'danger'.</p>
+<h4 id="buttonconstructor"><code>Button.constructor</code><a class="anchor" href="#buttonconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(text = <span class="tk-s">''</span>, { onClick = <span class="tk-k">null</span>, variant = <span class="tk-s">'normal'</span>, ...style } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>text</code></td><td><code>string</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{onClick?: (b: Button) =&gt; void, variant?: string} &amp; object</code></td><td>style keys work too</td></tr></tbody></table></div>
+<h4 id="buttontext"><code>Button.text</code><a class="anchor" href="#buttontext" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> text</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="buttontext-1"><code>Button.text</code><a class="anchor" href="#buttontext-1" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span> <span class="tk-f">text</span>(t)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="buttonmeasure"><code>Button.measure</code><a class="anchor" href="#buttonmeasure" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">measure</span>(ui, maxWidth)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="buttonpaint"><code>Button.paint</code><a class="anchor" href="#buttonpaint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paint</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="buttonpointerup"><code>Button.pointerUp</code><a class="anchor" href="#buttonpointerup" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerUp</span>(ui, x, y, inside)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="buttonactivate"><code>Button.activate</code><a class="anchor" href="#buttonactivate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">activate</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/widgets.js:24</sub></p>
+<h3 id="class-choice"><code>class Choice</code><a class="anchor" href="#class-choice" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Choice <span class="tk-k">extends</span> Control</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Pick one of several options with the arrow keys, a stick, or by clicking the arrows.</p>
+<h4 id="choiceconstructor"><code>Choice.constructor</code><a class="anchor" href="#choiceconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(label, options, index = <span class="tk-n">0</span>, onChange = <span class="tk-k">null</span>, style = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>label</code></td><td><code>string</code></td><td></td></tr><tr><td><code>options</code></td><td><code>(string | {value: any, label: string})[]</code></td><td></td></tr><tr><td><code>index</code></td><td><code>number</code></td><td></td></tr><tr><td><code>onChange</code> (optional)</td><td><code>(value: any, index: number, c: Choice) =&gt; void</code></td><td></td></tr></tbody></table></div>
+<h4 id="choicevalue"><code>Choice.value</code><a class="anchor" href="#choicevalue" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> value</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="choiceselect"><code>Choice.select</code><a class="anchor" href="#choiceselect" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">select</span>(i)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="choicepaint"><code>Choice.paint</code><a class="anchor" href="#choicepaint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paint</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="choicezoneat"><code>Choice.zoneAt</code><a class="anchor" href="#choicezoneat" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">zoneAt</span>(x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="choicepointermove"><code>Choice.pointerMove</code><a class="anchor" href="#choicepointermove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerMove</span>(ui, x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="choicepointerdown"><code>Choice.pointerDown</code><a class="anchor" href="#choicepointerdown" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerDown</span>(ui, x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="choicepointerup"><code>Choice.pointerUp</code><a class="anchor" href="#choicepointerup" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerUp</span>(ui, x, y, inside)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="choicenavigate"><code>Choice.navigate</code><a class="anchor" href="#choicenavigate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">navigate</span>(ui, dir)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="choiceactivate"><code>Choice.activate</code><a class="anchor" href="#choiceactivate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">activate</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/widgets.js:98</sub></p>
+<h3 id="class-control"><code>class Control</code><a class="anchor" href="#class-control" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Control <span class="tk-k">extends</span> Widget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Shared look of a labelled row: the label on the left, the control in the rest.</p>
+<h4 id="controlconstructor"><code>Control.constructor</code><a class="anchor" href="#controlconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(label, style = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="controllabel"><code>Control.label</code><a class="anchor" href="#controllabel" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> label</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="controllabel-1"><code>Control.label</code><a class="anchor" href="#controllabel-1" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span> <span class="tk-f">label</span>(t)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="controllabelwidth"><code>Control.labelWidth</code><a class="anchor" href="#controllabelwidth" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">labelWidth</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Width of the label column.</p>
+<h4 id="controlmeasure"><code>Control.measure</code><a class="anchor" href="#controlmeasure" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">measure</span>(ui, maxWidth)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="controlpaintlabel"><code>Control.paintLabel</code><a class="anchor" href="#controlpaintlabel" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paintLabel</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="controlarea"><code>Control.area</code><a class="anchor" href="#controlarea" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">area</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The box the control itself (not the label) occupies.</p>
+<p><sub>src/widgets.js:56</sub></p>
+<h3 id="class-label"><code>class Label</code><a class="anchor" href="#class-label" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Label <span class="tk-k">extends</span> Widget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Static text. Wraps to the width it is given unless <code>wrap: false</code>. Style: <code>size</code>, <code>color</code>, <code>align</code> ('left' | 'center' | 'right').</p>
+<h4 id="labelconstructor"><code>Label.constructor</code><a class="anchor" href="#labelconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(text = <span class="tk-s">''</span>, style = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>text</code></td><td><code>string</code></td><td></td></tr><tr><td><code>style</code> (optional)</td><td><code>object</code></td><td></td></tr></tbody></table></div>
+<h4 id="labeltext"><code>Label.text</code><a class="anchor" href="#labeltext" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> text</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="labeltext-1"><code>Label.text</code><a class="anchor" href="#labeltext-1" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span> <span class="tk-f">text</span>(t)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="labelmeasure"><code>Label.measure</code><a class="anchor" href="#labelmeasure" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">measure</span>(ui, maxWidth)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="labelpaint"><code>Label.paint</code><a class="anchor" href="#labelpaint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paint</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/widgets.js:7</sub></p>
+<h3 id="class-panel"><code>class Panel</code><a class="anchor" href="#class-panel" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Panel <span class="tk-k">extends</span> Widget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A container that draws a panel behind its children.</p>
+<h4 id="panelconstructor"><code>Panel.constructor</code><a class="anchor" href="#panelconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(style = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>style</code> (optional)</td><td><code>object</code></td><td><code>background</code> defaults to the theme's panel colour, <code>border</code> to its border colour.</td></tr></tbody></table></div>
+<p><sub>src/widget.js:131</sub></p>
+<h3 id="class-progressbar"><code>class ProgressBar</code><a class="anchor" href="#class-progressbar" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> ProgressBar <span class="tk-k">extends</span> Widget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A bar for health, loading, cooldowns. <code>value</code> is 0..1.</p>
+<h4 id="progressbarconstructor"><code>ProgressBar.constructor</code><a class="anchor" href="#progressbarconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(value = <span class="tk-n">0</span>, { label = <span class="tk-s">''</span>, color = <span class="tk-k">null</span>, ...style } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="progressbarmeasure"><code>ProgressBar.measure</code><a class="anchor" href="#progressbarmeasure" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">measure</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="progressbarpaint"><code>ProgressBar.paint</code><a class="anchor" href="#progressbarpaint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paint</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/widgets.js:135</sub></p>
+<h3 id="class-scrolllist"><code>class ScrollList</code><a class="anchor" href="#class-scrolllist" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> ScrollList <span class="tk-k">extends</span> Widget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A list of rows to pick from (rooms, saves, servers). Scrolls by whole rows, so nothing is ever cut in half.</p>
+<h4 id="scrolllistconstructor"><code>ScrollList.constructor</code><a class="anchor" href="#scrolllistconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ items = [], rows = <span class="tk-n">6</span>, rowHeight = <span class="tk-n">0</span>, empty = <span class="tk-s">'Nothing here yet'</span>, onSelect = <span class="tk-k">null</span>, onActivate = <span class="tk-k">null</span>, ...style } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>{items?: {text: string, detail?: string, value?: any}[], rows?: number, rowHeight?: number, empty?: string, onSelect?: (item: object, index: number) =&gt; void, onActivate?: (item: object, index: number) =&gt; void}</code></td><td></td></tr></tbody></table></div>
+<h4 id="scrolllistrowheight"><code>ScrollList.rowHeight</code><a class="anchor" href="#scrolllistrowheight" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">rowHeight</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistsetitems"><code>ScrollList.setItems</code><a class="anchor" href="#scrolllistsetitems" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setItems</span>(items, keepSelection = <span class="tk-k">true</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistselecteditem"><code>ScrollList.selectedItem</code><a class="anchor" href="#scrolllistselecteditem" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> selectedItem</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistmeasure"><code>ScrollList.measure</code><a class="anchor" href="#scrolllistmeasure" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">measure</span>(ui, maxWidth)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistreveal"><code>ScrollList.reveal</code><a class="anchor" href="#scrolllistreveal" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">reveal</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistselect"><code>ScrollList.select</code><a class="anchor" href="#scrolllistselect" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">select</span>(i, notify = <span class="tk-k">true</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistscrollby"><code>ScrollList.scrollBy</code><a class="anchor" href="#scrolllistscrollby" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">scrollBy</span>(rows)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistpaint"><code>ScrollList.paint</code><a class="anchor" href="#scrolllistpaint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paint</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistrowat"><code>ScrollList.rowAt</code><a class="anchor" href="#scrolllistrowat" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">rowAt</span>(ui, y)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistpointerdown"><code>ScrollList.pointerDown</code><a class="anchor" href="#scrolllistpointerdown" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerDown</span>(ui, x, y)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistpointermove"><code>ScrollList.pointerMove</code><a class="anchor" href="#scrolllistpointermove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerMove</span>(ui, x, y)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistpointerup"><code>ScrollList.pointerUp</code><a class="anchor" href="#scrolllistpointerup" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerUp</span>(ui, x, y, inside)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistwheel"><code>ScrollList.wheel</code><a class="anchor" href="#scrolllistwheel" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">wheel</span>(ui, dy)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistnavigate"><code>ScrollList.navigate</code><a class="anchor" href="#scrolllistnavigate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">navigate</span>(ui, dir)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scrolllistactivate"><code>ScrollList.activate</code><a class="anchor" href="#scrolllistactivate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">activate</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/controls.js:164</sub></p>
+<h3 id="class-separator"><code>class Separator</code><a class="anchor" href="#class-separator" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Separator <span class="tk-k">extends</span> Widget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A thin dividing line.</p>
+<h4 id="separatorconstructor"><code>Separator.constructor</code><a class="anchor" href="#separatorconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(style = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="separatorpaint"><code>Separator.paint</code><a class="anchor" href="#separatorpaint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paint</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/widgets.js:147</sub></p>
+<h3 id="class-slider"><code>class Slider</code><a class="anchor" href="#class-slider" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Slider <span class="tk-k">extends</span> Control</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A value between <code>min</code> and <code>max</code>: drag it, or use left / right.</p>
+<h4 id="sliderconstructor"><code>Slider.constructor</code><a class="anchor" href="#sliderconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(label, { min = <span class="tk-n">0</span>, max = <span class="tk-n">1</span>, step = <span class="tk-n">0.05</span>, value = min, format = <span class="tk-k">null</span>, onChange = <span class="tk-k">null</span>, ...style } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>label</code></td><td><code>string</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{min?: number, max?: number, step?: number, value?: number, format?: (v: number) =&gt; string, onChange?: (v: number, s: Slider) =&gt; void}</code></td><td></td></tr></tbody></table></div>
+<h4 id="slidervalue"><code>Slider.value</code><a class="anchor" href="#slidervalue" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> value</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="slidervalue-1"><code>Slider.value</code><a class="anchor" href="#slidervalue-1" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span> <span class="tk-f">value</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="sliderset"><code>Slider.set</code><a class="anchor" href="#sliderset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span>(v, notify = <span class="tk-k">true</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Set the value (snapped to <code>step</code>); <code>notify</code> false changes it without calling <code>onChange</code>.</p>
+<h4 id="slidertrack"><code>Slider.track</code><a class="anchor" href="#slidertrack" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">track</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Where the track and its value text are.</p>
+<h4 id="sliderpaint"><code>Slider.paint</code><a class="anchor" href="#sliderpaint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paint</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="sliderfrompointer"><code>Slider.fromPointer</code><a class="anchor" href="#sliderfrompointer" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">fromPointer</span>(x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="sliderpointerdown"><code>Slider.pointerDown</code><a class="anchor" href="#sliderpointerdown" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerDown</span>(ui, x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="sliderpointermove"><code>Slider.pointerMove</code><a class="anchor" href="#sliderpointermove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerMove</span>(ui, x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="sliderpointerup"><code>Slider.pointerUp</code><a class="anchor" href="#sliderpointerup" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerUp</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="sliderwheel"><code>Slider.wheel</code><a class="anchor" href="#sliderwheel" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">wheel</span>(ui, dy)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="slidernavigate"><code>Slider.navigate</code><a class="anchor" href="#slidernavigate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">navigate</span>(ui, dir)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/controls.js:7</sub></p>
+<h3 id="class-spacer"><code>class Spacer</code><a class="anchor" href="#class-spacer" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Spacer <span class="tk-k">extends</span> Widget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Empty space that takes the remaining room (or a fixed size).</p>
+<h4 id="spacerconstructor"><code>Spacer.constructor</code><a class="anchor" href="#spacerconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(sizeOrStyle = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/widget.js:139</sub></p>
+<h3 id="class-textinput"><code>class TextInput</code><a class="anchor" href="#class-textinput" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> TextInput <span class="tk-k">extends</span> Widget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A single line of editable text with a caret and selection. In a browser the page's own text field does the typing (so mobile keyboards, IME, paste and accents work; see <code>attachDom</code>); the widget just shows the state and also accepts <code>ui.text()</code> / <code>ui.key()</code> from tests and bots.</p>
+<h4 id="textinputconstructor"><code>TextInput.constructor</code><a class="anchor" href="#textinputconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ value = <span class="tk-s">''</span>, placeholder = <span class="tk-s">''</span>, maxLength = <span class="tk-n">200</span>, filter = <span class="tk-k">null</span>, password = <span class="tk-k">false</span>, onChange = <span class="tk-k">null</span>, onSubmit = <span class="tk-k">null</span>, ...style } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>{value?: string, placeholder?: string, maxLength?: number, filter?: RegExp, password?: boolean, onChange?: (v: string) =&gt; void, onSubmit?: (v: string) =&gt; void}</code></td><td></td></tr></tbody></table></div>
+<h4 id="textinputvalue"><code>TextInput.value</code><a class="anchor" href="#textinputvalue" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> value</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="textinputvalue-1"><code>TextInput.value</code><a class="anchor" href="#textinputvalue-1" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span> <span class="tk-f">value</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="textinputset"><code>TextInput.set</code><a class="anchor" href="#textinputset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span>(v, notify = <span class="tk-k">true</span>, caret = <span class="tk-k">null</span>, anchor = <span class="tk-k">null</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Replace the text (and put the caret at the end, or at <code>caret</code>).</p>
+<h4 id="textinputselect"><code>TextInput.select</code><a class="anchor" href="#textinputselect" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">select</span>(anchor, caret = anchor)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Select a range (anchor and caret are character positions).</p>
+<h4 id="textinputselection"><code>TextInput.selection</code><a class="anchor" href="#textinputselection" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> selection</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="textinputinsert"><code>TextInput.insert</code><a class="anchor" href="#textinputinsert" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">insert</span>(str)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Type text at the caret, replacing the selection.</p>
+<h4 id="textinputmeasure"><code>TextInput.measure</code><a class="anchor" href="#textinputmeasure" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">measure</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="textinputshown_"><code>TextInput.shown_</code><a class="anchor" href="#textinputshown_" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">shown_</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="textinputwindow"><code>TextInput.window</code><a class="anchor" href="#textinputwindow" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">window</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>First and last visible character so the caret stays inside the box.</p>
+<h4 id="textinputpaint"><code>TextInput.paint</code><a class="anchor" href="#textinputpaint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paint</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="textinputindexat"><code>TextInput.indexAt</code><a class="anchor" href="#textinputindexat" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">indexAt</span>(ui, x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Character position nearest to x.</p>
+<h4 id="textinputpointerdown"><code>TextInput.pointerDown</code><a class="anchor" href="#textinputpointerdown" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerDown</span>(ui, x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="textinputpointermove"><code>TextInput.pointerMove</code><a class="anchor" href="#textinputpointermove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerMove</span>(ui, x)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="textinputpointerup"><code>TextInput.pointerUp</code><a class="anchor" href="#textinputpointerup" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerUp</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="textinputonfocus"><code>TextInput.onFocus</code><a class="anchor" href="#textinputonfocus" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">onFocus</span>(ui, focused)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="textinputkey"><code>TextInput.key</code><a class="anchor" href="#textinputkey" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">key</span>(ui, code, mods = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/controls.js:63</sub></p>
+<h3 id="class-toggle"><code>class Toggle</code><a class="anchor" href="#class-toggle" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Toggle <span class="tk-k">extends</span> Control</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>An on / off switch.</p>
+<h4 id="toggleconstructor"><code>Toggle.constructor</code><a class="anchor" href="#toggleconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(label, value = <span class="tk-k">false</span>, onChange = <span class="tk-k">null</span>, style = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>label</code></td><td><code>string</code></td><td></td></tr><tr><td><code>value</code></td><td><code>boolean</code></td><td></td></tr><tr><td><code>onChange</code> (optional)</td><td><code>(value: boolean, t: Toggle) =&gt; void</code></td><td></td></tr></tbody></table></div>
+<h4 id="toggleset"><code>Toggle.set</code><a class="anchor" href="#toggleset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="togglepaint"><code>Toggle.paint</code><a class="anchor" href="#togglepaint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paint</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="togglepointerup"><code>Toggle.pointerUp</code><a class="anchor" href="#togglepointerup" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerUp</span>(ui, x, y, inside)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="toggleactivate"><code>Toggle.activate</code><a class="anchor" href="#toggleactivate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">activate</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="togglenavigate"><code>Toggle.navigate</code><a class="anchor" href="#togglenavigate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">navigate</span>(ui, dir)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/widgets.js:78</sub></p>
+<h3 id="class-ui"><code>class Ui</code><a class="anchor" href="#class-ui" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Ui</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Immediate-feeling, retained-mode UI: build a tree of widgets once, change their state when something happens, and call <code>update(dt)</code> and <code>draw()</code> every frame. Screens (menus, dialogs) stack on top of the game; a <code>hud</code> layer holds permanent widgets.</p>
+<p>Input comes from <code>pointerDown/Move/Up</code>, <code>wheel</code>, <code>key</code>, <code>text</code> and the gamepad-style <code>navigate / activate / cancel</code>; every one returns whether the UI used it, so the game can ignore what the UI took. <code>attachDom</code> wires all this to a page.</p>
+<h4 id="uiconstructor"><code>Ui.constructor</code><a class="anchor" href="#uiconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ painter, theme = darkTheme, width = <span class="tk-n">1280</span>, height = <span class="tk-n">720</span>, scale = <span class="tk-n">1</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.painter</code></td><td><code>Painter</code></td><td></td></tr><tr><td><code>o.theme</code> (optional)</td><td><code>import('./theme.js').Theme</code></td><td></td></tr><tr><td><code>o.width</code> (optional)</td><td><code>number</code></td><td>Viewport in CSS pixels.</td></tr><tr><td><code>o.height</code> (optional)</td><td><code>number</code></td><td></td></tr><tr><td><code>o.scale</code> (optional)</td><td><code>number</code></td><td>UI zoom: 1.25 makes everything a quarter bigger (touch screens).</td></tr></tbody></table></div>
+<h4 id="uisettextscale"><code>Ui.setTextScale</code><a class="anchor" href="#uisettextscale" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setTextScale</span>(k)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Draw all text this much bigger (and lay the screens out again to fit it). 1 is normal; 1.25, 1.5 and 2 are common choices.</p>
+<h4 id="uiannounce"><code>Ui.announce</code><a class="anchor" href="#uiannounce" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">announce</span>(text, { assertive = <span class="tk-k">false</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Say something to players who cannot see the screen (a screen reader, or whatever <code>onAnnounce</code> speaks with). <code>assertive</code> interrupts what is being said (use it for danger, not for news).</p>
+<h4 id="uisetviewport"><code>Ui.setViewport</code><a class="anchor" href="#uisetviewport" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setViewport</span>(width, height, scale = <span class="tk-k">this</span>.scale, insets = <span class="tk-k">this</span>.insets)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>width</code></td><td><code>number</code></td><td>CSS pixels</td></tr><tr><td><code>height</code></td><td><code>number</code></td><td></td></tr><tr><td><code>scale</code> (optional)</td><td><code>number</code></td><td></td></tr><tr><td><code>insets</code> (optional)</td><td><code>{top?: number, right?: number, bottom?: number, left?: number}</code></td><td>safe area (notches)</td></tr></tbody></table></div>
+<h4 id="uilogicalwidth"><code>Ui.logicalWidth</code><a class="anchor" href="#uilogicalwidth" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> logicalWidth</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uilogicalheight"><code>Ui.logicalHeight</code><a class="anchor" href="#uilogicalheight" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> logicalHeight</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uiisopen"><code>Ui.isOpen</code><a class="anchor" href="#uiisopen" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> isOpen</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>True while any screen is open.</p>
+<h4 id="uiismodal"><code>Ui.isModal</code><a class="anchor" href="#uiismodal" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> isModal</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>True while a modal screen is open: the game should not react to input.</p>
+<h4 id="uipush"><code>Ui.push</code><a class="anchor" href="#uipush" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">push</span>(widget, { modal = <span class="tk-k">true</span>, dim = modal, dismissable = <span class="tk-k">true</span>, dismissOnBackdrop = <span class="tk-k">false</span>, onCancel, onClose, focus } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Open a screen on top of everything.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>widget</code></td><td><code>Widget</code></td><td>Its <code>anchor</code> style places it ('center' by default).</td></tr><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.modal</code> (optional)</td><td><code>boolean</code></td><td>Blocks input to everything below (default true).</td></tr><tr><td><code>o.dim</code> (optional)</td><td><code>boolean</code></td><td>Darken what is behind (default true when modal).</td></tr><tr><td><code>o.dismissable</code> (optional)</td><td><code>boolean</code></td><td>Escape / B / cancel closes it (default true).</td></tr><tr><td><code>o.dismissOnBackdrop</code> (optional)</td><td><code>boolean</code></td><td>A click outside the screen closes it.</td></tr><tr><td><code>o.onCancel</code> (optional)</td><td><code>() =&gt; (boolean | void)</code></td><td>Called before a dismissal; return false to keep the screen open.</td></tr><tr><td><code>o.onClose</code> (optional)</td><td><code>() =&gt; void</code></td><td></td></tr><tr><td><code>o.focus</code> (optional)</td><td><code>Widget</code></td><td>Initially focused widget (default: the first focusable one).</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{close: () =&gt; void, widget: Widget}</code></p>
+<h4 id="uiclose"><code>Ui.close</code><a class="anchor" href="#uiclose" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">close</span>(widget)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Close the top screen (or the one holding <code>widget</code>).</p>
+<h4 id="uicloseall"><code>Ui.closeAll</code><a class="anchor" href="#uicloseall" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">closeAll</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uiupdate"><code>Ui.update</code><a class="anchor" href="#uiupdate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">update</span>(dt)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Advance time and lay out whatever changed.</p>
+<h4 id="uilayout"><code>Ui.layout</code><a class="anchor" href="#uilayout" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">layout</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uidraw"><code>Ui.draw</code><a class="anchor" href="#uidraw" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">draw</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Draw everything into the painter.</p>
+<h4 id="uifill"><code>Ui.fill</code><a class="anchor" href="#uifill" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">fill</span>(x, y, w, h, color, radius = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uistroke"><code>Ui.stroke</code><a class="anchor" href="#uistroke" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">stroke</span>(x, y, w, h, color, thickness = <span class="tk-n">1</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>An outline drawn inside the box.</p>
+<h4 id="uitext"><code>Ui.text</code><a class="anchor" href="#uitext" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">text</span>(str, x, y, { size = <span class="tk-k">this</span>.theme.text.size, color = <span class="tk-k">this</span>.theme.colors.text, align = <span class="tk-s">'left'</span>, maxWidth, shadow = <span class="tk-k">false</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Text with its top-left (or top-centre / top-right, per <code>align</code>) at (x, y).</p>
+<h4 id="uitextcentered"><code>Ui.textCentered</code><a class="anchor" href="#uitextcentered" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">textCentered</span>(str, cx, cy, o = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Text vertically centred on <code>cy</code>; horizontally centred on <code>cx</code> unless <code>align</code> says <code>cx</code> is the left or right edge.</p>
+<h4 id="uimeasuretext"><code>Ui.measureText</code><a class="anchor" href="#uimeasuretext" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">measureText</span>(str, { size = <span class="tk-k">this</span>.theme.text.size, maxWidth = Infinity } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uilineheight"><code>Ui.lineHeight</code><a class="anchor" href="#uilineheight" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">lineHeight</span>(size = <span class="tk-k">this</span>.theme.text.size)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uifocusring"><code>Ui.focusRing</code><a class="anchor" href="#uifocusring" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">focusRing</span>(w)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uisetfocus"><code>Ui.setFocus</code><a class="anchor" href="#uisetfocus" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setFocus</span>(w)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uinotedevice"><code>Ui.noteDevice</code><a class="anchor" href="#uinotedevice" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">noteDevice</span>(device)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Tell the UI which kind of device the player is using: keyboard and gamepad show the focus ring.</p>
+<h4 id="uitexttarget"><code>Ui.textTarget</code><a class="anchor" href="#uitexttarget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> textTarget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uimovefocus"><code>Ui.moveFocus</code><a class="anchor" href="#uimovefocus" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">moveFocus</span>(step)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uinavigate"><code>Ui.navigate</code><a class="anchor" href="#uinavigate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">navigate</span>(dir)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Move focus (or adjust the focused widget) in a direction: 'up' | 'down' | 'left' | 'right'. Returns true if anything happened.</p>
+<h4 id="uiactivate"><code>Ui.activate</code><a class="anchor" href="#uiactivate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">activate</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Enter / Space / gamepad A on the focused widget.</p>
+<h4 id="uicancel"><code>Ui.cancel</code><a class="anchor" href="#uicancel" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">cancel</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Escape / gamepad B: close the top screen, if it may be dismissed.</p>
+<h4 id="uikey"><code>Ui.key</code><a class="anchor" href="#uikey" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">key</span>(code, mods = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A key press (a <code>KeyboardEvent.code</code>). Returns true if the UI used it. While a modal screen is open the UI keeps all keys.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>code</code></td><td><code>string</code></td><td></td></tr><tr><td><code>mods</code> (optional)</td><td><code>{shift?: boolean, ctrl?: boolean, alt?: boolean}</code></td><td></td></tr></tbody></table></div>
+<h4 id="uiinserttext"><code>Ui.insertText</code><a class="anchor" href="#uiinserttext" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">insertText</span>(str)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Typed text for the focused text field.</p>
+<h4 id="uiwantspointer"><code>Ui.wantsPointer</code><a class="anchor" href="#uiwantspointer" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">wantsPointer</span>(x, y)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Would a pointer at this CSS-pixel position land on the UI (so the game should leave it alone)?</p>
+<h4 id="uipointerdown"><code>Ui.pointerDown</code><a class="anchor" href="#uipointerdown" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerDown</span>(x, y, id = <span class="tk-n">0</span>, type = <span class="tk-s">'mouse'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><strong>Returns</strong> <code>boolean</code> — true if the UI used it</p>
+<h4 id="uipointermove"><code>Ui.pointerMove</code><a class="anchor" href="#uipointermove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerMove</span>(x, y, id = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uipointerup"><code>Ui.pointerUp</code><a class="anchor" href="#uipointerup" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerUp</span>(x, y, id = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uipointercancel"><code>Ui.pointerCancel</code><a class="anchor" href="#uipointercancel" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerCancel</span>(id = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="uiwheel"><code>Ui.wheel</code><a class="anchor" href="#uiwheel" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">wheel</span>(x, y, dy)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The wheel turned at a position; the widget under it (or a parent) may use it.</p>
+<p><sub>src/ui.js:24</sub></p>
+<h3 id="class-widget"><code>class Widget</code><a class="anchor" href="#class-widget" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Widget</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A node in the UI tree. Containers lay their children out (see layout.js); leaf widgets (label, button, ...) measure and draw themselves. Everything is in logical pixels; the <code>Ui</code> applies the scale.</p>
+<p>Style (all optional):</p>
+<ul><li><code>direction</code>: 'column' (default), 'row' or 'stack' (children overlap, placed by <code>anchor</code>).</li><li><code>gap</code>, <code>padding</code> (number, [vertical, horizontal] or [top, right, bottom, left]).</li><li><code>align</code>: cross axis, 'stretch' (default), 'start', 'center', 'end'. <code>justify</code>: main axis, 'start' (default), 'center', 'end', 'between'.</li><li><code>width</code> / <code>height</code>: a number, or 'fill' (take the free space); <code>grow</code>: share of free space along the parent's main axis; <code>minWidth</code>, <code>minHeight</code>, <code>maxWidth</code>, <code>maxHeight</code>; <code>alignSelf</code> overrides the parent's <code>align</code> for this child.</li><li><code>anchor</code> (children of a 'stack'): 'fill' (default), 'center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'; <code>offsetX</code>, <code>offsetY</code>.</li><li><code>background</code>, <code>border</code>: packed colours (or true for the theme's panel colours); <code>radius</code>.</li></ul>
+<h4 id="widgetconstructor"><code>Widget.constructor</code><a class="anchor" href="#widgetconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(style = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>style</code> (optional)</td><td><code>object</code></td><td></td></tr></tbody></table></div>
+<h4 id="widgetadd"><code>Widget.add</code><a class="anchor" href="#widgetadd" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">add</span>(...kids)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Add children (arrays and null/false are accepted, so <code>add(cond &amp;&amp; widget)</code> works).</p>
+<h4 id="widgetremove"><code>Widget.remove</code><a class="anchor" href="#widgetremove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">remove</span>(kid)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="widgetclear"><code>Widget.clear</code><a class="anchor" href="#widgetclear" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">clear</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="widgetroot"><code>Widget.root</code><a class="anchor" href="#widgetroot" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">root</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="widgetinvalidate"><code>Widget.invalidate</code><a class="anchor" href="#widgetinvalidate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">invalidate</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Ask for a new layout (a size-affecting change happened).</p>
+<h4 id="widgetwalk"><code>Widget.walk</code><a class="anchor" href="#widgetwalk" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">walk</span>(fn)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Visit this widget and every descendant (parents first); return false from <code>fn</code> to skip the children.</p>
+<h4 id="widgetfind"><code>Widget.find</code><a class="anchor" href="#widgetfind" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">find</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="widgetshown"><code>Widget.shown</code><a class="anchor" href="#widgetshown" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> shown</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>True when this widget and all its ancestors are shown.</p>
+<h4 id="widgetsetvisible"><code>Widget.setVisible</code><a class="anchor" href="#widgetsetvisible" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setVisible</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="widgetsetenabled"><code>Widget.setEnabled</code><a class="anchor" href="#widgetsetenabled" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setEnabled</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="widgetpad"><code>Widget.pad</code><a class="anchor" href="#widgetpad" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> pad</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Padding as {t, r, b, l}.</p>
+<h4 id="widgetcontains"><code>Widget.contains</code><a class="anchor" href="#widgetcontains" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">contains</span>(px, py)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Is the point inside this widget's box?</p>
+<h4 id="widgetmeasure"><code>Widget.measure</code><a class="anchor" href="#widgetmeasure" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">measure</span>(ui, maxWidth)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Natural size of the content (without padding) when it may be at most <code>maxWidth</code> wide. Containers need not override.</p>
+<h4 id="widgetpaint"><code>Widget.paint</code><a class="anchor" href="#widgetpaint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">paint</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Draw this widget's own content (the background is already drawn).</p>
+<h4 id="widgetdraw"><code>Widget.draw</code><a class="anchor" href="#widgetdraw" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">draw</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Draw background, own content, children.</p>
+<h4 id="widgetpointerdown"><code>Widget.pointerDown</code><a class="anchor" href="#widgetpointerdown" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerDown</span>(ui, x, y)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Pointer pressed on this widget (coordinates are logical).</p>
+<h4 id="widgetpointermove"><code>Widget.pointerMove</code><a class="anchor" href="#widgetpointermove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerMove</span>(ui, x, y)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The pointer moved while this widget has it captured.</p>
+<h4 id="widgetpointerup"><code>Widget.pointerUp</code><a class="anchor" href="#widgetpointerup" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">pointerUp</span>(ui, x, y, inside)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Released; <code>inside</code> says whether it is still over the widget (a click).</p>
+<h4 id="widgetwheel"><code>Widget.wheel</code><a class="anchor" href="#widgetwheel" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">wheel</span>(ui, dy)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The mouse wheel turned over this widget; return true if it was used.</p>
+<h4 id="widgetnavigate"><code>Widget.navigate</code><a class="anchor" href="#widgetnavigate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">navigate</span>(ui, dir)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A direction key / stick push while focused; return true if used (a slider takes left and right).</p>
+<h4 id="widgetactivate"><code>Widget.activate</code><a class="anchor" href="#widgetactivate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">activate</span>(ui)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Enter / Space / gamepad A while focused.</p>
+<h4 id="widgetkey"><code>Widget.key</code><a class="anchor" href="#widgetkey" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">key</span>(ui, code, mods)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A key while focused; return true if used.</p>
+<h4 id="widgetonfocus"><code>Widget.onFocus</code><a class="anchor" href="#widgetonfocus" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">onFocus</span>(ui, focused)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Called when focus arrives or leaves.</p>
+<p><sub>src/widget.js:14</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="darktheme"><code>darkTheme</code><a class="anchor" href="#darktheme" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> darkTheme</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Everything a widget needs to look like part of one game: colours (packed, see color.js), text sizes and spacing, in logical pixels. Pass overrides to <code>createTheme</code>; anything left out keeps the default, so a game restyles only what it cares about.</p>
+<p>Value: <code>{</code></p>
+<p><sub>src/theme.js:8</sub></p>
+<h3 id="highcontrasttheme"><code>highContrastTheme</code><a class="anchor" href="#highcontrasttheme" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> highContrastTheme</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A theme for players who need strong contrast: white on black, yellow accents, thick borders and focus rings, a taller row. It passes <code>auditTheme</code> with the boundary checks too. Offer it in the settings (<code>ui.theme = highContrastTheme</code>, then <code>ui.setViewport(...)</code> to lay out again).</p>
+<p>Value: <code>createTheme({</code></p>
+<p><sub>src/theme.js:60</sub></p>
+<h3 id="lighttheme"><code>lightTheme</code><a class="anchor" href="#lighttheme" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> lightTheme</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A lighter variant, mostly to show that a theme is only data.</p>
+<p>Value: <code>createTheme({</code></p>
+<p><sub>src/theme.js:42</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="a11ynode"><code>A11yNode</code><a class="anchor" href="#a11ynode" aria-label="Link to this section">#</a></h3>
+<p>What a screen reader is told about one widget.</p>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td><code>string</code></td><td>Stable for the widget while it lives (its <code>id</code> style, or one made for it).</td></tr><tr><td><code>role</code></td><td><code>'button' | 'switch' | 'slider' | 'spinbutton' | 'textbox' | 'listbox' | 'option' | 'progressbar' | 'text' | 'heading' | 'separator' | 'group' | 'dialog'</code></td><td></td></tr><tr><td><code>name</code></td><td><code>string</code></td><td>What it is called (&quot;Music volume&quot;, &quot;Resume&quot;).</td></tr><tr><td><code>description</code> (optional)</td><td><code>string</code></td><td>Extra help (&quot;Type a room name&quot;).</td></tr><tr><td><code>value</code> (optional)</td><td><code>string</code></td><td>What it holds, as it should be read (&quot;50%&quot;, &quot;Hard&quot;); never the text of a password.</td></tr><tr><td><code>valueNow</code> (optional)</td><td><code>number</code></td><td></td></tr><tr><td><code>valueMin</code> (optional)</td><td><code>number</code></td><td></td></tr><tr><td><code>valueMax</code> (optional)</td><td><code>number</code></td><td>For sliders, spin buttons and progress bars.</td></tr><tr><td><code>checked</code> (optional)</td><td><code>boolean</code></td><td>For switches.</td></tr><tr><td><code>selected</code> (optional)</td><td><code>boolean</code></td><td>For options.</td></tr><tr><td><code>level</code> (optional)</td><td><code>number</code></td><td>For headings (1 is the biggest).</td></tr><tr><td><code>password</code> (optional)</td><td><code>boolean</code></td><td></td></tr><tr><td><code>disabled</code></td><td><code>boolean</code></td><td></td></tr><tr><td><code>focused</code></td><td><code>boolean</code></td><td></td></tr><tr><td><code>focusable</code></td><td><code>boolean</code></td><td></td></tr><tr><td><code>modal</code></td><td><code>boolean</code></td><td>For dialogs.</td></tr><tr><td><code>bounds</code></td><td><code>{x: number, y: number, w: number, h: number}</code></td><td>Where it is on screen, in CSS pixels (for a screen magnifier or a touch explorer).</td></tr><tr><td><code>children</code></td><td><code>A11yNode[]</code></td><td></td></tr><tr><td><code>widget</code></td><td><code>Widget</code></td><td>The widget itself (so a front end can act on it).</td></tr></tbody></table></div>
+<h3 id="a11yoptions"><code>A11yOptions</code><a class="anchor" href="#a11yoptions" aria-label="Link to this section">#</a></h3>
+<p>Optional help for the screen reader, set on any widget: <code>widget.a11y = { label, description, role, hidden, live }</code>. <code>label</code> replaces the name worked out from its text, <code>description</code> adds help, <code>role</code> overrides the role, <code>hidden: true</code> leaves a decorative widget out, and <code>live: 'polite' | 'assertive'</code> makes changes to a text widget be announced.</p>
+<p>Type: <code>{label?: string, description?: string, role?: A11yNode['role'], hidden?: boolean, live?: 'polite' \| 'assertive'}</code></p>
+<h3 id="painter"><code>Painter</code><a class="anchor" href="#painter" aria-label="Link to this section">#</a></h3>
+<p>What the UI draws with (see painter.js for ready-made ones). Sizes and positions are in screen pixels.</p>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>rect</code></td><td><code>(x: number, y: number, w: number, h: number, color: number, radius: number) =&gt; void</code></td><td></td></tr><tr><td><code>text</code></td><td><code>(text: string, x: number, y: number, o: {size: number, color: number, align: string, maxWidth?: number, shadow?: boolean}) =&gt; void</code></td><td><code>y</code> is the top of the first line</td></tr><tr><td><code>measure</code></td><td><code>(text: string, o: {size: number, maxWidth?: number}) =&gt; {width: number, height: number}</code></td><td></td></tr></tbody></table></div>
+<h3 id="theme"><code>Theme</code><a class="anchor" href="#theme" aria-label="Link to this section">#</a></h3>
+<p>Everything a widget needs to look like part of one game: colours (packed, see color.js), text sizes and spacing, in logical pixels. Pass overrides to <code>createTheme</code>; anything left out keeps the default, so a game restyles only what it cares about.</p>
+<p>Type: <code>typeof darkTheme</code></p><div class="pager"><a href="particles.html"><small>Previous</small>particles</a><a class="next" href="input.html"><small>Next</small>input</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-47-of-47-documented">Contents (47 of 47 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#accessibilitytree">accessibilityTree</a><a class="l3" href="#arrange">arrange</a><a class="l3" href="#attachaccessibility">attachAccessibility</a><a class="l3" href="#attachdom">attachDom</a><a class="l3" href="#audittheme">auditTheme</a><a class="l3" href="#bindingrows">bindingRows</a><a class="l3" href="#confirmdialog">confirmDialog</a><a class="l3" href="#contrastratio">contrastRatio</a><a class="l3" href="#createcanvaspainter">createCanvasPainter</a><a class="l3" href="#createmenupump">createMenuPump</a><a class="l3" href="#createrecordingpainter">createRecordingPainter</a><a class="l3" href="#createspritepainter">createSpritePainter</a><a class="l3" href="#createtheme">createTheme</a><a class="l3" href="#css">css</a><a class="l3" href="#fade">fade</a><a class="l3" href="#hex">hex</a><a class="l3" href="#luminance">luminance</a><a class="l3" href="#menuactions">menuActions</a><a class="l3" href="#menuscreen">menuScreen</a><a class="l3" href="#mix">mix</a><a class="l3" href="#nameof">nameOf</a><a class="l3" href="#naturalsize">naturalSize</a><a class="l3" href="#readsafeareainsets">readSafeAreaInsets</a><a class="l3" href="#rgba">rgba</a><a class="l3" href="#roleof">roleOf</a><a class="l3" href="#roombrowser">roomBrowser</a><a class="l3" href="#settingsscreen">settingsScreen</a><a class="l3" href="#speak">speak</a><a class="l3" href="#unpack">unpack</a><a class="l3" href="#withalpha">withAlpha</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-button">class Button</a><a class="l3" href="#class-choice">class Choice</a><a class="l3" href="#class-control">class Control</a><a class="l3" href="#class-label">class Label</a><a class="l3" href="#class-panel">class Panel</a><a class="l3" href="#class-progressbar">class ProgressBar</a><a class="l3" href="#class-scrolllist">class ScrollList</a><a class="l3" href="#class-separator">class Separator</a><a class="l3" href="#class-slider">class Slider</a><a class="l3" href="#class-spacer">class Spacer</a><a class="l3" href="#class-textinput">class TextInput</a><a class="l3" href="#class-toggle">class Toggle</a><a class="l3" href="#class-ui">class Ui</a><a class="l3" href="#class-widget">class Widget</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#darktheme">darkTheme</a><a class="l3" href="#highcontrasttheme">highContrastTheme</a><a class="l3" href="#lighttheme">lightTheme</a><a class="l2" href="#types">Types</a><a class="l3" href="#a11ynode">A11yNode</a><a class="l3" href="#a11yoptions">A11yOptions</a><a class="l3" href="#painter">Painter</a><a class="l3" href="#theme">Theme</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

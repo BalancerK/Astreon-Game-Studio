@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/debug · Astreon Engine</title>
+<meta name="description" content="In-page overlay: live graphs and a decoded packet inspector (F3).">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html" class="on">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginedebug">@engine/debug</h1>
+<p>In-page overlay: live graphs and a decoded packet inspector (F3).</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/debug</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/debug.html">packages/debug</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-6-of-6-documented">Contents (6 of 6 documented)<a class="anchor" href="#contents-6-of-6-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-debugoverlay"><code>DebugOverlay</code></a></td><td>class</td><td>In-page debug panel: live graphs for each series, info lines and a packet inspector.</td></tr><tr><td><a href="#class-overlaymodel"><code>OverlayModel</code></a></td><td>class</td><td>The data side of the debug overlay: named series sampled on a timer, info lines, and a packet log.</td></tr><tr><td><a href="#class-packetlog"><code>PacketLog</code></a></td><td>class</td><td>Ring buffer of recent packets plus running totals per direction and type.</td></tr><tr><td><a href="#class-timeseries"><code>TimeSeries</code></a></td><td>class</td><td>Fixed-size ring of numbers (oldest overwritten).</td></tr><tr><td><a href="#drawgraph"><code>drawGraph</code></a></td><td>function</td><td>Draw a time series as a line graph into a 2D context.</td></tr><tr><td><a href="#niceceil"><code>niceCeil</code></a></td><td>function</td><td>Smallest &quot;nice&quot; number (1, 2, 5 x 10^n) that is &gt;= v, for tidy graph ranges.</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="drawgraph"><code>drawGraph</code><a class="anchor" href="#drawgraph" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">drawGraph</span>(ctx, series, rect, { min = <span class="tk-n">0</span>, max = <span class="tk-k">null</span>, color = <span class="tk-s">'#7fd4ff'</span>, background = <span class="tk-s">'rgba(255,255,255,0.06)'</span>, warnAbove = <span class="tk-k">null</span>, warnColor = <span class="tk-s">'#ff7a7a'</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Draw a time series as a line graph into a 2D context. Newest sample is at the right edge; gaps (NaN) break the line. Returns the value range used, so the caller can label it.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ctx</code></td><td><code>CanvasRenderingContext2D</code></td><td></td></tr><tr><td><code>series</code></td><td><code>import('./time-series.js').TimeSeries</code></td><td></td></tr><tr><td><code>rect</code></td><td><code>{x: number, y: number, w: number, h: number}</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.min</code> (optional)</td><td><code>number</code></td><td></td></tr><tr><td><code>o.max</code> (optional)</td><td><code>number | null</code></td><td>null = fit to the data (rounded up to a nice number)</td></tr><tr><td><code>o.color</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>o.background</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>o.warnAbove</code> (optional)</td><td><code>number | null</code></td><td>Draws a threshold line and colours points above it.</td></tr><tr><td><code>o.warnColor</code> (optional)</td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{min: number, max: number}</code></p>
+<p><sub>src/graph.js:27</sub></p>
+<h3 id="niceceil"><code>niceCeil</code><a class="anchor" href="#niceceil" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">niceCeil</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Smallest &quot;nice&quot; number (1, 2, 5 x 10^n) that is &gt;= v, for tidy graph ranges.</p>
+<p><sub>src/graph.js:2</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-debugoverlay"><code>class DebugOverlay</code><a class="anchor" href="#class-debugoverlay" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> DebugOverlay</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>In-page debug panel: live graphs for each series, info lines and a packet inspector. Toggle with F3 (or <code>toggle()</code>). Sampling always runs (cheap) so history is there when you open it; drawing only happens while it is visible.</p>
+<h4 id="debugoverlayconstructor"><code>DebugOverlay.constructor</code><a class="anchor" href="#debugoverlayconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ title = <span class="tk-s">'Debug'</span>, open = <span class="tk-k">false</span>, hotkey = <span class="tk-s">'F3'</span>, parent = document.body, model = <span class="tk-k">new</span> <span class="tk-f">OverlayModel</span>(), intervalMs = <span class="tk-n">100</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.title</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>o.open</code> (optional)</td><td><code>boolean</code></td><td></td></tr><tr><td><code>o.hotkey</code> (optional)</td><td><code>string | null</code></td><td>KeyboardEvent.code, or null for none.</td></tr><tr><td><code>o.parent</code> (optional)</td><td><code>HTMLElement</code></td><td></td></tr><tr><td><code>o.model</code> (optional)</td><td><code>OverlayModel</code></td><td></td></tr><tr><td><code>o.intervalMs</code> (optional)</td><td><code>number</code></td><td>Sampling/refresh period.</td></tr></tbody></table></div>
+<h4 id="debugoverlayaddseries"><code>DebugOverlay.addSeries</code><a class="anchor" href="#debugoverlayaddseries" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addSeries</span>(name, def)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Convenience passthroughs so callers can configure the overlay directly.</p>
+<h4 id="debugoverlayaddinfo"><code>DebugOverlay.addInfo</code><a class="anchor" href="#debugoverlayaddinfo" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addInfo</span>(label, read)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="debugoverlaytap"><code>DebugOverlay.tap</code><a class="anchor" href="#debugoverlaytap" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tap</span>(transport)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="debugoverlayopen"><code>DebugOverlay.open</code><a class="anchor" href="#debugoverlayopen" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">open</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="debugoverlayclose"><code>DebugOverlay.close</code><a class="anchor" href="#debugoverlayclose" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">close</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="debugoverlaytoggle"><code>DebugOverlay.toggle</code><a class="anchor" href="#debugoverlaytoggle" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">toggle</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="debugoverlayrefresh"><code>DebugOverlay.refresh</code><a class="anchor" href="#debugoverlayrefresh" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">refresh</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Redraw everything from the model now.</p>
+<h4 id="debugoverlaydestroy"><code>DebugOverlay.destroy</code><a class="anchor" href="#debugoverlaydestroy" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">destroy</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/overlay.js:12</sub></p>
+<h3 id="class-overlaymodel"><code>class OverlayModel</code><a class="anchor" href="#class-overlaymodel" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> OverlayModel</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The data side of the debug overlay: named series sampled on a timer, info lines, and a packet log. No DOM here, so it is fully testable in Node.</p>
+<h4 id="overlaymodelconstructor"><code>OverlayModel.constructor</code><a class="anchor" href="#overlaymodelconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ now = () =&gt; performance.<span class="tk-f">now</span>(), samples = <span class="tk-n">100</span>, packetCapacity = <span class="tk-n">200</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.now</code> (optional)</td><td><code>() =&gt; number</code></td><td></td></tr><tr><td><code>o.samples</code> (optional)</td><td><code>number</code></td><td>History length per series.</td></tr><tr><td><code>o.packetCapacity</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="overlaymodeladdseries"><code>OverlayModel.addSeries</code><a class="anchor" href="#overlaymodeladdseries" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addSeries</span>(name, def)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr><tr><td><code>def</code></td><td><code>SeriesDef</code></td><td></td></tr></tbody></table></div>
+<h4 id="overlaymodeladdinfo"><code>OverlayModel.addInfo</code><a class="anchor" href="#overlaymodeladdinfo" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addInfo</span>(label, read)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>label</code></td><td><code>string</code></td><td></td></tr><tr><td><code>read</code></td><td><code>() =&gt; string</code></td><td></td></tr></tbody></table></div>
+<h4 id="overlaymodelsample"><code>OverlayModel.sample</code><a class="anchor" href="#overlaymodelsample" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">sample</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read every series once. Call at a steady interval (the overlay does, every 100 ms).</p>
+<h4 id="overlaymodelinfolines"><code>OverlayModel.infoLines</code><a class="anchor" href="#overlaymodelinfolines" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">infoLines</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><strong>Returns</strong> <code>[string, string][]</code> — Label/value pairs; failing readers show &quot;?&quot;.</p>
+<h4 id="overlaymodeltap"><code>OverlayModel.tap</code><a class="anchor" href="#overlaymodeltap" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tap</span>(transport)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Wrap a transport so every packet in or out is decoded and logged. Pass the returned wrapper to your client.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>transport</code></td><td><code>T</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/model.js:24</sub></p>
+<h3 id="class-packetlog"><code>class PacketLog</code><a class="anchor" href="#class-packetlog" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> PacketLog</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Ring buffer of recent packets plus running totals per direction and type. Can be paused to read a moment closely.</p>
+<h4 id="packetlogconstructor"><code>PacketLog.constructor</code><a class="anchor" href="#packetlogconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(capacity = <span class="tk-n">200</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>capacity</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="packetlogadd"><code>PacketLog.add</code><a class="anchor" href="#packetlogadd" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">add</span>(e)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>e</code></td><td><code>PacketEntry</code></td><td>Totals always update; the visible list stops while paused.</td></tr></tbody></table></div>
+<h4 id="packetlogentries"><code>PacketLog.entries</code><a class="anchor" href="#packetlogentries" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">entries</span>(limit = <span class="tk-k">this</span>.capacity)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>limit</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>PacketEntry[]</code> — Newest first.</p>
+<h4 id="packetlogtotal"><code>PacketLog.total</code><a class="anchor" href="#packetlogtotal" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">total</span>(dir)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><strong>Returns</strong> <code>{count: number, bytes: number}</code> — Totals for one direction.</p>
+<h4 id="packetlogclear"><code>PacketLog.clear</code><a class="anchor" href="#packetlogclear" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">clear</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/packet-log.js:12</sub></p>
+<h3 id="class-timeseries"><code>class TimeSeries</code><a class="anchor" href="#class-timeseries" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> TimeSeries</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Fixed-size ring of numbers (oldest overwritten). NaN marks &quot;no data&quot; and is ignored by statistics.</p>
+<h4 id="timeseriesconstructor"><code>TimeSeries.constructor</code><a class="anchor" href="#timeseriesconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(capacity = <span class="tk-n">100</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>capacity</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="timeserieslength"><code>TimeSeries.length</code><a class="anchor" href="#timeserieslength" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> length</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="timeseriespush"><code>TimeSeries.push</code><a class="anchor" href="#timeseriespush" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">push</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="timeseriesat"><code>TimeSeries.at</code><a class="anchor" href="#timeseriesat" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">at</span>(i)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>i</code></td><td><code>number</code></td><td>0 = oldest retained sample.</td></tr></tbody></table></div>
+<h4 id="timeseriesclear"><code>TimeSeries.clear</code><a class="anchor" href="#timeseriesclear" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">clear</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="timeseriesstats"><code>TimeSeries.stats</code><a class="anchor" href="#timeseriesstats" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">stats</span>(n = <span class="tk-k">this</span>.count)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>n</code> (optional)</td><td><code>number</code></td><td>Only the newest n samples.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{last: number, min: number, max: number, avg: number, samples: number}</code> — NaN fields when there is no data.</p>
+<p><sub>src/time-series.js:2</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="packetentry"><code>PacketEntry</code><a class="anchor" href="#packetentry" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>Object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>time</code></td><td><code>number</code></td><td>Milliseconds on the caller's clock.</td></tr><tr><td><code>dir</code></td><td><code>'in' | 'out'</code></td><td></td></tr><tr><td><code>channel</code></td><td><code>number</code></td><td>0 reliable, 1 unreliable</td></tr><tr><td><code>size</code></td><td><code>number</code></td><td>Payload bytes.</td></tr><tr><td><code>type</code></td><td><code>string</code></td><td>Message type name, e.g. SNAPSHOT.</td></tr><tr><td><code>summary</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<h3 id="seriesdef"><code>SeriesDef</code><a class="anchor" href="#seriesdef" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>Object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>label</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>unit</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>read</code></td><td><code>() =&gt; number</code></td><td>Current value (or a cumulative counter when <code>rate</code> is set).</td></tr><tr><td><code>rate</code> (optional)</td><td><code>boolean</code></td><td><code>read</code> is a running total: plot its change per second instead.</td></tr><tr><td><code>scale</code> (optional)</td><td><code>number</code></td><td>Multiplier applied to the value (e.g. 1/1024 for bytes -&gt; KB).</td></tr><tr><td><code>color</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>warnAbove</code> (optional)</td><td><code>number | null</code></td><td></td></tr><tr><td><code>min</code> (optional)</td><td><code>number</code></td><td></td></tr><tr><td><code>max</code> (optional)</td><td><code>number | null</code></td><td></td></tr><tr><td><code>decimals</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div><div class="pager"><a href="create-game.html"><small>Previous</small>create-game</a><a class="next" href="mods.html"><small>Next</small>mods</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-6-of-6-documented">Contents (6 of 6 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#drawgraph">drawGraph</a><a class="l3" href="#niceceil">niceCeil</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-debugoverlay">class DebugOverlay</a><a class="l3" href="#class-overlaymodel">class OverlayModel</a><a class="l3" href="#class-packetlog">class PacketLog</a><a class="l3" href="#class-timeseries">class TimeSeries</a><a class="l2" href="#types">Types</a><a class="l3" href="#packetentry">PacketEntry</a><a class="l3" href="#seriesdef">SeriesDef</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

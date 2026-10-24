@@ -1,0 +1,652 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>3D render self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+import { parseGltf, loadGltfTextures, addGltfToDrawList, TextureSet, proceduralTexture, Skeleton, createSkinnedMesh, createMesh, Camera3D, DrawList3D, createBox, createPlane, createSphere, createCylinder, createCapsule, createLighting, createRenderer3D, createRenderer, Atlas, SpriteBatch, Camera, Font, packTint, ParticleBatch } from '../src/index.js';
+
+const W = 320, H = 240;
+const CLEAR = [0.55, 0.65, 0.78, 1];
+const box = createBox(1, 1, 1), sphere = createSphere(0.6, 32, 20), plane = createPlane(40, 40, 1, 1), cylinder = createCylinder(0.4, 1.2, 24), capsule = createCapsule(0.35, 1.6, 20, 8);
+
+const clampSat = (v) => Math.max(0, Math.min(1, v));
+const normalize = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+/** The shading model written out on the CPU: what a pixel on a surface with normal n at world point p must look like. */
+function shade(color, n, p, cam, L) {
+  const l = normalize(L.direction);
+  const ndl = Math.max(dot(n, l), 0);
+  const hemi = [0, 1, 2].map((i) => L.ambientGround[i] + (L.ambientSky[i] - L.ambientGround[i]) * (n[1] * 0.5 + 0.5));
+  const toCam = [cam.x - p[0], cam.y - p[1], cam.z - p[2]], dist = Math.hypot(...toCam);
+  const v = normalize(toCam), h = normalize([l[0] + v[0], l[1] + v[1], l[2] + v[2]]);
+  const spec = Math.pow(Math.max(dot(n, h), 0), 48) * L.specular * ndl;
+  const f = 1 - Math.exp(-((dist * L.fogDensity) ** 2));
+  const pd = [0, 0, 0], ps = [0, 0, 0]; // point lights
+  for (const pl of (L.pointLights ?? []).slice(0, 32)) {
+    const to = [pl.x - p[0], pl.y - p[1], pl.z - p[2]], d = Math.hypot(...to);
+    if (d >= pl.radius) continue;
+    const q = d / pl.radius, att = (1 - q * q) ** 2, ld = normalize(to), nl = Math.max(dot(n, ld), 0);
+    const pc = (pl.color ?? [1, 1, 1]).map((c) => c * (pl.intensity ?? 1));
+    const hh = normalize([ld[0] + v[0], ld[1] + v[1], ld[2] + v[2]]);
+    for (let k = 0; k < 3; k++) { pd[k] += pc[k] * att * nl; ps[k] += pc[k] * Math.pow(Math.max(dot(n, hh), 0), 48) * L.specular * nl * att; }
+  }
+  return [0, 1, 2].map((i) => {
+    const rgb = color[i] * (hemi[i] + L.color[i] * ndl + pd[i]) + L.color[i] * spec + ps[i];
+    return Math.round(255 * clampSat(rgb + (L.fogColor[i] - rgb) * f));
+  });
+}
+
+function read(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d');
+  g.drawImage(renderer.canvas, 0, 0);
+  const img = g.getImageData(0, 0, c.width, c.height);
+  return { px: (x, y) => [...img.data.slice((y * c.width + x) * 4, (y * c.width + x) * 4 + 3)], img };
+}
+const near = (a, b, tol = 6) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
+
+// a 1 m box skinned to one joint, for the texture test
+const skinnedBox = (() => {
+  const b = createBox(1, 1, 1);
+  const n = b.vertexCount;
+  const mesh = createSkinnedMesh(b.vertices, b.indices, new Array(n * 4).fill(0), Array.from({ length: n * 4 }, (_, i) => (i % 4 === 0 ? 1 : 0)), 1, 'skinned-box');
+  return { mesh, matrix: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.5, 0, 1]), palette: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]) };
+})();
+
+function buildScene(list) {
+  list.clear();
+  list.addTransform(plane, 0, 0, 0, null, 1, 1, 1, 0.55, 0.55, 0.5);                       // ground
+  list.addTransform(box, -1.5, 0.5, 0, null, 1, 1, 1, 0.9, 0.1, 0.1);                       // red cube
+  list.addTransform(sphere, 1.5, 0.6, 0, null, 1, 1, 1, 0.1, 0.8, 0.2);                     // green sphere
+  list.addTransform(box, 0, 0.5, -8, null, 1, 1, 1, 0.1, 0.2, 0.9);                         // blue cube, far away
+  list.addTransform(sphere, 5, 0.6, -8, null, 1, 1, 1, 0.1, 0.8, 0.2);                    // a second green sphere, 14 m away instead of 6
+  list.addTransform(box, -0.75, 1.0, 3, null, 0.3, 0.3, 0.3, 0.95, 0.6, 0.1);              // a small orange cube on the line of sight to the red cube centre
+  list.addTransform(cylinder, 3.5, 0.6, -2, null, 1, 1, 1, 0.8, 0.8, 0.2);                  // yellow cylinder
+  list.addTransform(capsule, -3.5, 0.8, -2, null, 1, 1, 1, 0.7, 0.2, 0.7);                  // purple capsule
+}
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer3D({ prefer: [kind], antialias: false });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const camera = new Camera3D({ x: 0, y: 1.5, z: 6, yaw: 0, pitch: -0.15, fovY: 1.0, viewW: W, viewH: H, far: 200 });
+    const list = new DrawList3D();
+    const L = { ...createLighting(), fogDensity: 0 };
+    buildScene(list);
+    renderer.render({ camera, list, clear: CLEAR, lighting: L });
+    camera.update();
+    const { px } = read(renderer);
+    const to = (x, y, z) => { const s = camera.worldToScreen(x, y, z); return [Math.round(s.x), Math.round(s.y)]; };
+    const at = (x, y, z) => px(...to(x, y, z));
+
+    add('sky: the clear colour where nothing is drawn', near(px(4, 4), CLEAR.slice(0, 3).map((v) => Math.round(v * 255)), 3), px(4, 4), CLEAR.slice(0, 3).map((v) => Math.round(v * 255)));
+    const ground = [0.55, 0.55, 0.5];
+    add('ground: matches the shading model', near(at(0, 0, 2), shade(ground, [0, 1, 0], [0, 0, 2], camera, L), 7), at(0, 0, 2), shade(ground, [0, 1, 0], [0, 0, 2], camera, L));
+    add('red cube top (normal +y): matches the shading model', near(at(-1.5, 1, 0.0), shade([0.9, 0.1, 0.1], [0, 1, 0], [-1.5, 1, 0], camera, L), 7), at(-1.5, 1, 0), shade([0.9, 0.1, 0.1], [0, 1, 0], [-1.5, 1, 0], camera, L));
+    add('red cube front (normal +z): matches the shading model', near(at(-1.97, 0.2, 0.5), shade([0.9, 0.1, 0.1], [0, 0, 1], [-1.97, 0.2, 0.5], camera, L), 7), at(-1.97, 0.2, 0.5), shade([0.9, 0.1, 0.1], [0, 0, 1], [-1.97, 0.2, 0.5], camera, L));
+    // the sphere: at a point facing the camera the normal is known from the geometry
+    const sp = [1.5 + 0.6 * 0.3, 0.6 + 0.6 * 0.5, 0.6 * Math.sqrt(1 - 0.09 - 0.25)], sn = [0.3, 0.5, Math.sqrt(1 - 0.09 - 0.25)];
+    add('sphere: smooth normals match the shading model', near(at(sp[0], sp[1], sp[2]), shade([0.1, 0.8, 0.2], sn, sp, camera, L), 12), at(sp[0], sp[1], sp[2]), shade([0.1, 0.8, 0.2], sn, sp, camera, L));
+    add('depth: the near cube hides the red cube behind it', near(at(-0.75, 1.0, 3.15), shade([0.95, 0.6, 0.1], [0, 0, 1], [-0.75, 1.0, 3.15], camera, L), 8), at(-0.75, 1.0, 3.15), 'orange');
+    add('depth: the red cube is visible where the near cube is not', near(at(-1.97, 0.2, 0.5), [190, 20, 20], 70), at(-1.97, 0.2, 0.5), 'red');
+    add('ground is hidden behind the cube sitting on it (depth test across draws)', !near(at(-1.5, 0.5, 0.5), shade(ground, [0, 1, 0], [-1.5, 0, 0.5], camera, L), 20), at(-1.5, 0.5, 0.5), 'not ground');
+
+    // perspective: two identical spheres, 6 m and 14 m from the camera: the far one is drawn about 6/14 as wide
+    const width = (y, test) => { let first = -1, last = -1; for (let x = 0; x < W; x++) if (test(px(x, y))) { if (first < 0) first = x; last = x; } return first < 0 ? 0 : last - first + 1; };
+    const isGreen = (c) => c[1] > 40 && c[1] > c[0] * 1.6 && c[1] > c[2] * 1.6;
+    const nearSphere = width(to(1.5, 0.6, 0)[1], (c) => isGreen(c));
+    const farRow = to(5, 0.6, -8)[1];
+    const farSphere = (() => { let first = -1, last = -1; const x0 = to(5, 0.6, -8)[0]; for (let x = x0 - 14; x < x0 + 14; x++) if (isGreen(px(x, farRow))) { if (first < 0) first = x; last = x; } return first < 0 ? 0 : last - first + 1; })();
+    const ratio = farSphere / Math.max(1, nearSphere);
+    add('perspective: a sphere 14 m away is drawn about 6/14 as wide as the same sphere at 6 m', nearSphere > 20 && ratio > 0.3 && ratio < 0.62, [nearSphere, farSphere, +ratio.toFixed(2)], 'ratio about 0.43');
+
+    // culling: a plane seen from underneath is not drawn
+    const under = new Camera3D({ x: 0, y: -3, z: 6, pitch: 0.3, fovY: 1.0, viewW: W, viewH: H, far: 200 });
+    list.clear(); list.addTransform(plane, 0, 0, 0, null, 1, 1, 1, 1, 0, 0);
+    renderer.render({ camera: under, list, clear: CLEAR, lighting: L });
+    const below = read(renderer);
+    add('culling: back faces are not drawn (a floor seen from below is invisible)', near(below.px(W >> 1, H >> 1), CLEAR.slice(0, 3).map((v) => Math.round(v * 255)), 3), below.px(W >> 1, H >> 1), 'sky');
+
+    // transparency: a half-transparent red cube over the sky
+    list.clear(); list.addTransform(box, 0, 0, 0, null, 3, 3, 3, 1, 0, 0, 0.5);
+    const front = new Camera3D({ x: 0, y: 0, z: 5, fovY: 1.0, viewW: W, viewH: H });
+    renderer.render({ camera: front, list, clear: CLEAR, lighting: { ...L, specular: 0 } });
+    const blend = read(renderer).px(W >> 1, H >> 1);
+    const faceLit = shade([1, 0, 0], [0, 0, 1], [0, 0, 1.5], front, { ...L, specular: 0 });
+    const expectedBlend = [0, 1, 2].map((i) => Math.round(faceLit[i] * 0.5 + CLEAR[i] * 255 * 0.5));
+    add('alpha blending: half-transparent colour mixes with what is behind', near(blend, expectedBlend, 10), blend, expectedBlend);
+
+    // fog: a far object fades toward the fog colour
+    list.clear(); list.addTransform(box, 0, 0.5, -30, null, 6, 6, 6, 0.1, 0.2, 0.9);
+    const lf = { ...L, fogDensity: 0.03, fogColor: [0.9, 0.9, 0.9] };
+    renderer.render({ camera, list, clear: [0.9, 0.9, 0.9, 1], lighting: lf });
+    const fogged = read(renderer).px(...to(0, 0.5, -27));
+    const expectedFog = shade([0.1, 0.2, 0.9], [0, 0, 1], [0, 0.5, -27], camera, lf);
+    add('fog: a far surface is pulled toward the fog colour as the model says', near(fogged, expectedFog, 10) && fogged[0] > 120, fogged, expectedFog);
+
+    // many instances: a grid of 4,000 cubes in one draw call, each drawn at its own place
+    list.clear();
+    for (let i = 0; i < 4000; i++) list.addTransform(box, (i % 40) - 20, 0.5, -((i / 40) | 0) - 2, null, 0.8, 0.8, 0.8, (i % 5) / 4, ((i >> 3) % 5) / 4, 0.6);
+    const top = new Camera3D({ x: 0, y: 40, z: -50, pitch: -1.5707, fovY: 1.0, viewW: W, viewH: H, far: 300 });
+    renderer.render({ camera: top, list, clear: CLEAR, lighting: L });
+    const distinct = new Set();
+    const g = read(renderer);
+    for (let y = 0; y < H; y += 6) for (let x = 0; x < W; x += 6) distinct.add(g.px(x, y).join(','));
+    add('instancing: thousands of instances each at its own place and colour', distinct.size > 12, [distinct.size], ['> 12 distinct colours']);
+
+    // resize: new size, new depth buffer, still correct
+    renderer.resize(200, 150, 1);
+    camera.setViewport(200, 150);
+    buildScene(list);
+    renderer.render({ camera, list, clear: CLEAR, lighting: L });
+    const small = read(renderer);
+    const s2 = camera.update().worldToScreen(-1.5, 1, 0);
+    add('resize: renders correctly at a new size (and a new depth buffer)', near(small.px(Math.round(s2.x), Math.round(s2.y)), shade([0.9, 0.1, 0.1], [0, 1, 0], [-1.5, 1, 0], camera, L), 8) && renderer.canvas.width === 200, small.px(Math.round(s2.x), Math.round(s2.y)), 'red top');
+
+    // a 2D HUD on a transparent canvas stacked over the 3D view (the two canvases composited the way the page would)
+    {
+      const atlas = new Atlas({ size: 128 });
+      const sq = atlas.add('sq', 16, 16, (g2, x, y, w2, h2) => { g2.fillStyle = '#fff'; g2.fillRect(x, y, w2, h2); });
+      const hud = await createRenderer({ atlas, prefer: [kind === 'webgpu' ? 'webgpu' : 'webgl2'], transparent: true });
+      hud.resize(W, H, 1);
+      const hb = new SpriteBatch(4);
+      hb.push(60, 40, 40, 40, 0, sq, packTint(255, 255, 0));
+      hud.render({ camera: Camera.screen(W, H), batch: hb }); // default clear: transparent
+      buildScene(list);
+      renderer.render({ camera, list, clear: CLEAR, lighting: L });
+      const composite = document.createElement('canvas'); composite.width = W; composite.height = H;
+      const cg = composite.getContext('2d');
+      cg.drawImage(renderer.canvas, 0, 0);
+      const hudOnly = document.createElement('canvas'); hudOnly.width = W; hudOnly.height = H;
+      const hg = hudOnly.getContext('2d'); hg.drawImage(hud.canvas, 0, 0);
+      const alphaAt = (x, y) => hg.getImageData(x, y, 1, 1).data[3];
+      cg.drawImage(hud.canvas, 0, 0);
+      const comp = (x, y) => [...cg.getImageData(x, y, 1, 1).data.slice(0, 3)];
+      add('HUD: the transparent 2D canvas is opaque only where it drew', alphaAt(60, 40) === 255 && alphaAt(200, 100) === 0 && alphaAt(10, 10) === 0, [alphaAt(60, 40), alphaAt(200, 100)], [255, 0]);
+      add('HUD: stacked over the 3D view it shows the sprite and the scene around it', near(comp(60, 40), [255, 255, 0], 8) && near(comp(4, 4), CLEAR.slice(0, 3).map((v) => Math.round(v * 255)), 3), [comp(60, 40), comp(4, 4)], 'yellow over sky');
+      hud.destroy?.();
+    }
+
+    // skinning: a bent tube drawn by the GPU must match the same tube skinned on the CPU and drawn as a plain mesh
+    {
+      renderer.resize(W, H, 1);
+      const sk = new Skeleton([{ parent: -1 }, { parent: 0, t: [0, 1, 0] }, { parent: 1, t: [0, 1, 0] }]);
+      const rows = 13, segs = 12, verts = [], joints = [], weights = [], idx = [];
+      const smooth = (a, b, y) => { const t = Math.max(0, Math.min(1, (y - a) / (b - a))); return t * t * (3 - 2 * t); };
+      for (let r = 0; r < rows; r++) {
+        const y = (r / (rows - 1)) * 3;
+        const w1 = smooth(0.7, 1.3, y), w2 = smooth(1.7, 2.3, y);
+        for (let k = 0; k <= segs; k++) {
+          const a = (k / segs) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+          verts.push(c * 0.25, y, sn * 0.25, c, 0, sn);
+          joints.push(0, 1, 2, 0); weights.push((1 - w1) * (1 - w2), w1 * (1 - w2), w2, 0);
+        }
+      }
+      for (let r = 0; r + 1 < rows; r++) for (let k = 0; k < segs; k++) { const i = r * (segs + 1) + k; idx.push(i, i + 1, i + segs + 2, i, i + segs + 2, i + segs + 1); }
+      const skinned = createSkinnedMesh(verts, idx, joints, weights, 3, 'tube');
+      const pose = sk.createPose().setRest(sk);
+      const rotZ = (a) => [0, 0, Math.sin(a / 2), Math.cos(a / 2)];
+      pose.r.set(rotZ(0.9), 4); pose.r.set(rotZ(-1.2), 8);
+      const palette = sk.computePalette(pose);
+      // the same thing on the CPU
+      const cpu = new Float32Array(verts.length);
+      const apply = (m, x, y, z, w) => [m[0] * x + m[4] * y + m[8] * z + m[12] * w, m[1] * x + m[5] * y + m[9] * z + m[13] * w, m[2] * x + m[6] * y + m[10] * z + m[14] * w];
+      for (let v = 0; v < verts.length / 6; v++) {
+        const pos = [0, 0, 0], nor = [0, 0, 0];
+        for (let k = 0; k < 4; k++) {
+          const wk = skinned.skin[v * 8 + 4 + k]; if (wk === 0) continue;
+          const m = palette.subarray(skinned.skin[v * 8 + k] * 16, skinned.skin[v * 8 + k] * 16 + 16);
+          const pp = apply(m, verts[v * 6], verts[v * 6 + 1], verts[v * 6 + 2], 1), nn = apply(m, verts[v * 6 + 3], verts[v * 6 + 4], verts[v * 6 + 5], 0);
+          for (let a = 0; a < 3; a++) { pos[a] += pp[a] * wk; nor[a] += nn[a] * wk; }
+        }
+        cpu.set([...pos, ...nor], v * 6);
+      }
+      const cpuMesh = createMesh(cpu, idx, 'tube-cpu');
+      const I = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+      const cam = new Camera3D({ x: 0.5, y: 1.6, z: 7, yaw: 0, pitch: 0, fovY: 0.9, viewW: W, viewH: H, far: 100 });
+      const draw = (fill) => { list.clear(); list.add(plane, I, 0.5, 0.5, 0.45); fill(); renderer.render({ camera: cam, list, clear: CLEAR, lighting: L }); return read(renderer); };
+      const gpuImg = draw(() => list.addSkinned(skinned, I, palette, 0.9, 0.3, 0.2));
+      const cpuImg = draw(() => list.add(cpuMesh, I, 0.9, 0.3, 0.2));
+      const restImg = draw(() => list.addSkinned(skinned, I, sk.computePalette(sk.createPose().setRest(sk)), 0.9, 0.3, 0.2));
+      let sumGpuCpu = 0, sumRest = 0, count = 0, worst = 0;
+      for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) {
+        const a = gpuImg.px(x, y), b = cpuImg.px(x, y), c = restImg.px(x, y);
+        for (let k = 0; k < 3; k++) { const d = Math.abs(a[k] - b[k]); sumGpuCpu += d; if (d > worst) worst = d; sumRest += Math.abs(a[k] - c[k]); count++; }
+      }
+      add('skinning: the GPU image of a bent tube matches the same tube skinned on the CPU', sumGpuCpu / count < 0.6 && worst < 60, [+(sumGpuCpu / count).toFixed(3), worst], 'mean < 0.6');
+      add('skinning: the bent pose really differs from the bind pose', sumRest / count > 2, [+(sumRest / count).toFixed(2)], '> 2');
+      // many instances with different palettes, and a plain mesh drawn together with them
+      list.clear(); list.add(plane, I, 0.5, 0.5, 0.45);
+      const rest = sk.computePalette(sk.createPose().setRest(sk));
+      for (let i = 0; i < 300; i++) { const m = new Float32Array(I); m[12] = (i % 20) * 1.2 - 12; m[14] = -Math.floor(i / 20) * 1.5; list.addSkinned(skinned, m, i % 2 ? palette : rest, 0.9, 0.3, 0.2); }
+      list.add(box, I, 0.2, 0.3, 0.9);
+      renderer.render({ camera: cam, list, clear: CLEAR, lighting: L });
+      const many = read(renderer), seen = new Set();
+      for (let y = 0; y < H; y += 5) for (let x = 0; x < W; x += 5) seen.add(many.px(x, y).join(','));
+      add('skinning: hundreds of skinned instances with different palettes alongside plain meshes', seen.size > 15, [seen.size], '> 15 colours');
+    }
+
+    // textures: uv mapping (orientation), planar mapping, mipmaps, tint, several layers in one draw, meshes without uv, skinned meshes
+    {
+      renderer.resize(W, H, 1);
+      const set = new TextureSet({ size: 64, maxLayers: 8 });
+      const quad = new Uint8Array(64 * 64 * 4);
+      const quadColors = [[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 0]]; // top left, top right, bottom left, bottom right
+      for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) { const c = quadColors[(y >= 32 ? 2 : 0) + (x >= 32 ? 1 : 0)]; quad.set([...c, 255], (y * 64 + x) * 4); }
+      const lQuad = set.add({ width: 64, height: 64, data: quad }, 'quadrants');
+      const checkColors = [1, 0.9, 0.2, 0.1, 0.2, 0.9];
+      const lCheck = set.add(proceduralTexture('checker', 64, { cells: 8, colors: checkColors }), 'checker');
+      const lFine = set.add(proceduralTexture('checker', 64, { cells: 64, colors: [1, 1, 1, 0, 0, 0] }), 'fine');
+      const lGreen = set.add(proceduralTexture('solid', 64, { colors: [0.2, 0.9, 0.3, 1] }), 'green');
+      renderer.setTextures(set);
+      const TL = { ...L, fogDensity: 0 };
+      const tcam = new Camera3D({ x: 0, y: 3, z: 8, yaw: 0, pitch: -0.25, fovY: 1.0, viewW: W, viewH: H, far: 200 }).update();
+      const tpx = (img, x, y, z) => { const s2 = tcam.worldToScreen(x, y, z); return img.px(Math.round(s2.x), Math.round(s2.y)); };
+      const ground = [0.55, 0.55, 0.5], white = [1, 1, 1];
+      list.clear(); list.setCamera(null);
+      list.addTransform(plane, 0, 0, 0, null, 1, 1, 1, ground[0], ground[1], ground[2]);
+      list.setMaterial(lQuad, 'uv', 1);
+      list.addTransform(box, -2.5, 1.5, 0, null, 3, 3, 0.4, 1, 1, 1);          // the quadrants texture, by the box's own uv
+      list.setMaterial(lCheck, 'planar', 0.25);
+      list.addTransform(box, 2.5, 1.5, 0, null, 3, 3, 0.4, 1, 1, 1);           // the checker, projected from the world (same mesh, another layer, one draw)
+      list.setMaterial(lCheck, 'planar', 0.25);
+      list.addTransform(plane, 0, 0.01, -20, null, 1, 1, 1, 1, 1, 1);          // far ground with the same checker (a different instance of the plane, textured)
+      list.setMaterial(null);
+      renderer.render({ camera: tcam, list, clear: CLEAR, lighting: TL });
+      const img = read(renderer);
+      const front = (x, y, z) => shade(white, [0, 0, 1], [x, y, z], tcam, TL);
+      const lit = (texel, n, p) => shade(texel, n, p, tcam, TL);
+      const quadAt = (x, y) => lit(quadColors[(y < 1.5 ? 2 : 0) + (x > -2.5 ? 1 : 0)].map((v) => v / 255), [0, 0, 1], [x, y, 0.2]);
+      const ok4 = [[-3.25, 2.25], [-1.75, 2.25], [-3.25, 0.75], [-1.75, 0.75]].every(([x, y]) => near(tpx(img, x, y, 0.2), quadAt(x, y), 14));
+      add('textures: a texture mapped by the mesh uv shows its four quadrants the right way up (top left, top right, bottom left, bottom right)', ok4, [-3.25, 2.25].concat(tpx(img, -3.25, 2.25, 0.2)), 'red green blue yellow');
+      void front;
+      // planar mapping on the second box's front face: u = x * 0.25, v = -y * 0.25, 8 cells per tile, so cell = (floor(2x), floor(-2y))
+      const cell = (i, j) => ((i + j) & 1 ? checkColors.slice(3) : checkColors.slice(0, 3));
+      const probes = [[1.25, 2.25], [1.75, 2.25], [1.25, 1.75], [1.75, 1.75], [3.25, 0.75], [3.75, 0.75]];
+      const planarOk = probes.every(([x, y]) => near(tpx(img, x, y, 0.2), lit(cell(Math.floor(2 * x), Math.floor(-2 * y)), [0, 0, 1], [x, y, 0.2]), 14));
+      add('textures: planar mapping projects the texture from the world (box faces, no uv needed) and layers differ within one draw call', planarOk, probes.map(([x, y]) => tpx(img, x, y, 0.2).join('/')), 'the checker cells');
+      // the ground, top-down projection: u = x * 0.25, v = z * 0.25
+      list.clear();
+      list.setMaterial(lCheck, 'planar', 0.25);
+      list.addTransform(plane, 0, 0, 0, null, 1, 1, 1, 1, 1, 1);
+      renderer.render({ camera: tcam, list, clear: CLEAR, lighting: TL });
+      const gimg = read(renderer);
+      const gp = [[0.25, 2.25], [0.75, 2.25], [0.25, 2.75], [-0.75, 1.25], [1.75, 1.75]];
+      const groundOk = gp.every(([x, z]) => near(tpx(gimg, x, 0, z), lit(cell(Math.floor(2 * x), Math.floor(2 * z)), [0, 1, 0], [x, 0, z]), 14));
+      add('textures: the ground is textured from above with the texture repeating across it', groundOk, gp.map(([x, z]) => tpx(gimg, x, 0, z).join('/')), 'the checker cells');
+      // mipmaps: a one-pixel checker far away must average out (grey, smooth), not shimmer
+      list.clear();
+      list.setMaterial(lFine, 'planar', 1);
+      list.addTransform(plane, 0, 0, -40, null, 1, 1, 1, 1, 1, 1);
+      renderer.render({ camera: tcam, list, clear: CLEAR, lighting: { ...TL, color: [0, 0, 0] } });
+      const mimg = read(renderer);
+      const row = []; const farY = Math.round(tcam.worldToScreen(0, 0, -30).y);
+      for (let x = 100; x < 140; x++) row.push(mimg.px(x, farY)[0]);
+      const mean = row.reduce((a, b) => a + b, 0) / row.length, spread = Math.max(...row) - Math.min(...row);
+      const ambient = shade([1, 1, 1], [0, 1, 0], [0, 0, -30], tcam, { ...TL, color: [0, 0, 0], specular: 0 })[0];
+      add('textures: mipmaps average a fine pattern far away (a smooth mid grey, no shimmer)', Math.abs(mean - ambient * 0.5) < 14 && spread < 14, [Math.round(mean), spread, Math.round(ambient * 0.5)], 'about half of white, steady');
+      // the instance colour tints the texture
+      list.clear();
+      list.setMaterial(lQuad, 'uv', 1);
+      list.addTransform(box, 0, 1.5, 0, null, 3, 3, 0.4, 0.5, 1, 1);
+      renderer.render({ camera: tcam, list, clear: CLEAR, lighting: TL });
+      const timg = read(renderer);
+      const tint = lit([0.5, 0, 0], [0, 0, 1], [-0.75, 2.25, 0.2]);
+      add('textures: the instance colour multiplies the texture', near(tpx(timg, -0.75, 2.25, 0.2), tint, 14), [tpx(timg, -0.75, 2.25, 0.2), tint], tint);
+      // a mesh with no texture coordinates reads the texture at (0, 0) everywhere (here: a solid layer, so one colour)
+      const bare = createMesh([-1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 1], [0, 1, 2], 'bare');
+      list.clear();
+      list.setMaterial(lGreen, 'uv', 1);
+      list.add(bare, new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]), 1, 1, 1, 1);
+      renderer.render({ camera: tcam, list, clear: CLEAR, lighting: TL });
+      const bimg = read(renderer);
+      add('textures: a mesh without uv shows one texel across its whole surface', near(tpx(bimg, 0, 0.7, 0), lit([0.2, 0.9, 0.3], [0, 0, 1], [0, 0.7, 0]), 14), [tpx(bimg, 0, 0.7, 0)], 'green');
+      // a skinned mesh can be textured too (planar mapping uses the skinned world position)
+      list.clear();
+      list.setMaterial(lGreen, 'planar', 0.25);
+      list.addSkinned(skinnedBox.mesh, skinnedBox.matrix, skinnedBox.palette, 1, 1, 1, 1);
+      renderer.render({ camera: tcam, list, clear: CLEAR, lighting: TL });
+      const simg = read(renderer);
+      add('textures: skinned meshes take textures too', near(tpx(simg, 0, 1.0, 0.4), lit([0.2, 0.9, 0.3], [0, 0, 1], [0, 1.0, 0.4]), 14), [tpx(simg, 0, 1.0, 0.4)], 'green');
+      // a real glTF: an embedded PNG (made here with a canvas), decoded by the browser's own decoder, drawn by its uv
+      {
+        const c = document.createElement('canvas'); c.width = 16; c.height = 16;
+        const g = c.getContext('2d');
+        g.fillStyle = '#ff2020'; g.fillRect(0, 0, 8, 16); g.fillStyle = '#2020ff'; g.fillRect(8, 0, 8, 16); // left half red, right half blue
+        const png = c.toDataURL('image/png');
+        const pos = new Float32Array([-1.5, 0, 0, 1.5, 0, 0, -1.5, 3, 0, 1.5, 3, 0]), uvs = new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]);
+        const bytes = new Uint8Array(pos.byteLength + uvs.byteLength + 12);
+        bytes.set(new Uint8Array(pos.buffer), 0); bytes.set(new Uint8Array(uvs.buffer), pos.byteLength);
+        new Uint16Array(bytes.buffer, pos.byteLength + uvs.byteLength, 6).set([0, 1, 3, 0, 3, 2]);
+        const b64 = btoa(String.fromCharCode(...bytes));
+        const json = {
+          asset: { version: '2.0' }, buffers: [{ byteLength: bytes.length, uri: 'data:application/octet-stream;base64,' + b64 }],
+          bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 48 }, { buffer: 0, byteOffset: 48, byteLength: 32 }, { buffer: 0, byteOffset: 80, byteLength: 12 }],
+          accessors: [{ bufferView: 0, componentType: 5126, count: 4, type: 'VEC3' }, { bufferView: 1, componentType: 5126, count: 4, type: 'VEC2' }, { bufferView: 2, componentType: 5123, count: 6, type: 'SCALAR' }],
+          images: [{ uri: png }], textures: [{ source: 0 }], materials: [{ pbrMetallicRoughness: { baseColorTexture: { index: 0 } } }],
+          meshes: [{ primitives: [{ attributes: { POSITION: 0, TEXCOORD_0: 1 }, indices: 2, material: 0 }] }], nodes: [{ mesh: 0 }], scenes: [{ nodes: [0] }], scene: 0,
+        };
+        const model = parseGltf(json);
+        const gset = new TextureSet({ size: 64, maxLayers: 2 });
+        const layers = await loadGltfTextures(model, gset);
+        renderer.setTextures(gset);
+        list.clear();
+        addGltfToDrawList(list, model, new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]), {}, layers);
+        renderer.render({ camera: tcam, list, clear: CLEAR, lighting: TL });
+        const gl2 = read(renderer);
+        const left = tpx(gl2, -0.75, 1.5, 0), right = tpx(gl2, 0.75, 1.5, 0);
+        add('textures: a glTF with an embedded PNG is decoded by the browser and drawn with its uv (left half red, right half blue)', left[0] > left[2] * 2 && right[2] > right[0] * 2, [left, right], 'red | blue');
+      }
+      renderer.setTextures(null);
+      out.textureSamples = [];
+      for (let y = 2; y < H; y += 8) for (let x = 2; x < W; x += 8) out.textureSamples.push(...img.px(x, y));
+    }
+
+    // point lights: a dark scene lit only by two lamps (the sun is off), checked against the same formula on the CPU
+    {
+      renderer.resize(W, H, 1);
+      const pcam = new Camera3D({ x: 1, y: 6, z: 9, yaw: 0, pitch: -0.55, fovY: 1.1, viewW: W, viewH: H, far: 100 }).update();
+      const pto = (x, y, z) => { const s2 = pcam.worldToScreen(x, y, z); return [Math.round(s2.x), Math.round(s2.y)]; };
+      const lampA = { x: -2, y: 2.5, z: 0, radius: 8, color: [1, 1, 1], intensity: 1.2 }, lampB = { x: 3, y: 1.5, z: 0, radius: 5, color: [1, 0.2, 0.1], intensity: 1 };
+      const PL = { ...L, color: [0, 0, 0], fogDensity: 0, pointLights: [lampA, lampB] };
+      const groundColor = [0.55, 0.55, 0.5];
+      const draw = (lighting) => {
+        list.clear(); list.setCamera(null);
+        list.addTransform(plane, 0, 0, 0, null, 1, 1, 1, groundColor[0], groundColor[1], groundColor[2]);
+        list.addTransform(box, -2, 0.5, -3, null, 1, 1, 1, 0.8, 0.8, 0.8);
+        renderer.render({ camera: pcam, list, clear: CLEAR, lighting });
+        return read(renderer);
+      };
+      const img = draw(PL);
+      const ground = (x, z) => [x, 0, z];
+      const expect = (p, n = [0, 1, 0], c = groundColor, lighting = PL) => shade(c, n, p, pcam, lighting);
+      const probe = (name, p, tol = 10, n, c, lighting) => add(name, near(img.px(...pto(...p)), expect(p, n, c, lighting), tol), [img.px(...pto(...p)), expect(p, n, c, lighting)], 'the lighting formula');
+      probe('point lights: ground under a lamp matches the lighting formula (falloff, diffuse and specular)', ground(-2, 0));
+      probe('point lights: ground near the edge of a lamp\'s reach matches (smooth falloff)', ground(-2 + 6.5, 1));
+      probe('point lights: two lamps add up where their light overlaps', ground(0.5, 0));
+      probe('point lights: a lamp tints what it lights (the red one)', ground(3, 1), 10);
+      const red = img.px(...pto(3, 0, 0.5));
+      add('point lights: the red lamp makes the ground under it red', red[0] > red[1] * 1.5 && red[0] > red[2] * 1.5, red, 'r much higher than g and b');
+      probe('point lights: the top of the cube is lit from above', [-2, 1, -3], 10, [0, 1, 0], [0.8, 0.8, 0.8]);
+      const farPoint = ground(8, -6), ambient = shade(groundColor, [0, 1, 0], farPoint, pcam, { ...PL, pointLights: [] });
+      add('point lights: nothing is lit beyond a lamp\'s radius (only ambient light remains)', near(img.px(...pto(...farPoint)), ambient, 3), [img.px(...pto(...farPoint)), ambient], ambient);
+      // more than 32 lamps: the extra ones are ignored, not an error
+      const many = Array.from({ length: 40 }, (_, i) => (i < 32 ? { x: -40, y: 1, z: -40, radius: 1, color: [0, 0, 0] } : { x: -2, y: 1, z: 0, radius: 6, color: [1, 1, 1] }));
+      const capped = draw({ ...PL, pointLights: many });
+      const cappedPx = capped.px(...pto(-2, 0, 0)), darkPx = expect(ground(-2, 0), [0, 1, 0], groundColor, { ...PL, pointLights: [] });
+      add('point lights: only the first 32 are used', near(cappedPx, darkPx, 3), [cappedPx, darkPx], 'ambient only');
+      // an intensity of zero, and no lights at all, light nothing
+      const dark = draw({ ...PL, pointLights: [{ ...lampA, intensity: 0 }] }).px(...pto(-2, 0, 0));
+      add('point lights: a lamp of intensity 0 adds nothing', near(dark, darkPx, 3), [dark, darkPx], darkPx);
+      out.pointSamples = [];
+      for (let y = 2; y < H; y += 8) for (let x = 2; x < W; x += 8) out.pointSamples.push(...img.px(x, y));
+    }
+
+    // particles: soft sprites, additive light, depth testing without depth writes, streaks, decals, always facing the camera
+    {
+      renderer.resize(W, H, 1);
+      const cam = new Camera3D({ x: 0, y: 2, z: 8, yaw: 0, pitch: 0, fovY: 1.0, viewW: W, viewH: H, far: 100 }).update();
+      const at = (c, x, y, z) => { const s2 = c.worldToScreen(x, y, z); return [Math.round(s2.x), Math.round(s2.y)]; };
+      const clearPx = CLEAR.slice(0, 3).map((v) => v * 255);
+      const draw = (fill, { scene, camera = cam } = {}) => {
+        list.clear(); list.setCamera(null);
+        scene?.();
+        const batch = new ParticleBatch(4);
+        fill?.(batch);
+        renderer.render({ camera, list, clear: CLEAR, lighting: { ...L, fogDensity: 0 }, particles: batch });
+        return read(renderer);
+      };
+      const mixc = (c, a) => [0, 1, 2].map((i) => c[i] * 255 * a + clearPx[i] * (1 - a));
+      const none = draw(null);
+      add('particles: with no particles the scene is just the sky', near(none.px(...at(cam, 0, 2, 0)), clearPx, 2), none.px(...at(cam, 0, 2, 0)), clearPx);
+      const red = draw((b) => b.push(0, 2, 0, 0.5, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0));
+      add('particles: a solid disc is drawn where it is, in its colour', near(red.px(...at(cam, 0, 2, 0)), [255, 0, 0], 6), red.px(...at(cam, 0, 2, 0)), [255, 0, 0]);
+      add('particles: and not outside its radius', near(red.px(...at(cam, 0.7, 2, 0)), clearPx, 3), red.px(...at(cam, 0.7, 2, 0)), clearPx);
+      const soft = draw((b) => b.push(0, 2, 0, 0.5, 1, 0, 0, 1));
+      add('particles: a soft disc fades out with the square of the distance from its centre', near(soft.px(...at(cam, 0.25, 2, 0)), mixc([1, 0, 0], 0.25), 14), soft.px(...at(cam, 0.25, 2, 0)), mixc([1, 0, 0], 0.25));
+      add('particles: opacity scales the colour (half-transparent white over the sky)', near(draw((b) => b.push(0, 2, 0, 0.5, 1, 1, 1, 0.5, 0, 0, 0, 0, 0, 0, 1, 0)).px(...at(cam, 0, 2, 0)), mixc([1, 1, 1], 0.5), 6), 0, mixc([1, 1, 1], 0.5));
+      const add1 = draw((b) => b.push(0, 2, 0, 0.5, 0.2, 0.2, 0.2, 1, 0, 0, 0, 0, 0, 1, 1, 0));
+      add('particles: additive light adds its colour to what is behind', near(add1.px(...at(cam, 0, 2, 0)), clearPx.map((v) => Math.min(255, v + 51)), 6), add1.px(...at(cam, 0, 2, 0)), clearPx.map((v) => Math.min(255, v + 51)));
+      const wall = () => list.addTransform(box, 0, 2, 3, null, 3, 3, 0.5, 0.2, 0.7, 0.2);
+      const behind = draw((b) => b.push(0, 2, 0, 0.5, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0), { scene: wall });
+      const wallOnly = draw(null, { scene: wall });
+      add('particles: a particle behind a solid object is hidden by it (depth test)', near(behind.px(...at(cam, 0, 2, 0)), wallOnly.px(...at(cam, 0, 2, 0)), 3), behind.px(...at(cam, 0, 2, 0)), wallOnly.px(...at(cam, 0, 2, 0)));
+      const front = draw((b) => b.push(0, 2, 5, 0.3, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0), { scene: wall });
+      add('particles: one in front of it is drawn over it', near(front.px(...at(cam, 0, 2, 5)), [255, 0, 0], 6), front.px(...at(cam, 0, 2, 5)), [255, 0, 0]);
+      const order = draw((b) => { b.push(0, 2, 2, 0.3, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0); b.push(0, 2, 0, 0.8, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0); });
+      add('particles: they do not write depth (a later, farther particle still shows over a nearer one)', near(order.px(...at(cam, 0, 2, 0)), [255, 0, 0], 6), order.px(...at(cam, 0, 2, 0)), [255, 0, 0]);
+      const streak = draw((b) => b.push(0, 2, 0, 0.15, 1, 1, 0, 1, 2, 0, 0, 0.5, 0, 0, 1, 1));
+      const farRight = streak.px(...at(cam, 0.9, 2, 0)), farUp = streak.px(...at(cam, 0, 2.9, 0));
+      add('particles: a streak stretches along its velocity (speed 2 x 0.5 + radius 0.15 = 1.15 long, only 0.15 wide)', near(farRight, [255, 255, 0], 8) && near(farUp, clearPx, 3), [farRight, farUp], 'yellow along x, sky along y');
+      // flat decals on the ground, seen from above and behind
+      const gcam = new Camera3D({ x: 1, y: 6, z: 9, yaw: 0, pitch: -0.55, fovY: 1.1, viewW: W, viewH: H, far: 100 }).update();
+      const ground = () => list.addTransform(plane, 0, 0, 0, null, 1, 1, 1, 0.55, 0.55, 0.5);
+      const gbase = draw(null, { scene: ground, camera: gcam });
+      const decal = draw((b) => b.push(0, 0, 0, 0.5, 0.02, 0.02, 0.02, 1, 0, 1, 0, 0, 0, 0, 1, 2), { scene: ground, camera: gcam });
+      add('particles: a flat decal darkens the ground it lies on', decal.px(...at(gcam, 0, 0, 0))[0] < 20 && decal.px(...at(gcam, 0, 0, 0))[0] < gbase.px(...at(gcam, 0, 0, 0))[0] / 4, decal.px(...at(gcam, 0, 0, 0)), 'nearly black');
+      add('particles: and only inside its radius', near(decal.px(...at(gcam, 1.0, 0, 0)), gbase.px(...at(gcam, 1.0, 0, 0)), 3), decal.px(...at(gcam, 1.0, 0, 0)), gbase.px(...at(gcam, 1.0, 0, 0)));
+      // billboards face the camera wherever it looks from: the disc is as wide as it is tall
+      let sideOk = null;
+      for (const yaw of [Math.PI / 4, -Math.PI / 4]) {
+        const side = new Camera3D({ x: 6, y: 2, z: 6, yaw, pitch: 0, fovY: 1.0, viewW: W, viewH: H, far: 100 }).update();
+        const c = side.worldToScreen(0, 2, 0);
+        if (!c.visible) continue;
+        const img = draw((b) => b.push(0, 2, 0, 0.8, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0), { camera: side });
+        const cx = Math.round(c.x), cy = Math.round(c.y);
+        const run = (dx, dy) => { let n = 0; for (let k = 1; k < 120; k++) { const p = img.px(cx + dx * k, cy + dy * k); if (p[0] > 200 && p[1] < 60) n++; else break; } return n; };
+        const w = run(1, 0) + run(-1, 0), h = run(0, 1) + run(0, -1);
+        sideOk = { w, h, ok: w > 8 && Math.abs(w - h) <= 3 };
+        break;
+      }
+      add('particles: a billboard seen from the side is still a round disc (it faces the camera)', !!sideOk?.ok, sideOk, 'width = height');
+      out.particleSamples = [];
+      const mixed = draw((b) => {
+        b.push(-1, 1, 0, 0.7, 1, 0.4, 0.1, 0.9, 0, 0, 0, 0, 0, 0, 0, 0);
+        b.push(0.5, 0.5, 0.5, 0.5, 0.2, 0.3, 1, 1, 0, 0, 0, 0, 0, 1, 0.3, 0);
+        b.push(1.5, 1, 0, 0.1, 1, 1, 0.5, 1, 3, 1, 0, 0.3, 0, 1, 0.6, 1);
+        b.push(-0.5, 0, 1, 0.4, 0.1, 0.1, 0.1, 0.9, 0, 1, 0, 0, 0.5, 0, 1, 2);
+      }, { scene: ground, camera: gcam });
+      for (let y = 2; y < H; y += 8) for (let x = 2; x < W; x += 8) out.particleSamples.push(...mixed.px(x, y));
+    }
+
+    // cascaded shadows: nested shadow maps, the nearest very sharp
+    {
+      renderer.resize(W, H, 1);
+      const SL = { ...L, direction: [0.5, 1, 0.3], fogDensity: 0 };
+      const ccam = new Camera3D({ x: 1, y: 5, z: 9, yaw: 0.05, pitch: -0.45, fovY: 1.0, viewW: W, viewH: H, far: 100 }).update();
+      const cto = (x, y, z) => { const s2 = ccam.worldToScreen(x, y, z); return [Math.round(s2.x), Math.round(s2.y)]; };
+      const groundColor = [0.55, 0.55, 0.5];
+      const scene = () => {
+        list.clear(); list.setCamera(null);
+        list.addTransform(plane, 0, 0, 0, null, 1, 1, 1, groundColor[0], groundColor[1], groundColor[2]);
+        list.addTransform(box, -8, 2, -10, null, 4, 4, 4, 0.8, 0.2, 0.2);  // a big cube far from the camera
+        list.addTransform(box, 0.5, 1, 5.5, null, 0.06, 2, 0.06, 0.9, 0.9, 0.2); // a thin pole close to it
+      };
+      const render = (shadows) => { scene(); renderer.render({ camera: ccam, list, clear: CLEAR, lighting: SL, shadows }); return read(renderer); };
+      const base = render(undefined), one = render({ size: 1024, radius: 45 }), three = render({ size: 1024, radius: 45, cascades: 3 }), four = render({ size: 1024, radius: 45, cascades: 4 });
+      const at = (img, x, y, z) => img.px(...cto(x, y, z));
+      const strength = 0.75, dim = { ...SL, color: SL.color.map((c) => c * (1 - strength)) };
+      const farShadow = [-10.8, 0, -9];
+      add('cascades: a shadow in the farthest cascade is as dark as before', near(at(three, ...farShadow), shade(groundColor, [0, 1, 0], farShadow, ccam, dim), 16), [at(three, ...farShadow), at(one, ...farShadow)], shade(groundColor, [0, 1, 0], farShadow, ccam, dim));
+      const sunny = [[4, 0, 6], [-2, 0, 2], [3, 0, 0], [6, 0, -4]];
+      add('cascades: lit ground is unchanged by the cascades, across their seams (no acne, no leaks)', sunny.every((p) => near(at(three, ...p), at(base, ...p), 4) && near(at(four, ...p), at(base, ...p), 4)), sunny.map((p) => [at(three, ...p), at(base, ...p)]), 'same as unshadowed');
+      // the pole's shadow is 12 cm wide: the nearest cascade (texels of 5 mm) draws it solid, the single wide map (4 cm texels) smears it
+      const strip = [0, 0, 5.2];
+      const dark = (img) => at(img, ...strip)[0];
+      add('cascades: a thin shadow close to the camera is much darker (sharper) with cascades than with one map', dark(three) + 12 < dark(one), [dark(base), dark(one), dark(three), dark(four)], 'darker with 3 and 4 cascades');
+      add('cascades: 4 cascades keep the near detail too', dark(four) + 12 < dark(one), dark(four), 'dark');
+      // a line of ground crossing the cascade boundaries, with the sun's shadow of the cube: no jumps larger than the cube's own edge
+      let jump = 0, prev = null;
+      for (let z = 5; z > -6; z -= 0.25) { const v = at(three, 3.5, 0, z)[0]; if (prev !== null) jump = Math.max(jump, Math.abs(v - prev)); prev = v; }
+      add('cascades: crossing from one cascade to the next leaves no visible step in lit ground', jump <= 4, jump, '<= 4');
+      out.cascadeSamples = [];
+      for (let y = 2; y < H; y += 8) for (let x = 2; x < W; x += 8) out.cascadeSamples.push(...three.px(x, y));
+    }
+
+    // post-processing: the scene in a floating-point target, then bloom, exposure, tone mapping, grading and a vignette
+    {
+      renderer.resize(W, H, 1);
+      const cam = new Camera3D({ x: 0, y: 2, z: 8, yaw: 0, pitch: 0, fovY: 1.0, viewW: W, viewH: H, far: 100 }).update();
+      const at = (x, y, z) => { const s2 = cam.worldToScreen(x, y, z); return [Math.round(s2.x), Math.round(s2.y)]; };
+      const BLACK = [0, 0, 0, 1];
+      const NEUTRAL = { bloom: false, tonemap: 'none', dither: 0 };
+      // a disc of a given colour at the middle of the view, drawn with light (additive) so values above 1 exist in the HDR target
+      const glow = (value, post, size = 0.3) => {
+        list.clear(); list.setCamera(null);
+        const batch = new ParticleBatch(4);
+        batch.push(0, 2, 0, size, value[0], value[1], value[2], 1, 0, 0, 0, 0, 0, 1, 1, 0);
+        renderer.render({ camera: cam, list, clear: BLACK, lighting: { ...L, fogDensity: 0 }, particles: batch, post });
+        return read(renderer);
+      };
+      const mid = at(0, 2, 0);
+      const px = (img, dx = 0, dy = 0) => img.px(mid[0] + dx, mid[1] + dy);
+      const lit = () => { list.clear(); list.setCamera(null); list.addTransform(plane, 0, 0, 0, null, 1, 1, 1, 0.55, 0.55, 0.5); list.addTransform(box, 0, 1, 0, null, 2, 2, 2, 0.8, 0.3, 0.2); list.addTransform(sphere, 2, 1, -1, null, 1, 1, 1, 0.3, 0.7, 0.9); };
+      const frame = (post) => { lit(); renderer.render({ camera: cam, list, clear: CLEAR, lighting: { ...L, fogDensity: 0 }, post }); return read(renderer); };
+      const same = (p1, p2) => { let w = 0; for (let y = 4; y < H; y += 12) for (let x = 4; x < W; x += 12) { const a = p1.px(x, y), b = p2.px(x, y); for (let k = 0; k < 3; k++) w = Math.max(w, Math.abs(a[k] - b[k])); } return w; };
+      const plain = frame(undefined), neutral = frame(NEUTRAL);
+      add('post: with everything neutral the picture is the same as without post-processing', same(plain, neutral) <= 3, same(plain, neutral), '<= 3');
+      const clamped = px(glow([2, 2, 2], undefined)), rein = px(glow([2, 2, 2], { bloom: false, tonemap: 'reinhard', dither: 0 })), aces = px(glow([2, 2, 2], { bloom: false, tonemap: 'aces', dither: 0 }));
+      add('post: values above 1 are clamped without it', near(clamped, [255, 255, 255], 2), clamped, [255, 255, 255]);
+      add('post: but kept in the HDR target and squeezed by Reinhard (2 becomes 2/3)', near(rein, [170, 170, 170], 4), rein, [170, 170, 170]);
+      add('post: ACES maps 2 to about 0.915', near(aces, [233, 233, 233], 4), aces, [233, 233, 233]);
+      const f1 = px(glow([1, 1, 1], { bloom: false, tonemap: 'filmic', dither: 0 })), f2 = px(glow([2, 2, 2], { bloom: false, tonemap: 'filmic', dither: 0 }));
+      add('post: the filmic curve keeps highlights below white and orders values (1 < 2)', f1[0] < f2[0] && f2[0] < 255 && f1[0] > 100, [f1, f2], 'increasing, under 255');
+      const ex = px(glow([0.8, 0.8, 0.8], { ...NEUTRAL, exposure: 0.5 }));
+      add('post: exposure scales the light before tone mapping (0.8 at exposure 0.5 is 0.4)', near(ex, [102, 102, 102], 4), ex, [102, 102, 102]);
+      const sat0 = px(glow([1, 0.2, 0.2], { ...NEUTRAL, saturation: 0 })), luma = Math.round(255 * (0.2126 + 0.7152 * 0.2 + 0.0722 * 0.2));
+      add('post: saturation 0 turns colour into its luminance', near(sat0, [luma, luma, luma], 5), sat0, [luma, luma, luma]);
+      const ct = px(glow([0.75, 0.75, 0.75], { ...NEUTRAL, contrast: 0.5 }));
+      add('post: contrast pivots around mid grey (0.75 with contrast 0.5 is 0.625)', near(ct, [159, 159, 159], 4), ct, [159, 159, 159]);
+      const gn = px(glow([1, 1, 1], { ...NEUTRAL, gain: [0.5, 1, 1] })), lf = px(glow([0.5, 0.5, 0.5], { ...NEUTRAL, lift: [0, 0, 0.25] }));
+      add('post: gain multiplies a channel, lift raises the darks', near(gn, [128, 255, 255], 4) && near(lf, [128, 128, 191], 4), [gn, lf], 'r halved | b + 0.25');
+      const gm = px(glow([0.25, 0.25, 0.25], { ...NEUTRAL, gamma: [2, 2, 2] }));
+      add('post: gamma bends the mid-tones (0.25 with gamma 2 is its square root, 0.5)', near(gm, [128, 128, 128], 4), gm, [128, 128, 128]);
+      const vig = glow([1, 1, 1], { ...NEUTRAL, vignette: { strength: 1, radius: 0.3 } }, 40);
+      add('post: a vignette darkens the corners and leaves the centre alone', near(px(vig), [255, 255, 255], 3) && vig.px(1, 1)[0] < 40, [px(vig), vig.px(1, 1)], 'centre white, corner dark');
+      const ring = (img) => img.px(mid[0] + 26, mid[1])[0], farther = (img) => img.px(mid[0] + 70, mid[1])[0], corner = (img) => img.px(4, 4)[0];
+      const noBloom = glow([3, 3, 3], { ...NEUTRAL }, 0.3), withBloom = glow([3, 3, 3], { ...NEUTRAL, bloom: { threshold: 0.85, intensity: 1 } }, 0.3);
+      add('post: bloom makes a bright light glow into the dark around it', ring(withBloom) > ring(noBloom) + 10, [ring(noBloom), ring(withBloom)], 'glow outside the disc');
+      add('post: the glow fades with distance and is local (far corner stays black)', ring(withBloom) > farther(withBloom) && corner(withBloom) <= 2, [ring(withBloom), farther(withBloom), corner(withBloom)], 'near > farther, corner 0');
+      const dim = glow([0.5, 0.5, 0.5], { ...NEUTRAL, bloom: { threshold: 0.85, intensity: 1 } }, 0.3);
+      add('post: things below the threshold do not glow', ring(dim) <= 2, ring(dim), '0');
+      const wide = glow([3, 3, 3], { ...NEUTRAL, bloom: { threshold: 0.85, intensity: 1, levels: 6 } }, 0.3), narrow = glow([3, 3, 3], { ...NEUTRAL, bloom: { threshold: 0.85, intensity: 1, levels: 2 } }, 0.3);
+      add('post: more bloom levels reach further', farther(wide) > farther(narrow), [farther(narrow), farther(wide)], 'wider');
+      const dith = glow([0.5, 0.5, 0.5], { ...NEUTRAL, dither: 1 }, 40);
+      let dsum = 0, dmax = 0;
+      for (let k = 0; k < 40; k++) { const v = dith.px(mid[0] - 20 + k, mid[1])[0]; dsum += v; dmax = Math.max(dmax, Math.abs(v - 127.5)); }
+      add('post: dither adds under 2/255 of noise and no bias to a flat value', dmax <= 3 && Math.abs(dsum / 40 - 127.5) < 2, [dmax, dsum / 40], 'within 3 of 127.5');
+      add('post: switching it off again restores the plain picture', same(plain, frame(undefined)) === 0, same(plain, frame(undefined)), 0);
+      renderer.resize(W / 2, H / 2, 1);
+      lit();
+      renderer.render({ camera: new Camera3D({ x: 0, y: 2, z: 8, fovY: 1.0, viewW: W / 2, viewH: H / 2, far: 100 }).update(), list, clear: CLEAR, lighting: { ...L, fogDensity: 0 }, post: { dither: 0 } });
+      const small = read(renderer).px(W / 4, H / 4);
+      add('post: it follows a resize of the canvas', small[0] > 20, small, 'a rendered pixel');
+      renderer.resize(W, H, 1);
+      out.postSamples = [];
+      const sampleScene = frame({ bloom: { threshold: 0.5, intensity: 0.7 }, tonemap: 'aces', exposure: 1.4, saturation: 1.2, contrast: 1.1, gain: [1, 0.95, 0.9], vignette: { strength: 0.5 }, dither: 0 });
+      for (let y = 2; y < H; y += 8) for (let x = 2; x < W; x += 8) out.postSamples.push(...sampleScene.px(x, y));
+    }
+
+    // shadows: a tall cube on the ground, the sun to its +x +z side, so its shadow falls toward -x -z
+    {
+      renderer.resize(W, H, 1);
+      const SL = { ...L, direction: [0.5, 1, 0.3], fogDensity: 0 };
+      const scam = new Camera3D({ x: 1, y: 5, z: 9, yaw: 0.05, pitch: -0.45, fovY: 1.0, viewW: W, viewH: H, far: 100 }).update();
+      const sto = (x, y, z) => { const s2 = scam.worldToScreen(x, y, z); return [Math.round(s2.x), Math.round(s2.y)]; };
+      const groundColor = [0.55, 0.55, 0.5];
+      const scene = (withTube) => {
+        list.clear(); list.setCamera(null);
+        list.addTransform(plane, 0, 0, 0, null, 1, 1, 1, groundColor[0], groundColor[1], groundColor[2]);
+        list.addTransform(box, 0, 1, 0, null, 2, 2, 2, 0.8, 0.2, 0.2);
+        if (withTube) list.addSkinned(shadowTube.mesh, shadowTube.matrix, shadowTube.palette, 0.2, 0.3, 0.8);
+      };
+      // a skinned caster too: a thin vertical tube two metres tall at (4, 0, 2), two joints, bent a little
+      const tsk = new Skeleton([{ parent: -1 }, { parent: 0, t: [0, 1, 0] }]);
+      const tv = [], tj = [], tw = [], ti = [], rowsN = 9, segN = 10;
+      for (let r = 0; r < rowsN; r++) { const y = (r / (rowsN - 1)) * 2; const w1 = Math.max(0, Math.min(1, (y - 0.7) / 0.6)); for (let k = 0; k <= segN; k++) { const a = (k / segN) * Math.PI * 2; tv.push(Math.cos(a) * 0.25, y, Math.sin(a) * 0.25, Math.cos(a), 0, Math.sin(a)); tj.push(0, 1, 0, 0); tw.push(1 - w1, w1, 0, 0); } }
+      for (let r = 0; r + 1 < rowsN; r++) for (let k = 0; k < segN; k++) { const i = r * (segN + 1) + k; ti.push(i, i + 1, i + segN + 2, i, i + segN + 2, i + segN + 1); }
+      const tpose = tsk.createPose().setRest(tsk); tpose.r.set([0, 0, Math.sin(0.15), Math.cos(0.15)], 4);
+      const tubeMatrix = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 4, 0, 2, 1]);
+      const shadowTube = { mesh: createSkinnedMesh(tv, ti, tj, tw, 2, 'shadow-tube'), matrix: tubeMatrix, palette: tsk.computePalette(tpose) };
+
+      const render = (shadows, tube = false) => { scene(tube); renderer.render({ camera: scam, list, clear: CLEAR, lighting: SL, shadows }); return read(renderer); };
+      const base = render(undefined, true), lit = render({ size: 2048, radius: 20 }, true);
+      const at2 = (img, x, y, z) => img.px(...sto(x, y, z));
+      const strength = 0.75;
+      const dim = { ...SL, color: SL.color.map((c) => c * (1 - strength)) }; // fully shadowed: only a quarter of the sun is left
+      const inShadow = [-1.6, 0, -0.9], sunny = [2.5, 0, 3.5];
+      add('shadows: ground behind the cube is darkened by exactly the shadow strength', near(at2(lit, ...inShadow), shade(groundColor, [0, 1, 0], inShadow, scam, dim), 14), [at2(lit, ...inShadow), at2(base, ...inShadow)], shade(groundColor, [0, 1, 0], inShadow, scam, dim));
+      add('shadows: lit ground is unchanged by the shadow pass (no acne, no leaks)', near(at2(lit, ...sunny), at2(base, ...sunny), 3), [at2(lit, ...sunny), at2(base, ...sunny)], 'same as unshadowed');
+      add('shadows: the cube is not shadowed by itself (its sunlit top and sides match the unshadowed image)', near(at2(lit, 0, 2, 0), at2(base, 0, 2, 0), 5) && near(at2(lit, 1, 1, 0.5), at2(base, 1, 1, 0.5), 5), [at2(lit, 0, 2, 0), at2(lit, 1, 1, 0.5)], 'unshadowed');
+      // acne check over a patch of open ground: not a single speckle
+      let speckles = 0, samples = 0; const bad = [];
+      for (let gx = 1.5; gx <= 8; gx += 0.5) for (let gz = 0.5; gz <= 6; gz += 0.5) { const p1 = at2(lit, gx, 0, gz), p2 = at2(base, gx, 0, gz); samples++; if (!near(p1, p2, 4) && Math.hypot(gx - 3.2, gz - 1.5) > 1.6 /* not inside the skinned tube's own shadow */) { speckles++; bad.push([gx, gz, p1, p2]); } }
+      add('shadows: no acne on open ground (hundreds of samples away from any shadow)', speckles === 0, [speckles, samples, JSON.stringify(bad)], 0);
+      // the skinned tube casts its own shadow: toward -x -z of its top (4, 2, 2) -> about (3.0, 0, 1.4) at the ground
+      const tubeShadow = [3.0, 0, 1.4];
+      add('shadows: skinned meshes cast shadows too', at2(lit, ...tubeShadow)[0] < at2(base, ...tubeShadow)[0] - 25, [at2(lit, ...tubeShadow), at2(base, ...tubeShadow)], 'darker than unshadowed');
+      // see-through things cast nothing
+      list.clear(); list.addTransform(plane, 0, 0, 0, null, 1, 1, 1, groundColor[0], groundColor[1], groundColor[2]); list.addTransform(box, 0, 1, 0, null, 2, 2, 2, 0.8, 0.2, 0.2, 0.3);
+      renderer.render({ camera: scam, list, clear: CLEAR, lighting: SL, shadows: { size: 2048, radius: 20 } });
+      const ghost = read(renderer);
+      add('shadows: a mostly transparent instance casts no shadow', near(at2(ghost, ...inShadow), shade(groundColor, [0, 1, 0], inShadow, scam, SL), 8), at2(ghost, ...inShadow), shade(groundColor, [0, 1, 0], inShadow, scam, SL));
+      // turning shadows off again restores the plain image
+      const off = render(undefined, true);
+      add('shadows: switching them off restores the unshadowed image', near(at2(off, ...inShadow), at2(base, ...inShadow), 2), at2(off, ...inShadow), at2(base, ...inShadow));
+      out.shadowSamples = [];
+      for (let y = 2; y < H; y += 8) for (let x = 2; x < W; x += 8) out.shadowSamples.push(...lit.px(x, y));
+    }
+
+    // frustum culling must not change the picture: the same scene with and without it, pixel for pixel
+    {
+      renderer.resize(W, H, 1);
+      camera.setViewport(W, H);
+      camera.update();
+      const scene = () => {
+        buildScene(list);
+        for (let i = 0; i < 400; i++) list.addTransform(box, ((i * 37) % 200) - 100, 0.5, ((i * 91) % 200) - 100, null, 1, 1, 1, 0.3, 0.5, 0.8); // lots of cubes, most of them out of view
+      };
+      list.setCamera(null);
+      scene();
+      const total = list.count;
+      renderer.render({ camera, list, clear: CLEAR, lighting: L });
+      const full = read(renderer);
+      list.setCamera(camera);
+      scene();
+      const kept = list.count, culled = list.culled;
+      renderer.render({ camera, list, clear: CLEAR, lighting: L });
+      const cut = read(renderer);
+      list.setCamera(null);
+      let diff = 0;
+      for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) { const p1 = full.px(x, y), p2 = cut.px(x, y); for (let k = 0; k < 3; k++) diff += Math.abs(p1[k] - p2[k]); }
+      add('culling: the image is identical with and without frustum culling, and most instances were dropped', diff === 0 && culled > total / 2 && kept + culled === total, [diff, kept, culled, total], 'diff 0, more than half culled');
+    }
+
+    // the whole image from the standard scene, subsampled, so the tool can compare backends with each other
+    renderer.resize(W, H, 1);
+    camera.setViewport(W, H);
+    buildScene(list);
+    renderer.render({ camera, list, clear: CLEAR, lighting: L });
+    const final = read(renderer);
+    out.samples = [];
+    for (let y = 2; y < H; y += 8) for (let x = 2; x < W; x += 8) out.samples.push(...final.px(x, y));
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) {
+    out.unavailable = String(e.message ?? e);
+  }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2']) results.push(await check(kind));
+let fallback;
+try { const r = await createRenderer3D(); fallback = r.kind; r.destroy?.(); } catch (e) { fallback = `error: ${e.message}`; }
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, fallback, userAgent: navigator.userAgent }) });
+</script>

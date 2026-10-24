@@ -1,0 +1,11 @@
+{
+  "name": "Astreon Studio",
+  "short_name": "Astreon",
+  "description": "Make games in the browser. Works offline once opened.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0e15",
+  "theme_color": "#12161f",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

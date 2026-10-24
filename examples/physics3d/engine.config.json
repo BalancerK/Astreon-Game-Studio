@@ -1,0 +1,6 @@
+{
+  "root": "../..",
+  "outDir": "dist/physics3d",
+  "pages": ["examples/physics3d/index.html"],
+  "assets": []
+}

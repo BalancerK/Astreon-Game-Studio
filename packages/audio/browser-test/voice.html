@@ -1,0 +1,114 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Audio sprites, streaming and voice self-test</title>
+<body>
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import {
+  AudioEngine, packSounds, synthesize, Microphone, captureFrames, VoiceChat, VoiceSender, AdpcmCodec, Pcm16Codec, OpusCodec, opusAvailable, rms, peak,
+  decodeVoicePacket,
+} from '../src/index.js';
+
+const out = { kind: 'chrome', checks: {} };
+const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const crossings = (a) => { let n = 0; for (let i = 1; i < a.length; i++) if (a[i - 1] < 0 && a[i] >= 0) n++; return n; };
+const sine = (n, hz, rate, amp = 0.5) => Float32Array.from({ length: n }, (_, i) => amp * Math.sin((2 * Math.PI * hz * i) / rate));
+const snr = (ref, got) => { let s = 0, e = 0; for (let i = 0; i < ref.length; i++) { s += ref[i] * ref[i]; e += (ref[i] - got[i]) ** 2; } return 10 * Math.log10(s / (e || 1e-20)); };
+/** Measure a node's output level for a moment. */
+function meter(ctx, node) { const an = ctx.createAnalyser(); an.fftSize = 2048; node.connect(an); const d = new Float32Array(2048); return () => { an.getFloatTimeDomainData(d); return rms(d); }; }
+/** A WAV file of a sine, as a blob URL. */
+function wavUrl(seconds, hz, rate = 22050) {
+  const n = Math.round(seconds * rate), buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round(0.5 * 32767 * Math.sin((2 * Math.PI * hz * i) / rate)), true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
+try {
+  // ---- sprites, rendered offline: the region that was asked for, and only that
+  {
+    const off = new OfflineAudioContext(1, 44100, 44100);
+    const audio = new AudioEngine({ context: off, unlock: false, pauseWhenHidden: false, skipWhenSuspended: false, compressor: false });
+    const a = { sampleRate: 44100, data: sine(8820, 440, 44100, 0.5) }, b = { sampleRate: 44100, data: sine(8820, 880, 44100, 0.5) };
+    const sprite = audio.createSprite(packSounds({ low: a, high: b }, { gap: 0.1 }), undefined, 'two');
+    audio.playSprite(sprite, 'high');
+    const buf = await off.startRendering(), pcm = buf.getChannelData(0);
+    const head = pcm.subarray(500, 8000), tail = pcm.subarray(11025, 20000);
+    add('a sprite region plays at its own pitch (880 Hz for the second sound)', Math.abs(crossings(pcm.subarray(0, 8820)) - 176) <= 4, crossings(pcm.subarray(0, 8820)), '176 cycles in 0.2 s');
+    add('...is as loud as the sound was, and stops when the region ends (nothing of what follows leaks in)', Math.abs(rms(head) - 0.25) < 0.04 && rms(tail) < 0.001, [+rms(head).toFixed(3), +rms(tail).toFixed(4)], '0.25 (0.354 at the equal-power centre pan) then silence');
+  }
+
+  // ---- microphone, capture and codecs, with Chrome's fake microphone
+  const ctx = new AudioContext({ latencyHint: 'interactive' });
+  await ctx.resume();
+  const audio = new AudioEngine({ context: ctx, unlock: false, pauseWhenHidden: false });
+  const mic = await Microphone.open({ context: ctx });
+  const devices = await Microphone.devices();
+  add('the microphone opens and is listed', mic.stream.getAudioTracks().length === 1 && devices.length >= 1, [mic.stream.getAudioTracks().length, devices.length], 'one track, a device');
+  const frames = [];
+  const cap = await captureFrames(mic, (f) => frames.push(f), { sampleRate: 16000, frameMs: 20 });
+  await sleep(2600);
+  cap.stop();
+  const levels = frames.map(rms), loudest = Math.max(...levels);
+  add('an audio worklet delivers 20 ms frames at 16 kHz (about 50 a second)', frames.length > 100 && frames.length < 160 && frames.every((f) => f.length === 320), [frames.length, frames[0]?.length], '~130 frames of 320');
+  add('the fake microphone beeps and the frames carry it', loudest > 0.02, +loudest.toFixed(3), 'some frames are loud');
+
+  const rate = 16000, tone = sine(rate, 440, rate, 0.5), chunks = (a) => { const o = []; for (let i = 0; i + 320 <= a.length; i += 320) o.push(a.subarray(i, i + 320)); return o; };
+  const roundTrip = async (codec, decode) => { const dec = []; for (const f of chunks(tone)) dec.push(...(await decode(await codec.encode(f)))); return Float32Array.from(dec); };
+  const adp = new AdpcmCodec(), adpOut = await roundTrip(adp, (b) => new AdpcmCodec().decode(b, 320).slice());
+  add('ADPCM works the same in the browser (clean, a quarter the size)', adpOut.length > 15000 && true, adpOut.length, 'decoded');
+  const e2 = new AdpcmCodec(), d2 = new AdpcmCodec(); const clean = []; for (const f of chunks(tone)) clean.push(...d2.decode(e2.encode(f), 320));
+  add('...with a good signal-to-noise ratio', snr(tone.subarray(0, clean.length), Float32Array.from(clean)) > 25, +snr(tone.subarray(0, clean.length), Float32Array.from(clean)).toFixed(1), 'above 25 dB');
+
+  if (opusAvailable()) {
+    const opus = await OpusCodec.create({ sampleRate: 16000, bitrate: 24000 });
+    const sizes = [], dec = [];
+    for (const f of chunks(tone)) { const bytes = await opus.encode(f); sizes.push(bytes.length); dec.push(...(await opus.decode(bytes))); }
+    const decoded = Float32Array.from(dec), tailPart = decoded.subarray(4000);
+    add('Opus encodes 20 ms of speech in a few dozen bytes (under 3 KB/s)', sizes.length > 40 && sizes.slice(5).every((s) => s > 0 && s < 120), [sizes.length, Math.max(...sizes.slice(5)), +(sizes.slice(5).reduce((a, b) => a + b, 0) / sizes.slice(5).length).toFixed(1)], 'each under 120 bytes');
+    add('...and decodes to the same tone (440 Hz, similar loudness)', Math.abs(crossings(tailPart) / (tailPart.length / rate) - 440) < 15 && Math.abs(rms(tailPart) - 0.354) < 0.1, [Math.round(crossings(tailPart) / (tailPart.length / rate)), +rms(tailPart).toFixed(3)], '440 Hz, rms 0.35');
+    opus.close();
+  } else add('Opus (WebCodecs) is not available in this browser: the chat falls back to ADPCM', true, 'unavailable', 'skipped');
+
+  // ---- a whole chat through a loopback: microphone -> encoder -> packets -> decoder -> jitter buffer -> speaker, heard on the voice bus
+  for (const codec of opusAvailable() ? ['adpcm', 'opus'] : ['adpcm']) {
+    const talker = new VoiceChat({ engine: audio, codec, vad: false, onPacket: (p) => { packets.push(p); listener.receive('me', p); } });
+    const listener = new VoiceChat({ engine: audio, codec: 'adpcm', onPacket() {}, jitterFrames: 3 });
+    const packets = [];
+    const level = meter(ctx, audio.buses.get('voice').node);
+    await talker.start({ vad: undefined });
+    let heard = 0, speakingSeen = false; const stop = performance.now() + 2500;
+    while (performance.now() < stop) { listener.update(); heard = Math.max(heard, level()); speakingSeen ||= listener.isSpeaking('me'); await sleep(10); }
+    const bytes = packets.reduce((n, p) => n + p.length, 0);
+    talker.dispose();
+    const ok = packets.length > 80 && listener.stats.rejected === 0 && listener.stats.decoded > 80 && speakingSeen && heard > 0.01;
+    add(`a ${codec} chat loops back: packets sent, decoded, buffered and heard on the voice bus`, ok, { packets: packets.length, decoded: listener.stats.decoded, rejected: listener.stats.rejected, speakingSeen, heard: +heard.toFixed(3), KBps: +(bytes / 2.5 / 1024).toFixed(1) }, 'many packets, none rejected, heard');
+    listener.dispose();
+  }
+
+  // ---- streaming music from a media element
+  {
+    const url = wavUrl(3, 330);
+    const level = meter(ctx, audio.buses.get('music').node);
+    const track = audio.streamMusic(url, { fade: 0.1, loop: false, volume: 0.8 });
+    await sleep(900);
+    const playing = level();
+    add('a streamed track is heard on the music bus and its clock advances (no decoding of the whole file)', playing > 0.1 && track.currentTime > 0.4 && Math.abs(track.duration - 3) < 0.1, [+playing.toFixed(3), +track.currentTime.toFixed(2), +track.duration.toFixed(2)], 'loud, moving, 3 s long');
+    track.pause(); await sleep(300); const paused = level();
+    add('pausing silences it and keeps its place', paused < 0.01 && track.paused && track.currentTime > 0.4, [+paused.toFixed(4), track.paused], 'silent, paused');
+    track.seek(2.2); track.resume(); await sleep(400);
+    add('seeking and resuming carries on from the new place', track.currentTime > 2.2 && level() > 0.1, [+track.currentTime.toFixed(2), +level().toFixed(2)], 'past 2.2 s, sounding');
+    audio.setVolume('music', 0, 0); await sleep(150);
+    add('the music bus volume controls it', level() < 0.01, +level().toFixed(4), 'silent');
+    audio.setVolume('music', 1, 0);
+    let ended = false; track.onEnded = () => { ended = true; }; await sleep(1600);
+    add('a track that is not looping ends and releases itself', ended && !track.playing, [ended, track.playing], 'ended');
+  }
+  out.ok = Object.values(out.checks).every((c) => c.ok);
+} catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results: [out], userAgent: navigator.userAgent }) });
+</script>

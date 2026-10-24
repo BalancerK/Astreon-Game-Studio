@@ -1,0 +1,98 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Draw-less self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { createRenderer3D, Camera3D, DrawList3D, createLighting, createBox, createSphere, createCylinder, createLod, OcclusionBuffer, StaticBatcher, TextureSet, proceduralTexture } from '../src/index.js';
+
+const W = 256, H = 144, CLEAR = [0.1, 0.1, 0.12, 1];
+const m4 = (x, y, z, sx = 1, sy = sx, sz = sx) => Float32Array.from([sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, sz, 0, x, y, z, 1]);
+
+function snapshot(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d');
+  g.drawImage(renderer.canvas, 0, 0);
+  return g.getImageData(0, 0, c.width, c.height).data;
+}
+const diff = (a, b) => { let n = 0, worst = 0; for (let i = 0; i < a.length; i += 4) { const d = Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2])); if (d > 2) n++; if (d > worst) worst = d; } return { pixels: n, worst }; };
+const lit = (a) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - 26) > 6 || Math.abs(a[i + 1] - 26) > 6 || Math.abs(a[i + 2] - 31) > 6) n++; return n; };
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer3D({ prefer: [kind], antialias: false });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const set = new TextureSet({ size: 64, maxLayers: 4 });
+    const checker = set.add(proceduralTexture('checker', 64, { cells: 8 }), 'checker');
+    renderer.setTextures(set);
+    const cam = new Camera3D({ x: 0, y: 3, z: 14, yaw: 0, pitch: -0.12, fovY: 0.9, viewW: W, viewH: H, far: 300 }).update();
+    const L = { ...createLighting(), fogDensity: 0, pointLights: [] };
+    const draw = (build, camera = cam) => { const list = new DrawList3D(); list.setCamera(camera); build(list); renderer.render({ camera, list, clear: CLEAR, lighting: L }); return { img: snapshot(renderer), list }; };
+
+    // ---- merging: a scatter of boxes, spheres and a mirrored cylinder with colours and a texture, drawn one by one and as merged batches
+    const box = createBox(1, 1, 1), ball = createSphere(0.6, 16, 8), cyl = createCylinder(0.4, 1.2, 12);
+    const pieces = [];
+    const r = ((s) => () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296))(11);
+    for (let i = 0; i < 60; i++) {
+      const mesh = [box, ball, cyl][i % 3], x = (r() - 0.5) * 16, z = -r() * 18, k = 0.8 + r() * 0.6;
+      pieces.push({ mesh, model: m4(x, 0.5, z, k), color: i % 4 === 0 ? [0.9, 0.3, 0.2, 1] : [0.3, 0.7, 0.9, 1], layer: i % 5 === 0 ? checker : null });
+    }
+    const separate = draw((list) => {
+      for (const p of pieces) { list.setMaterial(p.layer, 'uv', 1); list.add(p.mesh, p.model, ...p.color); }
+    });
+    const batcher = new StaticBatcher({ cellSize: 50 });
+    for (const p of pieces) batcher.add(p.mesh, p.model, { color: p.color, layer: p.layer });
+    const batches = batcher.build();
+    const merged = draw((list) => { for (const b of batches) list.addBatch(b); });
+    const d = diff(separate.img, merged.img);
+    add(`${pieces.length} pieces drawn as ${batches.length} merged batches look the same as drawn one by one`, d.pixels <= 30 && lit(separate.img) > 2000, { ...d, lit: lit(separate.img) }, 'near-identical, with something drawn');
+    add('...in far fewer draws', batches.length <= 16 && separate.list.groups.size === 3 && batches.length < pieces.length / 4, { batches: batches.length, pieces: pieces.length }, 'a handful of batches (colour x texture x cell)');
+
+    // ---- LOD: a sphere far away is drawn with its coarse level, close up with the fine one, and nothing when tiny
+    const fine = createSphere(1, 40, 20), lod = createLod({ mesh: fine, ratios: [0.05], screens: [0.15], cullBelow: 0.01 });
+    const near = draw((list) => list.addLod(lod, m4(0, 1.5, 6)));
+    const nearFine = draw((list) => list.add(fine, m4(0, 1.5, 6)));
+    add('close up, the LOD draws exactly what the fine mesh draws', diff(near.img, nearFine.img).pixels === 0 && lit(near.img) > 500, diff(near.img, nearFine.img), 'identical');
+    const far = draw((list) => list.addLod(lod, m4(0, 1.5, -25)));
+    const farFine = draw((list) => list.add(fine, m4(0, 1.5, -25)));
+    const farCoarse = draw((list) => list.add(lod.levels[1].mesh, m4(0, 1.5, -25)));
+    add('far away, it draws the coarse level (and it covers about the same pixels as the fine one)', diff(far.img, farCoarse.img).pixels === 0 && Math.abs(lit(far.img) - lit(farFine.img)) < lit(farFine.img) * 0.2 + 6, { coarseVsLod: diff(far.img, farCoarse.img).pixels, lit: [lit(far.img), lit(farFine.img)] }, 'same as coarse');
+    const gone = draw((list) => list.addLod(lod, m4(0, 1.5, -500)));
+    add('far enough, nothing is drawn at all', lit(gone.img) === 0 && gone.list.tooSmall === 1, { lit: lit(gone.img), tooSmall: gone.list.tooSmall }, 'empty');
+
+    // ---- occlusion: the picture is the same with and without culling, and the hidden things were not added
+    const wallA = [-6, 0, -8, 1, 6, -7], wallB = [2, 0, -12, 9, 5, -11];
+    const hidden = [];
+    for (let i = 0; i < 80; i++) hidden.push(m4((r() - 0.5) * 24, 0.6 + r() * 2.5, -9 - r() * 60, 0.5 + r()));
+    const scene = (list, occlusion) => {
+      if (occlusion) { const occ = new OcclusionBuffer(128, 72).begin(cam); occ.addBox(...wallA); occ.addBox(...wallB); list.setOcclusion(occ); }
+      list.add(box, m4(-2.5, 3, -7.5, 7, 6, 1), 0.7, 0.7, 0.7); list.add(box, m4(5.5, 2.5, -11.5, 7, 5, 1), 0.7, 0.7, 0.7);
+      for (const m of hidden) list.add(ball, m, 0.9, 0.5, 0.2);
+    };
+    const withOcc = draw((list) => scene(list, true));
+    const withoutOcc = draw((list) => scene(list, false));
+    const dd = diff(withOcc.img, withoutOcc.img);
+    add('with occlusion culling the picture is the same as without', dd.pixels <= 20, dd, 'near-identical');
+    add('...and the instances behind the walls were not drawn at all', withOcc.list.occluded >= 10 && withOcc.list.count < withoutOcc.list.count - 10, { occluded: withOcc.list.occluded, drawn: withOcc.list.count, without: withoutOcc.list.count }, 'many fewer');
+
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) {
+    out.unavailable = String(e.message ?? e);
+    out.stack = String(e.stack ?? '');
+  }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

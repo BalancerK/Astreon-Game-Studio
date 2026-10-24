@@ -1,0 +1,9 @@
+{
+  "id": "my-mod",
+  "version": "0.1.0",
+  "name": "My mod",
+  "description": "Copy this folder, rename it, change the id, then run: node tools/mod.js validate examples/arena/mods/<your-folder>",
+  "tier": "script",
+  "entry": "main.js",
+  "limits": { "tickEvery": 30 }
+}

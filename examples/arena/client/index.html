@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0d0d14; overflow: hidden; font: 13px/1.4 ui-monospace, Consolas, monospace; color: #cfd6e6; }
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { display: block; }
+  #hud { position: fixed; left: 12px; top: 10px; padding: 8px 10px; background: rgba(10, 12, 20, .65); border-radius: 6px; white-space: pre; pointer-events: none; }
+  #msg { position: fixed; inset: 0; display: grid; place-items: center; font-size: 18px; pointer-events: none; text-align: center; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="hud">starting...</div>
+<div id="msg"></div>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

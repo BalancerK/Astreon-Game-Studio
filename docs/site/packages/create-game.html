@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/create-game · Astreon Engine</title>
+<meta name="description" content="Start a game: npx create-game my-game makes a folder with a working project, installs the engine, and tells you what to type next.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html" class="on">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">All packages</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html" class="on">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginecreate-game">@engine/create-game</h1>
+<p>Start a game: <code>npx create-game my-game</code> makes a folder with a working project, installs the engine, and tells you what to type next.</p>
+<div class="code"><pre><code class="lang-text">npx create-game my-game                  # the 2D starter
+npx create-game my-world --template 3d   # the 3D starter, with the scene editor
+npx create-game --list
+cd my-game &amp;&amp; npm run dev                # http://127.0.0.1:8080/ with live reload</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h2 id="templates">Templates<a class="anchor" href="#templates" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Template</th><th>What you get</th></tr></thead><tbody><tr><td><code>2d</code></td><td>A small top-down game: move, collect coins, dodge hazards. The rules are in <code>src/game.js</code> with no page code (and tests), the page in <code>src/main.js</code>: fixed timestep, keyboard and gamepad through actions, a best score saved in the browser.</td></tr><tr><td><code>3d</code></td><td>A game made of data: a prefab library (<code>src/prefabs.js</code>), a scene file (<code>scenes/main.json</code>), code that spawns, updates and draws it (<code>src/play.js</code>), an orbit-camera page and the browser <strong>scene editor</strong> (<code>/editor.html</code>) already wired to your prefabs, with Play.</td></tr></tbody></table></div>
+<p>Every project has the same commands: <code>npm run dev</code>, <code>npm test</code> (the game's own tests), <code>npm run build</code> (one hashed, minified script, a manifest of hashed assets, compressed copies and a <code>_headers</code> file: the folder to upload).</p>
+<h2 id="options">Options<a class="anchor" href="#options" aria-label="Link to this section">#</a></h2>
+<ul><li><code>--template 2d|3d</code></li><li><code>--no-install</code>: do not run <code>npm install</code>.</li><li><code>--engine-path &lt;dir&gt;</code>: link the packages from a checkout of the engine (<code>file:</code> dependencies, including what they need in turn) instead of installing from npm. For working on the engine itself.</li></ul>
+<h2 id="from-code">From code<a class="anchor" href="#from-code" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">import</span> { createProject, listTemplates } <span class="tk-k">from</span> <span class="tk-s">'@engine/create-game'</span>;
+<span class="tk-f">createProject</span>({ dir: <span class="tk-s">'my-game'</span>, template: <span class="tk-s">'3d'</span>, install: <span class="tk-k">true</span> });</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Adding a template: a folder in <code>templates/</code> with <code>template.json</code> (description, the engine packages it uses, extra scripts) and <code>files/</code> (copied; <code>{{name}}</code> and <code>{{title}}</code> are filled in; name <code>.gitignore</code> as <code>_gitignore</code>).</p>
+<h2 id="every-export">Every export<a class="anchor" href="#every-export" aria-label="Link to this section">#</a></h2>
+<p>The complete, generated list of this package's exports (every function, class and option) is on its <span class="src">API page</span>.</p><div class="pager"><a href="build.html"><small>Previous</small>build</a><a class="next" href="debug.html"><small>Next</small>debug</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#templates">Templates</a><a class="l2" href="#options">Options</a><a class="l2" href="#from-code">From code</a><a class="l2" href="#every-export">Every export</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

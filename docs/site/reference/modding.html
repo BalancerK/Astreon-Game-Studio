@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Writing mods for the arena (and any game on this engine) · Astreon Engine</title>
+<meta name="description" content="A mod is a folder with a mod.json and, for script mods, a main.js. There are two kinds you can publish:">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html" class="on">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="changelog.html">Changelog</a><a href="roadmap.html">Engine plan</a><a href="studio.html">Astreon Studio: the browser game studio</a><a href="benchmarks.html">Benchmarks</a><a href="security.html">Security model</a><a href="modding.html" class="on">Writing mods for the arena (and any game on this engine)</a></nav><main><article><h1 id="writing-mods-for-the-arena-and-any-game-on-this-engine">Writing mods for the arena (and any game on this engine)</h1>
+<p>A mod is a folder with a <code>mod.json</code> and, for script mods, a <code>main.js</code>. There are two kinds you can publish:</p>
+<div class="table"><table><thead><tr><th>Tier</th><th>What it is</th><th>Runs where</th><th>Can do</th></tr></thead><tbody><tr><td><strong>data</strong></td><td><code>rules</code> and <code>client</code> sections in <code>mod.json</code>, no code</td><td>applied by server <em>and</em> clients</td><td>change numbers the game exposes (speed, damage, cooldown, health) and presentation (colours, title)</td></tr><tr><td><strong>script</strong></td><td><code>main.js</code></td><td>only in a locked-down sandbox process on the server</td><td>read a plain-data frame each few ticks and return <em>commands</em> (heal, damage, teleport, message)</td></tr></tbody></table></div>
+<p>Players never run mod code. Clients only download the data part, and they refuse to play if it does not match its SHA-256.</p>
+<p>The engine's own game plugins (tier 3, trusted native code) are a different thing: see <code>docs/PLAN.md</code>.</p>
+<h2 id="quick-start">Quick start<a class="anchor" href="#quick-start" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-text">cp -r examples/arena/mods/_template examples/arena/mods/my-mod
+# edit mod.json (change the id) and main.js
+node tools/mod.js validate examples/arena/mods/my-mod
+node tools/mod.js run examples/arena/mods/my-mod --frames 120     # runs it in the real sandbox with fake players
+node tools/mod.js sign ...                                          # optional, see &quot;Signing&quot;
+node examples/arena/server/main.js --mods examples/arena/mods      # play with it: http://127.0.0.1:8080/?room=test</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h2 id="modjson">mod.json<a class="anchor" href="#modjson" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-json">{
+  <span class="tk-s">&quot;id&quot;</span>: <span class="tk-s">&quot;my-mod&quot;</span>,              <span class="tk-c">// a-z 0-9 -, starts with a letter, up to 32 characters</span>
+  <span class="tk-s">&quot;version&quot;</span>: <span class="tk-s">&quot;1.0.0&quot;</span>,          <span class="tk-c">// semver</span>
+  <span class="tk-s">&quot;tier&quot;</span>: <span class="tk-s">&quot;script&quot;</span>,            <span class="tk-c">// &quot;data&quot; or &quot;script&quot;</span>
+  <span class="tk-s">&quot;entry&quot;</span>: <span class="tk-s">&quot;main.js&quot;</span>,          <span class="tk-c">// script mods only; a relative .js path inside the folder</span>
+  <span class="tk-s">&quot;engine&quot;</span>: <span class="tk-s">&quot;^0.0.1&quot;</span>,          <span class="tk-c">// optional: engine versions this mod works with</span>
+  <span class="tk-s">&quot;dependencies&quot;</span>: { <span class="tk-s">&quot;other-mod&quot;</span>: <span class="tk-s">&quot;^1.0.0&quot;</span> },   <span class="tk-c">// optional: loaded first; missing or wrong version = rejected</span>
+  <span class="tk-s">&quot;rules&quot;</span>: { <span class="tk-s">&quot;weapon&quot;</span>: { <span class="tk-s">&quot;damage&quot;</span>: <span class="tk-n">30</span> } },     <span class="tk-c">// optional, see below</span>
+  <span class="tk-s">&quot;client&quot;</span>: { <span class="tk-s">&quot;theme&quot;</span>: { <span class="tk-s">&quot;wall&quot;</span>: [<span class="tk-n">255</span>, <span class="tk-n">0</span>, <span class="tk-n">128</span>] } },   <span class="tk-c">// optional presentation data</span>
+  <span class="tk-s">&quot;limits&quot;</span>: { <span class="tk-s">&quot;tickEvery&quot;</span>: <span class="tk-n">30</span>, <span class="tk-s">&quot;tickBudgetMs&quot;</span>: <span class="tk-n">2</span>, <span class="tk-s">&quot;memoryMb&quot;</span>: <span class="tk-n">48</span> }   <span class="tk-c">// optional requests; the server may clamp them</span>
+}</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Unknown fields are errors (typos should not pass silently).</p>
+<h3 id="rules-data">Rules (data)<a class="anchor" href="#rules-data" aria-label="Link to this section">#</a></h3>
+<p>Only these keys exist; values outside the range are ignored (and logged on the server):</p>
+<div class="table"><table><thead><tr><th>Key</th><th>Range</th><th>Default</th></tr></thead><tbody><tr><td><code>playerSpeed</code></td><td>50 to 2000</td><td>420</td></tr><tr><td><code>dashMult</code></td><td>1 to 5</td><td>2.5</td></tr><tr><td><code>weapon.range</code></td><td>100 to 3000</td><td>900</td></tr><tr><td><code>weapon.damage</code></td><td>1 to 100 (integer)</td><td>25</td></tr><tr><td><code>weapon.cooldownTicks</code></td><td>1 to 120 (integer)</td><td>10</td></tr><tr><td><code>weapon.maxHp</code></td><td>1 to 255 (integer)</td><td>100</td></tr></tbody></table></div>
+<p>If several mods set the same key, the later one in load order wins, and the server logs the conflict. Rules apply on the server and in every client at the same time, so movement prediction stays exact.</p>
+<h3 id="theme-data">Theme (data)<a class="anchor" href="#theme-data" aria-label="Link to this section">#</a></h3>
+<p><code>client.theme</code> may contain <code>floor</code>, <code>wall</code>, <code>dot</code> (each <code>[r, g, b]</code>, integers 0 to 255) and <code>title</code> (printable ASCII, 40 characters). Anything else is ignored.</p>
+<h2 id="script-mods">Script mods<a class="anchor" href="#script-mods" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-js">engine.<span class="tk-f">register</span>({
+  <span class="tk-f">onInit</span>({ id, savedState }) { },                 <span class="tk-c">// once at start, and after a hot reload</span>
+  <span class="tk-f">onFrame</span>(frame) { <span class="tk-k">return</span> [<span class="tk-c">/* commands */</span>]; },    <span class="tk-c">// every `tickEvery` ticks</span>
+  <span class="tk-f">serialize</span>() { <span class="tk-k">return</span> { <span class="tk-c">/* state to keep across a hot reload */</span> }; },
+});
+engine.<span class="tk-f">log</span>(<span class="tk-s">'text'</span>);                                <span class="tk-c">// at most 20 lines of 200 characters per call</span></code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Hooks are synchronous. Return plain JSON (at most 64 KB). <code>frame</code> is <code>{ tick, players: [{ id, x, y, hp }], kills: [{ killer, victim }] }</code> with at most 64 players.</p>
+<p>Commands you may return (anything else is rejected, and mostly-invalid output earns a strike):</p>
+<div class="table"><table><thead><tr><th>Command</th><th>Fields</th><th>Notes</th></tr></thead><tbody><tr><td><code>heal</code></td><td><code>id</code> (int), <code>amount</code> (0 to 100)</td><td>capped at max health</td></tr><tr><td><code>damage</code></td><td><code>id</code>, <code>amount</code> (0 to 100)</td><td>cannot kill: leaves at least 1 hp</td></tr><tr><td><code>teleport</code></td><td><code>id</code>, <code>x</code>, <code>y</code> (inside the world)</td><td>refused if the spot is inside a wall</td></tr><tr><td><code>message</code></td><td><code>text</code> (up to 120 characters)</td><td>shown to all players; control characters removed</td></tr></tbody></table></div>
+<p>At most 32 commands per call are accepted.</p>
+<h3 id="what-the-sandbox-takes-away">What the sandbox takes away<a class="anchor" href="#what-the-sandbox-takes-away" aria-label="Link to this section">#</a></h3>
+<p>No <code>require</code> or <code>import()</code>, no <code>process</code>, no timers, no <code>eval</code> or <code>new Function</code>, no network, no files. The language's own built-ins (<code>Math</code>, <code>JSON</code>, <code>Array</code>, ...) are there, frozen. The server also enforces:</p>
+<ul><li>a CPU budget per call (2 ms by default, 5 ms at most); going over is a strike and the call is abandoned,</li><li>a memory cap per mod (48 MB default); exceeding it kills only that mod's process,</li><li>strikes: timeouts, exceptions and invalid output each earn one; five inside a minute disable the mod. Repeated crashes (more than 3 restarts in a minute) disable it too.</li></ul>
+<p>A mod is never trusted: slow, crashing, hostile or buggy mods cost their own frames, never the game's tick time.</p>
+<h2 id="signing-optional">Signing (optional)<a class="anchor" href="#signing-optional" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-text">node tools/mod.js keygen mykey              # writes mykey.pub (share) and mykey.key (keep secret)
+node tools/mod.js sign examples/arena/mods/my-mod mykey.key</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A server operator can require signatures (<code>policy: { requireSignature: 'script', trustedKeys: [&lt;pub hex&gt;] }</code>) or pin exact bundle hashes (<code>allowHashes</code>). A signature says who published the mod, not that it is safe: the sandbox is what limits damage. Any edit invalidates the signature.</p>
+<h2 id="for-server-operators">For server operators<a class="anchor" href="#for-server-operators" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">startArenaGateway</span>({
+  modsDir: <span class="tk-s">'mods'</span>,
+  modPolicy: { allowScript: <span class="tk-k">true</span>, requireSignature: <span class="tk-s">'script'</span>, trustedKeys: [<span class="tk-s">'...'</span>], allowHashes: <span class="tk-k">null</span>, maxMods: <span class="tk-n">16</span> },
+});</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>See <code>docs/SECURITY.md</code> for what is and is not protected (network egress in particular: run the server in a container).</p><div class="pager"><a href="security.html"><small>Previous</small>Security model</a><span></span></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#quick-start">Quick start</a><a class="l2" href="#modjson">mod.json</a><a class="l3" href="#rules-data">Rules (data)</a><a class="l3" href="#theme-data">Theme (data)</a><a class="l2" href="#script-mods">Script mods</a><a class="l3" href="#what-the-sandbox-takes-away">What the sandbox takes away</a><a class="l2" href="#signing-optional">Signing (optional)</a><a class="l2" href="#for-server-operators">For server operators</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

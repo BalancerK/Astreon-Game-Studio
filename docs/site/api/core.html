@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/core · Astreon Engine</title>
+<meta name="description" content="Fixed-timestep loop, typed-array ECS, plugin system, scheduler.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html" class="on">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginecore">@engine/core</h1>
+<p>Fixed-timestep loop, typed-array ECS, plugin system, scheduler.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/core</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/core.html">packages/core</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-16-of-16-documented">Contents (16 of 16 documented)<a class="anchor" href="#contents-16-of-16-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-app"><code>App</code></a></td><td>class</td><td>The application: a world, a scheduler of systems, an event bus, shared resources and the plugins that set them up.</td></tr><tr><td><a href="#engine_version"><code>ENGINE_VERSION</code></a></td><td>constant</td><td>The engine version plugins are checked against (their <code>engine</code> range must accept it).</td></tr><tr><td><a href="#class-eventbus"><code>EventBus</code></a></td><td>class</td><td>Synchronous event bus.</td></tr><tr><td><a href="#class-fixedloop"><code>FixedLoop</code></a></td><td>class</td><td>Fixed-timestep simulation loop.</td></tr><tr><td><a href="#index_mask"><code>INDEX_MASK</code></a></td><td>constant</td><td>Mask that keeps the slot-index bits of an entity id (the low 20 bits): <code>id &amp; INDEX_MASK</code>.</td></tr><tr><td><a href="#max_entities"><code>MAX_ENTITIES</code></a></td><td>constant</td><td>The most entities that can exist at once (2^20).</td></tr><tr><td><a href="#class-pluginapp"><code>PluginApp</code></a></td><td>class</td><td>What a plugin sees in <code>setup(app)</code>.</td></tr><tr><td><a href="#class-scheduler"><code>Scheduler</code></a></td><td>class</td><td>Orders systems by before/after constraints (stable: ties keep registration order).</td></tr><tr><td><a href="#class-world"><code>World</code></a></td><td>class</td><td>Entities + struct-of-arrays component storage.</td></tr><tr><td><a href="#definecomponent"><code>defineComponent</code></a></td><td>function</td><td>Declare a component: a name and a schema of typed fields (<code>{ x: &quot;f32&quot;, hp: &quot;u8&quot; }</code>).</td></tr><tr><td><a href="#defineplugin"><code>definePlugin</code></a></td><td>function</td><td>Validate and freeze a plugin definition.</td></tr><tr><td><a href="#entitygeneration"><code>entityGeneration</code></a></td><td>function</td><td>The generation part of an entity id (its high 12 bits).</td></tr><tr><td><a href="#entityindex"><code>entityIndex</code></a></td><td>function</td><td>The slot index part of an entity id (its low 20 bits): where its data lives in the component arrays.</td></tr><tr><td><a href="#parseversion"><code>parseVersion</code></a></td><td>function</td><td>Read a version string <code>x.y.z</code> as <code>[x, y, z]</code>; anything else throws.</td></tr><tr><td><a href="#resolveplugins"><code>resolvePlugins</code></a></td><td>function</td><td>Check dependencies and return plugins in load order (dependencies first).</td></tr><tr><td><a href="#satisfies"><code>satisfies</code></a></td><td>function</td><td>Does a version fit a range?</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="definecomponent"><code>defineComponent</code><a class="anchor" href="#definecomponent" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">defineComponent</span>(name, schema)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Declare a component: a name and a schema of typed fields (<code>{ x: &quot;f32&quot;, hp: &quot;u8&quot; }</code>). Components are stored as one typed array per field; read them with <code>world.data(Component).x[id &amp; INDEX_MASK]</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr><tr><td><code>schema</code></td><td><code>Record&lt;string, keyof ARRAYS&gt;</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Component</code></p>
+<p><sub>src/world.js:25</sub></p>
+<h3 id="defineplugin"><code>definePlugin</code><a class="anchor" href="#defineplugin" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">definePlugin</span>(def)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Validate and freeze a plugin definition.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>def</code></td><td><code>PluginDef</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Readonly&lt;PluginDef&gt;</code></p>
+<p><sub>src/plugin.js:19</sub></p>
+<h3 id="entitygeneration"><code>entityGeneration</code><a class="anchor" href="#entitygeneration" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">entityGeneration</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The generation part of an entity id (its high 12 bits). Destroying an entity bumps its slot's generation, so a stale id is never mistaken for a recycled one.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/entity.js:25</sub></p>
+<h3 id="entityindex"><code>entityIndex</code><a class="anchor" href="#entityindex" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">entityIndex</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The slot index part of an entity id (its low 20 bits): where its data lives in the component arrays.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/entity.js:18</sub></p>
+<h3 id="parseversion"><code>parseVersion</code><a class="anchor" href="#parseversion" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">parseVersion</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read a version string <code>x.y.z</code> as <code>[x, y, z]</code>; anything else throws.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>v</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/semver.js:8</sub></p>
+<h3 id="resolveplugins"><code>resolvePlugins</code><a class="anchor" href="#resolveplugins" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">resolvePlugins</span>(plugins, engineVersion)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Check dependencies and return plugins in load order (dependencies first).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>plugins</code></td><td><code>Readonly&lt;PluginDef&gt;[]</code></td><td></td></tr><tr><td><code>engineVersion</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Readonly&lt;PluginDef&gt;[]</code></p>
+<p><sub>src/plugin.js:32</sub></p>
+<h3 id="satisfies"><code>satisfies</code><a class="anchor" href="#satisfies" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">satisfies</span>(version, range)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Does a version fit a range? Ranges are <code>*</code>, <code>x.y.z</code> (exactly), <code>^x.y.z</code> (same major, at least this) and <code>&gt;=x.y.z</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>version</code></td><td><code>string</code></td><td></td></tr><tr><td><code>range</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/semver.js:25</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-app"><code>class App</code><a class="anchor" href="#class-app" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> App</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The application: a world, a scheduler of systems, an event bus, shared resources and the plugins that set them up. <code>use(plugin)</code> loads plugins (dependencies resolved, setup run in load order); <code>update(dt, tick)</code> runs every system once.</p>
+<h4 id="appconstructor"><code>App.constructor</code><a class="anchor" href="#appconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ capacity } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>opts</code> (optional)</td><td><code>{capacity?: number}</code></td><td></td></tr></tbody></table></div>
+<h4 id="appregistercomponent"><code>App.registerComponent</code><a class="anchor" href="#appregistercomponent" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">registerComponent</span>(comp)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>comp</code></td><td><code>import('./world.js').Component</code></td><td></td></tr></tbody></table></div>
+<h4 id="appuse"><code>App.use</code><a class="anchor" href="#appuse" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">use</span>(...plugins)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Resolve dependencies, then run each plugin's setup in load order.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>...plugins</code></td><td><code>Readonly&lt;import('./plugin.js').PluginDef&gt;</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>this</code></p>
+<h4 id="appupdate"><code>App.update</code><a class="anchor" href="#appupdate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">update</span>(dt, tick)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Run all systems once.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>dt</code></td><td><code>number</code></td><td>Seconds</td></tr><tr><td><code>tick</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/app.js:62</sub></p>
+<h3 id="class-eventbus"><code>class EventBus</code><a class="anchor" href="#class-eventbus" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> EventBus</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Synchronous event bus. Plugins communicate through events, not each other's internals.</p>
+<h4 id="eventbusconstructor"><code>EventBus.constructor</code><a class="anchor" href="#eventbusconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="eventbuson"><code>EventBus.on</code><a class="anchor" href="#eventbuson" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">on</span>(name, fn)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td>Namespaced event name, e.g. <code>engine:entity-spawned</code>.</td></tr><tr><td><code>fn</code></td><td><code>(payload: any) =&gt; void</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>() =&gt; void</code> — Unsubscribe function.</p>
+<h4 id="eventbusemit"><code>EventBus.emit</code><a class="anchor" href="#eventbusemit" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">emit</span>(name, payload)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr><tr><td><code>payload</code> (optional)</td><td><code>any</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/events.js:2</sub></p>
+<h3 id="class-fixedloop"><code>class FixedLoop</code><a class="anchor" href="#class-fixedloop" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> FixedLoop</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Fixed-timestep simulation loop. Runs identically on client and server: the host feeds it elapsed time, it calls <code>update</code> at a constant rate and <code>render</code> with an interpolation alpha. No timers or DOM inside, so it is trivially testable and deterministic.</p>
+<h4 id="fixedloopconstructor"><code>FixedLoop.constructor</code><a class="anchor" href="#fixedloopconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ tickRate, update, render, maxFrameTime = <span class="tk-n">0.25</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>opts</code></td><td><code>object</code></td><td></td></tr><tr><td><code>opts.tickRate</code></td><td><code>number</code></td><td>Simulation ticks per second.</td></tr><tr><td><code>opts.update</code></td><td><code>(dt: number, tick: number) =&gt; void</code></td><td>Called once per fixed tick (dt in seconds).</td></tr><tr><td><code>opts.render</code> (optional)</td><td><code>(alpha: number) =&gt; void</code></td><td>Called per frame; alpha in [0,1) between last two ticks.</td></tr><tr><td><code>opts.maxFrameTime</code> (optional)</td><td><code>number</code></td><td>Cap on elapsed time per advance, in seconds (spiral-of-death guard).</td></tr></tbody></table></div>
+<h4 id="fixedloopadvance"><code>FixedLoop.advance</code><a class="anchor" href="#fixedloopadvance" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">advance</span>(elapsed)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Advance by <code>elapsed</code> seconds of real time.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>elapsed</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — Number of ticks simulated.</p>
+<p><sub>src/loop.js:7</sub></p>
+<h3 id="class-pluginapp"><code>class PluginApp</code><a class="anchor" href="#class-pluginapp" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> PluginApp</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What a plugin sees in <code>setup(app)</code>. Everything it registers is namespaced with the plugin id, so two plugins can never collide by accident.</p>
+<h4 id="pluginappconstructor"><code>PluginApp.constructor</code><a class="anchor" href="#pluginappconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(app, id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>app</code></td><td><code>App</code></td><td></td></tr><tr><td><code>id</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<h4 id="pluginappdefinecomponent"><code>PluginApp.defineComponent</code><a class="anchor" href="#pluginappdefinecomponent" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">defineComponent</span>(name, schema)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr><tr><td><code>schema</code></td><td><code>Record&lt;string, 'f32'|'f64'|'i8'|'u8'|'i16'|'u16'|'i32'|'u32'&gt;</code></td><td></td></tr></tbody></table></div>
+<h4 id="pluginappaddsystem"><code>PluginApp.addSystem</code><a class="anchor" href="#pluginappaddsystem" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addSystem</span>(name, fn, { before = [], after = [] } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td>System name (namespaced automatically; before/after entries without a <code>:</code> refer to this plugin's own systems).</td></tr><tr><td><code>fn</code></td><td><code>Function</code></td><td>Called as <code>fn(dt, tick)</code>.</td></tr><tr><td><code>opts</code> (optional)</td><td><code>import('./scheduler.js').SystemOptions</code></td><td></td></tr></tbody></table></div>
+<h4 id="pluginappsetresource"><code>PluginApp.setResource</code><a class="anchor" href="#pluginappsetresource" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setResource</span>(name, value)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Store a shared value other plugins can read by its namespaced name.</p>
+<h4 id="pluginappgetresource"><code>PluginApp.getResource</code><a class="anchor" href="#pluginappgetresource" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">getResource</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td>Full namespaced name, e.g. <code>physics:grid</code>.</td></tr></tbody></table></div>
+<h4 id="pluginappon"><code>PluginApp.on</code><a class="anchor" href="#pluginappon" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">on</span>(name, fn)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="pluginappemit"><code>PluginApp.emit</code><a class="anchor" href="#pluginappemit" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">emit</span>(name, payload)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/app.js:13</sub></p>
+<h3 id="class-scheduler"><code>class Scheduler</code><a class="anchor" href="#class-scheduler" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Scheduler</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Orders systems by before/after constraints (stable: ties keep registration order). Constraints naming systems that are not registered are ignored, so a plugin can say &quot;before render&quot; and still work on a headless server.</p>
+<h4 id="schedulerconstructor"><code>Scheduler.constructor</code><a class="anchor" href="#schedulerconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scheduleradd"><code>Scheduler.add</code><a class="anchor" href="#scheduleradd" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">add</span>(name, fn, { before = [], after = [] } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td>Unique system name.</td></tr><tr><td><code>fn</code></td><td><code>Function</code></td><td></td></tr><tr><td><code>opts</code> (optional)</td><td><code>SystemOptions</code></td><td></td></tr></tbody></table></div>
+<h4 id="schedulerorder"><code>Scheduler.order</code><a class="anchor" href="#schedulerorder" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">order</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><strong>Returns</strong> <code>string[]</code> — System names in execution order.</p>
+<h4 id="schedulerrun"><code>Scheduler.run</code><a class="anchor" href="#schedulerrun" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">run</span>(...args)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Run every system once, in order, passing <code>...args</code>.</p>
+<p><sub>src/scheduler.js:12</sub></p>
+<h3 id="class-world"><code>class World</code><a class="anchor" href="#class-world" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> World</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Entities + struct-of-arrays component storage. Hot loops should grab <code>world.data(Comp)</code> once and index its typed arrays by <code>id &amp; INDEX_MASK</code>.</p>
+<h4 id="worldconstructor"><code>World.constructor</code><a class="anchor" href="#worldconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(capacity = <span class="tk-n">65536</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>capacity</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="worldregister"><code>World.register</code><a class="anchor" href="#worldregister" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">register</span>(comp)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>comp</code></td><td><code>Component</code></td><td></td></tr></tbody></table></div>
+<h4 id="worldcreate"><code>World.create</code><a class="anchor" href="#worldcreate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">create</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="worldisalive"><code>World.isAlive</code><a class="anchor" href="#worldisalive" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">isAlive</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="worlddestroy"><code>World.destroy</code><a class="anchor" href="#worlddestroy" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">destroy</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="worldadd"><code>World.add</code><a class="anchor" href="#worldadd" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">add</span>(id, comp, values)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Attach a component; unspecified fields reset to 0.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td><code>number</code></td><td></td></tr><tr><td><code>comp</code></td><td><code>Component</code></td><td></td></tr><tr><td><code>values</code> (optional)</td><td><code>Record&lt;string, number&gt;</code></td><td></td></tr></tbody></table></div>
+<h4 id="worldremove"><code>World.remove</code><a class="anchor" href="#worldremove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">remove</span>(id, comp)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="worldhas"><code>World.has</code><a class="anchor" href="#worldhas" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">has</span>(id, comp)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="worlddata"><code>World.data</code><a class="anchor" href="#worlddata" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">data</span>(comp)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Typed arrays for a component, keyed by field. Index with <code>id &amp; INDEX_MASK</code>.</p>
+<h4 id="worldquery"><code>World.query</code><a class="anchor" href="#worldquery" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">query</span>(out, comps)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Fill <code>out</code> with ids of live entities that have all <code>comps</code>. No allocation.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>out</code></td><td><code>Uint32Array</code></td><td>Must hold at least <code>capacity</code> ids.</td></tr><tr><td><code>comps</code></td><td><code>Component[]</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — Number of ids written.</p>
+<p><sub>src/world.js:36</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="engine_version"><code>ENGINE_VERSION</code><a class="anchor" href="#engine_version" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> ENGINE_VERSION</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The engine version plugins are checked against (their <code>engine</code> range must accept it).</p>
+<p>Value: <code>'0.0.1'</code></p>
+<p><sub>src/app.js:7</sub></p>
+<h3 id="index_mask"><code>INDEX_MASK</code><a class="anchor" href="#index_mask" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> INDEX_MASK</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Mask that keeps the slot-index bits of an entity id (the low 20 bits): <code>id &amp; INDEX_MASK</code>.</p>
+<p>Value: <code>(1 &lt;&lt; INDEX_BITS) - 1</code></p>
+<p><sub>src/entity.js:8</sub></p>
+<h3 id="max_entities"><code>MAX_ENTITIES</code><a class="anchor" href="#max_entities" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> MAX_ENTITIES</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The most entities that can exist at once (2^20).</p>
+<p>Value: <code>INDEX_MASK + 1</code></p>
+<p><sub>src/entity.js:10</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="component"><code>Component</code><a class="anchor" href="#component" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>Object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td>Namespaced name, e.g. <code>engine:transform</code>.</td></tr><tr><td><code>schema</code></td><td><code>Record&lt;string, keyof ARRAYS&gt;</code></td><td>Field name -&gt; numeric type.</td></tr><tr><td><code>fields</code></td><td><code>string[]</code></td><td></td></tr></tbody></table></div>
+<h3 id="plugindef"><code>PluginDef</code><a class="anchor" href="#plugindef" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>Object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td><code>string</code></td><td>Lowercase id, e.g. <code>my-mod</code>. Namespaces everything the plugin registers.</td></tr><tr><td><code>version</code></td><td><code>string</code></td><td><code>x.y.z</code></td></tr><tr><td><code>engine</code> (optional)</td><td><code>string</code></td><td>Engine version range this plugin supports (default <code>*</code>).</td></tr><tr><td><code>dependencies</code> (optional)</td><td><code>Record&lt;string, string&gt;</code></td><td>Plugin id -&gt; version range.</td></tr><tr><td><code>setup</code></td><td><code>(app: import('./app.js').PluginApp) =&gt; void</code></td><td></td></tr></tbody></table></div>
+<h3 id="systemoptions"><code>SystemOptions</code><a class="anchor" href="#systemoptions" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>Object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>before</code> (optional)</td><td><code>string[]</code></td><td>Run before these systems (absent names are ignored).</td></tr><tr><td><code>after</code> (optional)</td><td><code>string[]</code></td><td>Run after these systems (absent names are ignored).</td></tr></tbody></table></div><div class="pager"><a href="index.html"><small>Previous</small>Overview</a><a class="next" href="math.html"><small>Next</small>math</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-16-of-16-documented">Contents (16 of 16 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#definecomponent">defineComponent</a><a class="l3" href="#defineplugin">definePlugin</a><a class="l3" href="#entitygeneration">entityGeneration</a><a class="l3" href="#entityindex">entityIndex</a><a class="l3" href="#parseversion">parseVersion</a><a class="l3" href="#resolveplugins">resolvePlugins</a><a class="l3" href="#satisfies">satisfies</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-app">class App</a><a class="l3" href="#class-eventbus">class EventBus</a><a class="l3" href="#class-fixedloop">class FixedLoop</a><a class="l3" href="#class-pluginapp">class PluginApp</a><a class="l3" href="#class-scheduler">class Scheduler</a><a class="l3" href="#class-world">class World</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#engine_version">ENGINE_VERSION</a><a class="l3" href="#index_mask">INDEX_MASK</a><a class="l3" href="#max_entities">MAX_ENTITIES</a><a class="l2" href="#types">Types</a><a class="l3" href="#component">Component</a><a class="l3" href="#plugindef">PluginDef</a><a class="l3" href="#systemoptions">SystemOptions</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "pages": ["index.html"],
+  "assets": ["scenes/**", "assets/**"],
+  "outDir": "dist",
+  "writable": [{ "route": "/__scenes", "dir": "scenes", "ext": ".json" }]
+}

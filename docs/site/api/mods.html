@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/mods · Astreon Engine</title>
+<meta name="description" content="Safe third-party mods: manifests, content-hashed bundles, sandboxed script mods in confined processes, signing, policy, validated commands (guide: docs/MODDING.md, threat model: docs/SECURITY.md).">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html" class="on">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginemods">@engine/mods</h1>
+<p>Safe third-party mods: manifests, content-hashed bundles, sandboxed script mods in confined processes, signing, policy, validated commands (guide: docs/MODDING.md, threat model: docs/SECURITY.md).</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/mods</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/mods.html">packages/mods</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-25-of-25-documented">Contents (25 of 25 documented)<a class="anchor" href="#contents-25-of-25-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#bundle_limits"><code>BUNDLE_LIMITS</code></a></td><td>constant</td><td>A bundle is a manifest plus its files as text, plus an optional signature.</td></tr><tr><td><a href="#manifest_limits"><code>MANIFEST_LIMITS</code></a></td><td>constant</td><td>Maximum sizes, so a manifest cannot be used to burn memory.</td></tr><tr><td><a href="#bundletext"><code>bundleText</code></a></td><td>function</td><td>Canonical text of everything that defines what the bundle does (not the signature).</td></tr><tr><td><a href="#canonicaljson"><code>canonicalJson</code></a></td><td>function</td><td>Deterministic JSON: object keys sorted, no whitespace.</td></tr><tr><td><a href="#clientview"><code>clientView</code></a></td><td>function</td><td>What a client needs: ids, versions and the data to apply.</td></tr><tr><td><a href="#hashbundle"><code>hashBundle</code></a></td><td>function</td><td>The SHA-256 of a whole bundle (manifest and files, in a canonical form): what a signature covers.</td></tr><tr><td><a href="#hashclientview"><code>hashClientView</code></a></td><td>function</td><td>The SHA-256 of a bundle's client view: the hash a server advertises so clients can check what they download.</td></tr><tr><td><a href="#mergerulesets"><code>mergeRuleSets</code></a></td><td>function</td><td>Merge rule sets from several mods (in load order; later wins) and report every key more than one mod sets.</td></tr><tr><td><a href="#sha256bytes"><code>sha256Bytes</code></a></td><td>function</td><td>Pure-JS SHA-256 over bytes.</td></tr><tr><td><a href="#sha256hex"><code>sha256Hex</code></a></td><td>function</td><td>SHA-256 of a string (UTF-8) as lowercase hex, using the platform's native implementation when present.</td></tr><tr><td><a href="#sha256hexsync"><code>sha256HexSync</code></a></td><td>function</td><td>Synchronous SHA-256 of a string (always the pure-JS implementation).</td></tr><tr><td><a href="#validatebundle"><code>validateBundle</code></a></td><td>function</td><td>Validate structure and sizes.</td></tr><tr><td><a href="#validatecommand"><code>validateCommand</code></a></td><td>function</td><td>Check a command a mod sent against the allowed commands (<code>op</code> names and the types and ranges of their fields).</td></tr><tr><td><a href="#validatemanifest"><code>validateManifest</code></a></td><td>function</td><td>Check a parsed <code>mod.json</code>: ids, versions, permissions, limits, files.</td></tr><tr><td><a href="#verifyclientview"><code>verifyClientView</code></a></td><td>function</td><td>Check a downloaded client view against the hash the server advertised.</td></tr><tr><td><a href="#allowed_hooks"><code>ALLOWED_HOOKS</code></a></td><td>constant (Node)</td><td>Hook names a mod may register; anything else is ignored.</td></tr><tr><td><a href="#class-inlinesandbox"><code>InlineSandbox</code></a></td><td>class (Node)</td><td>Same interface as ModSandbox but in this process, for tools and deterministic tests.</td></tr><tr><td><a href="#class-modmanager"><code>ModManager</code></a></td><td>class (Node)</td><td>Loads mods, runs script mods in confined sandboxes, and turns what they return into validated commands.</td></tr><tr><td><a href="#class-modsandbox"><code>ModSandbox</code></a></td><td>class (Node)</td><td>One mod, in its own confined process.</td></tr></tbody></table></div>
+<p>| <a href="#class-sandboxcore"><code>SandboxCore</code></a> | class (Node) | The confined JavaScript environment a mod script runs in: a fresh context with no host objects, code generation from strings switched off, and a time limit on every call. | | <a href="#generatesigningkey"><code>generateSigningKey</code></a> | function (Node) | Make an Ed25519 key pair for signing mod bundles. | | <a href="#loadbundledir"><code>loadBundleDir</code></a> | function (Node) | Load one mod directory: <code>mod.json</code> plus its text files (any depth up to 3), plus an optional <code>signature.json</code>. | | <a href="#loadcatalog"><code>loadCatalog</code></a> | function (Node) | Load every mod directory under <code>root</code>. | | <a href="#signhash"><code>signHash</code></a> | function (Node) | Sign a bundle hash. | | <a href="#verifysignature"><code>verifySignature</code></a> | function (Node) | Check a bundle signature: true only for a well-formed, valid signature over exactly this hash. |</p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="bundletext"><code>bundleText</code><a class="anchor" href="#bundletext" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">bundleText</span>(bundle)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Canonical text of everything that defines what the bundle does (not the signature).</p>
+<p><sub>src/bundle.js:18</sub></p>
+<h3 id="canonicaljson"><code>canonicalJson</code><a class="anchor" href="#canonicaljson" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">canonicalJson</span>(value)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Deterministic JSON: object keys sorted, no whitespace. The same value always gives the same text, so the same bundle always gives the same hash regardless of how it was written to disk. Only plain JSON values are allowed (no undefined, functions, NaN, Infinity or cycles).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>value</code></td><td><code>any</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>string</code></p>
+<p><sub>src/hash.js:11</sub></p>
+<h3 id="clientview"><code>clientView</code><a class="anchor" href="#clientview" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">clientView</span>(bundle)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What a client needs: ids, versions and the data to apply. No scripts.</p>
+<p><sub>src/bundle.js:33</sub></p>
+<h3 id="hashbundle"><code>hashBundle</code><a class="anchor" href="#hashbundle" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">hashBundle</span>(bundle)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The SHA-256 of a whole bundle (manifest and files, in a canonical form): what a signature covers.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bundle</code></td><td><code>Bundle</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>string</code> — SHA-256 hex of the bundle.</p>
+<p><sub>src/bundle.js:28</sub></p>
+<h3 id="hashclientview"><code>hashClientView</code><a class="anchor" href="#hashclientview" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">hashClientView</span>(bundle)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The SHA-256 of a bundle's client view: the hash a server advertises so clients can check what they download.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bundle</code></td><td><code>Bundle</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>string</code> — The hash advertised to clients.</p>
+<p><sub>src/bundle.js:44</sub></p>
+<h3 id="mergerulesets"><code>mergeRuleSets</code><a class="anchor" href="#mergerulesets" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">mergeRuleSets</span>(sets)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Merge rule sets from several mods (in load order; later wins) and report every key more than one mod sets. Keys are dotted paths, so <code>weapon.damage</code> and <code>weapon.cooldownTicks</code> from different mods do not conflict.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>sets</code></td><td><code>{mod: string, rules: Record&lt;string, any&gt;}[]</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{merged: Record&lt;string, any&gt;, conflicts: {key: string, mods: string[], winner: string}[]}</code> — <code>merged</code> uses dotted keys.</p>
+<p><sub>src/commands.js:54</sub></p>
+<h3 id="sha256bytes"><code>sha256Bytes</code><a class="anchor" href="#sha256bytes" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">sha256Bytes</span>(bytes)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Pure-JS SHA-256 over bytes. Fallback for environments without <code>crypto.subtle</code>.</p>
+<p><sub>src/hash.js:37</sub></p>
+<h3 id="sha256hex"><code>sha256Hex</code><a class="anchor" href="#sha256hex" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">sha256Hex</span>(text)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>SHA-256 of a string (UTF-8) as lowercase hex, using the platform's native implementation when present.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>text</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Promise&lt;string&gt;</code></p>
+<p><sub>src/hash.js:77</sub></p>
+<h3 id="sha256hexsync"><code>sha256HexSync</code><a class="anchor" href="#sha256hexsync" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">sha256HexSync</span>(text)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Synchronous SHA-256 of a string (always the pure-JS implementation).</p>
+<p><sub>src/hash.js:85</sub></p>
+<h3 id="validatebundle"><code>validateBundle</code><a class="anchor" href="#validatebundle" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">validateBundle</span>(bundle)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Validate structure and sizes. Returns problems rather than throwing, so tools can list all of them.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bundle</code></td><td><code>any</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{ok: boolean, errors: string[]}</code></p>
+<p><sub>src/bundle.js:64</sub></p>
+<h3 id="validatecommand"><code>validateCommand</code><a class="anchor" href="#validatecommand" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">validateCommand</span>(cmd, specs)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Check a command a mod sent against the allowed commands (<code>op</code> names and the types and ranges of their fields). Never throws: returns <code>{ ok: true }</code> or <code>{ ok: false, error }</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>cmd</code></td><td><code>any</code></td><td></td></tr><tr><td><code>specs</code></td><td><code>CommandSpecs</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{ok: true} \| {ok: false, error: string}</code></p>
+<p><sub>src/commands.js:17</sub></p>
+<h3 id="validatemanifest"><code>validateManifest</code><a class="anchor" href="#validatemanifest" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">validateManifest</span>(value)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Check a parsed <code>mod.json</code>: ids, versions, permissions, limits, files. Returns the manifest, or every problem found.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>value</code></td><td><code>any</code></td><td>Parsed JSON</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{ok: true, manifest: ModManifest, errors: []} \| {ok: false, manifest: null, errors: string[]}</code></p>
+<p><sub>src/manifest.js:37</sub></p>
+<h3 id="verifyclientview"><code>verifyClientView</code><a class="anchor" href="#verifyclientview" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">verifyClientView</span>(view, expectedHash)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Check a downloaded client view against the hash the server advertised. Uses native SHA-256 when available.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>view</code></td><td><code>any</code></td><td></td></tr><tr><td><code>expectedHash</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/bundle.js:53</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="bundle_limits"><code>BUNDLE_LIMITS</code><a class="anchor" href="#bundle_limits" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> BUNDLE_LIMITS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A bundle is a manifest plus its files as text, plus an optional signature. The hash covers the manifest and all files, so it identifies exactly what will run. The <em>client view</em> is the data clients need (<code>rules</code> and <code>client</code>); it has its own hash, which the server advertises and clients verify before playing.</p>
+<p>Value: <code>Object.freeze({ files: 16, fileBytes: 128 * 1024, totalBytes: 256 * 1024 })</code></p>
+<p><strong>Properties</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>manifest</code></td><td><code>import('./manifest.js').ModManifest</code></td><td></td></tr><tr><td><code>files</code></td><td><code>Record&lt;string, string&gt;</code></td><td>path -&gt; text (the entry script, extra data files)</td></tr><tr><td><code>signature</code> (optional)</td><td><code>{key: string, sig: string} | null</code></td><td>Ed25519: raw public key (hex) and signature over the bundle hash (hex).</td></tr></tbody></table></div>
+<p><sub>src/bundle.js:15</sub></p>
+<h3 id="manifest_limits"><code>MANIFEST_LIMITS</code><a class="anchor" href="#manifest_limits" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> MANIFEST_LIMITS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Maximum sizes, so a manifest cannot be used to burn memory.</p>
+<p>Value: <code>Object.freeze({ text: 512, rulesJsonBytes: 4096, clientJsonBytes: 8192, dependen</code></p>
+<p><sub>src/manifest.js:29</sub></p>
+<h2 id="node-entry">Node entry<a class="anchor" href="#node-entry" aria-label="Link to this section">#</a></h2>
+<p>These come from <code>@engine/mods/src/node.js</code> and use Node's built-in modules, so they are for servers and tools, not browsers.</p>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">import</span> { ALLOWED_HOOKS, InlineSandbox, ModManager } <span class="tk-k">from</span> <span class="tk-s">'@engine/mods/src/node.js'</span>;</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h3 id="allowed_hooks"><code>ALLOWED_HOOKS</code><a class="anchor" href="#allowed_hooks" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> ALLOWED_HOOKS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Hook names a mod may register; anything else is ignored.</p>
+<p>Value: <code>Object.freeze(['onInit', 'onFrame', 'onShutdown', 'serialize'])</code></p>
+<p><sub>src/sandbox-core.js:13</sub></p>
+<h3 id="class-inlinesandbox"><code>class InlineSandbox</code><a class="anchor" href="#class-inlinesandbox" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> InlineSandbox</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Same interface as ModSandbox but in this process, for tools and deterministic tests. NOT confined.</p>
+<h4 id="inlinesandboxconstructor"><code>InlineSandbox.constructor</code><a class="anchor" href="#inlinesandboxconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ id, source, limits = {} })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="inlinesandboxstart"><code>InlineSandbox.start</code><a class="anchor" href="#inlinesandboxstart" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">start</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="inlinesandboxcall"><code>InlineSandbox.call</code><a class="anchor" href="#inlinesandboxcall" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">call</span>(hook, arg, budgetMs)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="inlinesandboxstop"><code>InlineSandbox.stop</code><a class="anchor" href="#inlinesandboxstop" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">stop</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="inlinesandboxkill"><code>InlineSandbox.kill</code><a class="anchor" href="#inlinesandboxkill" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">kill</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/manager.js:9</sub></p>
+<h3 id="class-modmanager"><code>class ModManager</code><a class="anchor" href="#class-modmanager" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> ModManager</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Loads mods, runs script mods in confined sandboxes, and turns what they return into validated commands.</p>
+<p>The game integrates in four steps: <code>add</code> bundles, <code>start()</code>, <code>emitFrame(frame)</code> on a timer (non-blocking), and <code>drainCommands()</code> each tick to apply what mods asked for. Slow or misbehaving mods are skipped, struck, and eventually disabled; none of this can block the caller.</p>
+<h4 id="modmanagerconstructor"><code>ModManager.constructor</code><a class="anchor" href="#modmanagerconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ commands, policy = {}, mode = <span class="tk-s">'process'</span>, log = () =&gt; {}, now = () =&gt; Date.<span class="tk-f">now</span>(), selftest = <span class="tk-k">false</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.commands</code></td><td><code>import('./commands.js').CommandSpecs</code></td><td>Operations mods may request.</td></tr><tr><td><code>o.policy</code> (optional)</td><td><code>Partial&lt;typeof DEFAULT_POLICY&gt;</code></td><td></td></tr><tr><td><code>o.mode</code> (optional)</td><td><code>'process' | 'inline'</code></td><td>'process' = confined child process per mod (use this for anything untrusted).</td></tr><tr><td><code>o.log</code> (optional)</td><td><code>(message: string) =&gt; void</code></td><td></td></tr><tr><td><code>o.now</code> (optional)</td><td><code>() =&gt; number</code></td><td></td></tr><tr><td><code>o.selftest</code> (optional)</td><td><code>boolean</code></td><td>Enable runtime diagnostics (tests only).</td></tr></tbody></table></div>
+<h4 id="modmanageradd"><code>ModManager.add</code><a class="anchor" href="#modmanageradd" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">add</span>(bundle)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Register a bundle. Returns problems instead of throwing.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bundle</code></td><td><code>import('./bundle.js').Bundle</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{ok: boolean, errors: string[], id?: string}</code></p>
+<h4 id="modmanagerstart"><code>ModManager.start</code><a class="anchor" href="#modmanagerstart" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">start</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Resolve dependency order, then start sandboxes for script mods. Mods with problems are rejected individually.</p>
+<h4 id="modmanageremitframe"><code>ModManager.emitFrame</code><a class="anchor" href="#modmanageremitframe" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">emitFrame</span>(frame)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Offer the current game state to every running script mod. Never blocks: a mod still busy with its previous frame is skipped. Results become commands (see <code>drainCommands</code>) when they arrive.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>frame</code></td><td><code>any | (() =&gt; any)</code></td><td>JSON-serialisable (keep it small: it is copied into each sandbox). Pass a function to build it lazily: it is only called on ticks when some mod is actually due.</td></tr></tbody></table></div>
+<h4 id="modmanagerdraincommands"><code>ModManager.drainCommands</code><a class="anchor" href="#modmanagerdraincommands" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">drainCommands</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Validated commands produced since the last call, in arrival order.</p>
+<p><strong>Returns</strong> <code>{mod: string, cmd: any}[]</code></p>
+<h4 id="modmanagerreload"><code>ModManager.reload</code><a class="anchor" href="#modmanagerreload" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">reload</span>(bundle)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Replace a script mod with a new bundle (development hot reload). The old version's <code>serialize()</code> result, if any, is handed to the new version's <code>onInit</code> as <code>savedState</code>.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bundle</code></td><td><code>import('./bundle.js').Bundle</code></td><td></td></tr></tbody></table></div>
+<h4 id="modmanagercollectrules"><code>ModManager.collectRules</code><a class="anchor" href="#modmanagercollectrules" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">collectRules</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Rules from every enabled mod in load order, merged with conflicts reported.</p>
+<h4 id="modmanageradvertised"><code>ModManager.advertised</code><a class="anchor" href="#modmanageradvertised" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">advertised</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What to tell joining clients: the mods that carry client-relevant data, with the hash they must verify.</p>
+<h4 id="modmanagerclientviews"><code>ModManager.clientViews</code><a class="anchor" href="#modmanagerclientviews" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">clientViews</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><strong>Returns</strong> <code>Map&lt;string, any&gt;</code> — content-addressed client views (hash -&gt; data) for serving over HTTP.</p>
+<h4 id="modmanagerlist"><code>ModManager.list</code><a class="anchor" href="#modmanagerlist" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">list</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Status of every mod, for dashboards and logs.</p>
+<h4 id="modmanagerclose"><code>ModManager.close</code><a class="anchor" href="#modmanagerclose" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">close</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/manager.js:49</sub></p>
+<h3 id="class-modsandbox"><code>class ModSandbox</code><a class="anchor" href="#class-modsandbox" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> ModSandbox</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>One mod, in its own confined process. Started with: --permission (no filesystem except reading the engine's own sandbox files, no child processes, no workers), --max-old-space-size (a runaway allocation kills the child, not the server), --disallow-code-generation-from-strings (even the child's own realm cannot eval), a scrubbed environment, no stdio, and below-normal OS priority. It does NOT block the network (Node 24's permission model does not cover it): see SECURITY.md.</p>
+<h4 id="modsandboxconstructor"><code>ModSandbox.constructor</code><a class="anchor" href="#modsandboxconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ id, source, limits = {}, selftest = <span class="tk-k">false</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.id</code></td><td><code>string</code></td><td></td></tr><tr><td><code>o.source</code></td><td><code>string</code></td><td>The mod's JavaScript.</td></tr><tr><td><code>o.limits</code> (optional)</td><td><code>SandboxLimits</code></td><td></td></tr><tr><td><code>o.selftest</code> (optional)</td><td><code>boolean</code></td><td>Enable diagnostic messages in the runtime (tests only).</td></tr></tbody></table></div>
+<h4 id="modsandboxbusy"><code>ModSandbox.busy</code><a class="anchor" href="#modsandboxbusy" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> busy</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="modsandboxstart"><code>ModSandbox.start</code><a class="anchor" href="#modsandboxstart" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">start</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Start the child and load the mod. Resolves <code>{ok, hooks}</code> or <code>{ok: false, kind, error}</code>.</p>
+<h4 id="modsandboxcall"><code>ModSandbox.call</code><a class="anchor" href="#modsandboxcall" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">call</span>(hook, arg, budgetMs = <span class="tk-k">this</span>.limits.tickBudgetMs)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Call a hook. Resolves with the same result shapes as SandboxCore plus <code>kind: 'crash' | 'watchdog'</code>.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>hook</code></td><td><code>string</code></td><td></td></tr><tr><td><code>arg</code></td><td><code>any</code></td><td></td></tr><tr><td><code>budgetMs</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="modsandboxprobe"><code>ModSandbox.probe</code><a class="anchor" href="#modsandboxprobe" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">probe</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Diagnostics from inside the confined process (tests only: requires <code>selftest</code>).</p>
+<h4 id="modsandboxhang"><code>ModSandbox.hang</code><a class="anchor" href="#modsandboxhang" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">hang</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Block the child's event loop outside the vm (tests only), to exercise the watchdog.</p>
+<h4 id="modsandboxkill"><code>ModSandbox.kill</code><a class="anchor" href="#modsandboxkill" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">kill</span>(reason = <span class="tk-s">'killed'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Terminate the child immediately. The sandbox is dead as soon as this returns.</p>
+<h4 id="modsandboxstop"><code>ModSandbox.stop</code><a class="anchor" href="#modsandboxstop" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">stop</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Ask the child to exit, then make sure it did.</p>
+<p><sub>src/sandbox.js:27</sub></p>
+<h3 id="class-sandboxcore"><code>class SandboxCore</code><a class="anchor" href="#class-sandboxcore" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> SandboxCore</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The confined JavaScript environment a mod script runs in: a fresh context with no host objects, code generation from strings switched off, and a time limit on every call. Only strings cross the boundary. Node only; <code>docs/SECURITY.md</code> explains the layers.</p>
+<h4 id="sandboxcoreconstructor"><code>SandboxCore.constructor</code><a class="anchor" href="#sandboxcoreconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ source, filename = <span class="tk-s">'mod.js'</span>, loadBudgetMs = <span class="tk-n">250</span>, defaultBudgetMs = <span class="tk-n">2</span>, maxResultBytes = <span class="tk-n">64</span> * <span class="tk-n">1024</span>, maxArgBytes = <span class="tk-n">256</span> * <span class="tk-n">1024</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.source</code></td><td><code>string</code></td><td>The mod's JavaScript.</td></tr><tr><td><code>o.filename</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>o.loadBudgetMs</code> (optional)</td><td><code>number</code></td><td>CPU budget for loading the script.</td></tr><tr><td><code>o.defaultBudgetMs</code> (optional)</td><td><code>number</code></td><td>CPU budget per call unless overridden.</td></tr><tr><td><code>o.maxResultBytes</code> (optional)</td><td><code>number</code></td><td>Largest result accepted from a call.</td></tr><tr><td><code>o.maxArgBytes</code> (optional)</td><td><code>number</code></td><td>Largest argument sent into a call.</td></tr></tbody></table></div>
+<h4 id="sandboxcoreload"><code>SandboxCore.load</code><a class="anchor" href="#sandboxcoreload" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">load</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Create the context, run the mod's top level, and report which hooks it registered.</p>
+<h4 id="sandboxcorecall"><code>SandboxCore.call</code><a class="anchor" href="#sandboxcorecall" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">call</span>(hook, arg, budgetMs = <span class="tk-k">this</span>.defaultBudgetMs)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Call a registered hook with a JSON-serialisable argument.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>hook</code></td><td><code>string</code></td><td></td></tr><tr><td><code>arg</code></td><td><code>any</code></td><td></td></tr><tr><td><code>budgetMs</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>CallResult</code></p>
+<p><sub>src/sandbox-core.js:94</sub></p>
+<h3 id="generatesigningkey"><code>generateSigningKey</code><a class="anchor" href="#generatesigningkey" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">generateSigningKey</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Make an Ed25519 key pair for signing mod bundles.</p>
+<p><strong>Returns</strong> <code>{publicKey: string, privateKey: string}</code> — Raw public key as hex; private key as PKCS8 PEM.</p>
+<p><sub>src/signing.js:13</sub></p>
+<h3 id="loadbundledir"><code>loadBundleDir</code><a class="anchor" href="#loadbundledir" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">loadBundleDir</span>(dir)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Load one mod directory: <code>mod.json</code> plus its text files (any depth up to 3), plus an optional <code>signature.json</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>dir</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{ok: true, bundle: import('./bundle.js').Bundle, errors: []} \| {ok: false, bundle: null, errors: string[]}</code></p>
+<p><sub>src/loader.js:15</sub></p>
+<h3 id="loadcatalog"><code>loadCatalog</code><a class="anchor" href="#loadcatalog" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">loadCatalog</span>(root)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Load every mod directory under <code>root</code>. Problems are reported per directory, never thrown.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>root</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{bundles: import('./bundle.js').Bundle[], problems: {dir: string, errors: string[]}[]}</code></p>
+<p><sub>src/loader.js:68</sub></p>
+<h3 id="signhash"><code>signHash</code><a class="anchor" href="#signhash" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">signHash</span>(bundleHash, key)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Sign a bundle hash.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bundleHash</code></td><td><code>string</code></td><td>hex</td></tr><tr><td><code>key</code></td><td><code>{publicKey: string, privateKey: string}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{key: string, sig: string}</code></p>
+<p><sub>src/signing.js:25</sub></p>
+<h3 id="verifysignature"><code>verifySignature</code><a class="anchor" href="#verifysignature" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">verifySignature</span>(bundleHash, signature)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Check a bundle signature: true only for a well-formed, valid signature over exactly this hash. A signature says who published a bundle, not that it is safe.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bundleHash</code></td><td><code>string</code></td><td></td></tr><tr><td><code>signature</code></td><td><code>{key: string, sig: string} | null | undefined</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>boolean</code> — True only for a well-formed, valid signature.</p>
+<p><sub>src/signing.js:39</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="bundle"><code>Bundle</code><a class="anchor" href="#bundle" aria-label="Link to this section">#</a></h3>
+<p>A bundle is a manifest plus its files as text, plus an optional signature. The hash covers the manifest and all files, so it identifies exactly what will run. The <em>client view</em> is the data clients need (<code>rules</code> and <code>client</code>); it has its own hash, which the server advertises and clients verify before playing.</p>
+<p>Type: <code>Object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>manifest</code></td><td><code>import('./manifest.js').ModManifest</code></td><td></td></tr><tr><td><code>files</code></td><td><code>Record&lt;string, string&gt;</code></td><td>path -&gt; text (the entry script, extra data files)</td></tr><tr><td><code>signature</code> (optional)</td><td><code>{key: string, sig: string} | null</code></td><td>Ed25519: raw public key (hex) and signature over the bundle hash (hex).</td></tr></tbody></table></div>
+<h3 id="commandspecs"><code>CommandSpecs</code><a class="anchor" href="#commandspecs" aria-label="Link to this section">#</a></h3>
+<p>op name -&gt; field name -&gt; spec</p>
+<p>Type: <code>Record&lt;string, Record&lt;string, FieldSpec&gt;&gt;</code></p>
+<h3 id="fieldspec"><code>FieldSpec</code><a class="anchor" href="#fieldspec" aria-label="Link to this section">#</a></h3>
+<p>Mods act on the game only through <em>commands</em>: small JSON objects the game defines and validates. The mod proposes, the game decides (and can refuse). A command spec lists exactly the allowed fields and their types.</p>
+<p>Type: <code>{type: 'int' \| 'number', min?: number, max?: number} \| {type: 'string', maxLength?: number} \| {type: 'bool'}</code></p>
+<h3 id="modmanifest"><code>ModManifest</code><a class="anchor" href="#modmanifest" aria-label="Link to this section">#</a></h3>
+<p>A mod's <code>mod.json</code>. Strict on purpose: unknown fields are errors, so typos do not silently do nothing and a manifest cannot smuggle in fields a future version might interpret.</p>
+<p>Type: <code>Object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td><code>string</code></td><td>Lowercase id; namespaces everything the mod adds.</td></tr><tr><td><code>version</code></td><td><code>string</code></td><td><code>x.y.z</code></td></tr><tr><td><code>engine</code> (optional)</td><td><code>string</code></td><td>Engine version range, e.g. <code>^0.0.1</code>.</td></tr><tr><td><code>name</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>description</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>author</code> (optional)</td><td><code>string</code></td><td></td></tr><tr><td><code>tier</code></td><td><code>'data' | 'script'</code></td><td></td></tr><tr><td><code>entry</code> (optional)</td><td><code>string</code></td><td>Script file (tier <code>script</code> only).</td></tr><tr><td><code>dependencies</code> (optional)</td><td><code>Record&lt;string, string&gt;</code></td><td>Other mod ids -&gt; version ranges.</td></tr><tr><td><code>rules</code> (optional)</td><td><code>Record&lt;string, any&gt;</code></td><td>Tier 1: rule values (the game whitelists and range-checks them).</td></tr><tr><td><code>client</code> (optional)</td><td><code>Record&lt;string, any&gt;</code></td><td>Presentation data sent to clients (the game whitelists it).</td></tr><tr><td><code>limits</code> (optional)</td><td><code>{tickBudgetMs?: number, memoryMb?: number, tickEvery?: number}</code></td><td>What the mod asks for; the server policy clamps it.</td></tr></tbody></table></div><div class="pager"><a href="debug.html"><small>Previous</small>debug</a><a class="next" href="protocol.html"><small>Next</small>protocol</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-25-of-25-documented">Contents (25 of 25 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#bundletext">bundleText</a><a class="l3" href="#canonicaljson">canonicalJson</a><a class="l3" href="#clientview">clientView</a><a class="l3" href="#hashbundle">hashBundle</a><a class="l3" href="#hashclientview">hashClientView</a><a class="l3" href="#mergerulesets">mergeRuleSets</a><a class="l3" href="#sha256bytes">sha256Bytes</a><a class="l3" href="#sha256hex">sha256Hex</a><a class="l3" href="#sha256hexsync">sha256HexSync</a><a class="l3" href="#validatebundle">validateBundle</a><a class="l3" href="#validatecommand">validateCommand</a><a class="l3" href="#validatemanifest">validateManifest</a><a class="l3" href="#verifyclientview">verifyClientView</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#bundle_limits">BUNDLE_LIMITS</a><a class="l3" href="#manifest_limits">MANIFEST_LIMITS</a><a class="l2" href="#node-entry">Node entry</a><a class="l3" href="#allowed_hooks">ALLOWED_HOOKS</a><a class="l3" href="#class-inlinesandbox">class InlineSandbox</a><a class="l3" href="#class-modmanager">class ModManager</a><a class="l3" href="#class-modsandbox">class ModSandbox</a><a class="l3" href="#class-sandboxcore">class SandboxCore</a><a class="l3" href="#generatesigningkey">generateSigningKey</a><a class="l3" href="#loadbundledir">loadBundleDir</a><a class="l3" href="#loadcatalog">loadCatalog</a><a class="l3" href="#signhash">signHash</a><a class="l3" href="#verifysignature">verifySignature</a><a class="l2" href="#types">Types</a><a class="l3" href="#bundle">Bundle</a><a class="l3" href="#commandspecs">CommandSpecs</a><a class="l3" href="#fieldspec">FieldSpec</a><a class="l3" href="#modmanifest">ModManifest</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

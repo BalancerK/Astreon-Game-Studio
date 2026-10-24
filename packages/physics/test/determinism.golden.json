@@ -1,0 +1,11 @@
+{
+  "physics3d.narrow": "164bd2e7",
+  "physics3d.broad": "2d2c8377",
+  "physics3d.slide": "87888d0f",
+  "physics3d.character": "c5c9cf2e",
+  "rigid.contacts": "e0bf04ac",
+  "rigid.pile": "d5b732d1",
+  "rigid.joints": "404681ff",
+  "rigid.ragdoll": "ef65e257",
+  "rigid.vehicle": "90859c81"
+}

@@ -1,0 +1,122 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Audio self-test</title>
+<script type="module">
+import { AudioEngine, synthesize, sfx } from '../src/index.js';
+
+const SR = 44100;
+const checks = {};
+const add = (name, ok, got, want) => { checks[name] = { ok, got, want }; };
+
+/** Build an engine on an offline context, let `setup` play things, render, and hand back both channels. */
+async function render(setup, seconds = 1, engineOptions = {}) {
+  const ctx = new OfflineAudioContext(2, Math.round(SR * seconds), SR);
+  const audio = new AudioEngine({ context: ctx, unlock: false, pauseWhenHidden: false, skipWhenSuspended: false, compressor: false, ...engineOptions }); // no limiter by default: measurements want the plain level
+  await setup(audio, ctx);
+  const buf = await ctx.startRendering();
+  return { L: buf.getChannelData(0), R: buf.getChannelData(1), audio };
+}
+const rms = (d, from = 0, to = d.length) => { let s = 0; for (let i = from; i < to; i++) s += d[i] * d[i]; return Math.sqrt(s / Math.max(1, to - from)); };
+const hz = (d, seconds) => { let n = 0; for (let i = 1; i < d.length; i++) if ((d[i - 1] < 0) !== (d[i] < 0)) n++; return n / 2 / seconds; };
+const sine = (audio, freq = 440, name = 'sine') => audio.createSound({ duration: 1, sampleRate: SR, layers: [{ wave: 'sine', freq, decay: 100, attack: 0.001 }], peak: 0.9 }, name);
+const near = (a, b, tol) => Math.abs(a - b) <= tol;
+
+try {
+  // the whole graph: a 440 Hz sine through source -> gain -> pan -> bus -> master -> limiter -> output
+  {
+    const { L, R } = await render((a) => a.play(sine(a), { volume: 0.5 }));
+    add('a played sine comes out of the engine at the pitch it was made at', near(hz(L, 1), 440, 8) && near(hz(R, 1), 440, 8), [hz(L, 1), hz(R, 1)], 440);
+    add('and at the volume asked for (peak 0.9 x volume 0.5, rms of a sine, minus 3 dB for the centred mono pan: 0.225)', near(rms(L, 4000), 0.9 * 0.5 * Math.SQRT1_2 * Math.SQRT1_2, 0.01), rms(L, 4000), 0.225);
+  }
+  // panning
+  {
+    const right = await render((a) => { a.setListener(0, 0, 0, 0); a.play(sine(a), { position: [4, 0, 0], volume: 0.5 }); });
+    const left = await render((a) => { a.setListener(0, 0, 0, 0); a.play(sine(a), { position: [-4, 0, 0], volume: 0.5 }); });
+    const ahead = await render((a) => { a.setListener(0, 0, 0, 0); a.play(sine(a), { position: [0, 0, -4], volume: 0.5 }); });
+    add('a sound to the right plays in the right speaker', rms(right.R) > rms(right.L) * 20, [rms(right.L), rms(right.R)], 'R >> L');
+    add('a sound to the left plays in the left speaker', rms(left.L) > rms(left.R) * 20, [rms(left.L), rms(left.R)], 'L >> R');
+    add('a sound straight ahead is the same in both', near(rms(ahead.L), rms(ahead.R), rms(ahead.L) * 0.02), [rms(ahead.L), rms(ahead.R)], 'L == R');
+    const turned = await render((a) => { a.setListener(0, 0, 0, Math.PI / 2); a.play(sine(a), { position: [0, 0, -4], volume: 0.5 }); }); // turned left: -z is now on the right
+    add('turning the listener moves where sounds are (turned left, what was ahead is on the right)', rms(turned.R) > rms(turned.L) * 20, [rms(turned.L), rms(turned.R)], 'R >> L');
+  }
+  // distance: inverse model, 1 m versus 8 m
+  {
+    const near1 = await render((a) => { a.setListener(0, 0, 0, 0); a.play(sine(a), { position: [0, 0, -1], volume: 0.4 }); });
+    const far8 = await render((a) => { a.setListener(0, 0, 0, 0); a.play(sine(a), { position: [0, 0, -8], volume: 0.4 }); });
+    const ratio = rms(far8.L, 4000) / rms(near1.L, 4000);
+    add('a sound 8 m away is an eighth as loud as one at 1 m (inverse distance)', near(ratio, 1 / 8, 0.01), ratio, 0.125);
+    const gone = await render((a) => { a.setListener(0, 0, 0, 0); a.play(sine(a), { position: [0, 0, -80], volume: 1, maxDistance: 50 }); });
+    add('a sound beyond its maximum distance is not heard at all', rms(gone.L) === 0 && gone.audio.stats.culled === 1, [rms(gone.L), gone.audio.stats.culled], 0);
+  }
+  // moving things: update() re-pans a playing sound
+  {
+    const { L, R } = await render(async (a) => {
+      a.setListener(0, 0, 0, 0);
+      const v = a.play(sine(a), { position: [4, 0, 0], volume: 0.5, loop: true });
+      v.setPosition(-4, 0, 0); // it moved to the other side before the first block is rendered
+      a.update();
+    });
+    add('update() carries a moved sound to the other speaker', rms(L, 8000) > rms(R, 8000) * 5, [rms(L, 8000), rms(R, 8000)], 'L >> R after the move');
+  }
+  // buses
+  {
+    const full = await render((a) => a.play(sine(a), { volume: 0.5, bus: 'sfx' }));
+    const half = await render((a) => { a.setVolume('sfx', 0.5); a.play(sine(a), { volume: 0.5, bus: 'sfx' }); });
+    const muted = await render((a) => { a.setMuted('music', true); a.play(sine(a), { volume: 0.5, bus: 'music' }); });
+    const other = await render((a) => { a.setMuted('music', true); a.play(sine(a), { volume: 0.5, bus: 'sfx' }); });
+    add('a bus volume of 0.5 halves the sound', near(rms(half.L, 4000) / rms(full.L, 4000), 0.5, 0.02), rms(half.L, 4000) / rms(full.L, 4000), 0.5);
+    add('a muted bus is silent, and other buses are unaffected', rms(muted.L) === 0 && rms(other.L) > 0.1, [rms(muted.L), rms(other.L)], 'silent / audible');
+  }
+  // pitch
+  {
+    const { L } = await render((a) => a.play(sine(a), { pitch: 2, volume: 0.5 }));
+    add('pitch 2 plays an octave higher (and the one-second sound is over in half the time)', near(hz(L.subarray(0, 22000), 22000 / SR), 880, 15) && rms(L, 24000) < 0.001, [hz(L.subarray(0, 22000), 22000 / SR), rms(L, 24000)], 880);
+  }
+  // fades
+  {
+    const up = await render((a) => a.play(sine(a), { volume: 0.5, fadeIn: 0.8 }));
+    add('a fade-in starts silent and ends at full volume', rms(up.L, 0, 2000) < 0.03 && near(rms(up.L, 40000, 44000), 0.225, 0.02), [rms(up.L, 0, 2000), rms(up.L, 40000, 44000)], 'quiet then 0.225');
+    const down = await render((a) => { const v = a.play(sine(a), { volume: 0.5, loop: true }); v.stop(0.5); });
+    const d1 = rms(down.L, 0, 3000), d2 = rms(down.L, 9000, 12000), d3 = rms(down.L, 18000, 21000);
+    add('a fade-out falls steadily to silence', d1 > 0.18 && d1 > d2 && d2 > d3 && d3 > 0 && rms(down.L, 30000, 44100) < 0.001, [d1, d2, d3, rms(down.L, 30000, 44100)], 'loud, quieter, quieter, silent');
+  }
+  // the limiter on the master bus: eight loud sounds at once would clip; with the limiter on they stay near full scale
+  {
+    const stack = (a) => { for (let i = 0; i < 8; i++) a.play(sine(a, 400 + i * 37), { volume: 1, pan: 0 }); };
+    const raw = await render(stack, 1, { compressor: false });
+    const limited = await render(stack, 1, { compressor: true });
+    const peak = (d) => { let m = 0; for (let i = 0; i < d.length; i++) m = Math.max(m, Math.abs(d[i])); return m; };
+    add('the master limiter keeps a pile of loud sounds from clipping (eight sines: peak well over 1 without it, near 1 with it)', peak(raw.L) > 2 && peak(limited.L) < 1.0, [peak(raw.L), peak(limited.L)], 'raw > 2, limited below 1');
+  }
+  // the built-in sounds, through the real mixer
+  {
+    const { L } = await render((a) => a.play(a.createSound(sfx.shot(), 'shot'), { volume: 1 }), 0.5);
+    add('the built-in shot sound is audible and has died away by the end', rms(L, 0, 4000) > 0.1 && rms(L, 18000, 22050) < 0.01, [rms(L, 0, 4000), rms(L, 18000, 22050)], 'loud then quiet');
+  }
+  // decoding a real file format: a WAV made here, fetched from a blob URL, decoded by the browser, played at the right pitch
+  {
+    const n = SR, pcm = new Int16Array(n);
+    for (let i = 0; i < n; i++) pcm[i] = Math.round(Math.sin((2 * Math.PI * 330 * i) / SR) * 20000);
+    const wav = new Uint8Array(44 + n * 2), dv = new DataView(wav.buffer);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, SR, true); dv.setUint32(28, SR * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); str(36, 'data'); dv.setUint32(40, n * 2, true);
+    new Int16Array(wav.buffer, 44, n).set(pcm);
+    const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+    const { L } = await render(async (a) => { const s = await a.load(url, 'wav'); a.play(s, { volume: 0.8 }); });
+    add('load() fetches and decodes an audio file (a 330 Hz WAV) and plays it at its own pitch', near(hz(L, 1), 330, 8) && rms(L, 4000) > 0.2, [hz(L, 1), rms(L, 4000)], 330);
+  }
+  // a live context (not offline): the engine can be created, reports a state and tears down
+  {
+    const live = new AudioEngine({ unlock: false, pauseWhenHidden: false });
+    const state = live.state;
+    add('a real AudioContext starts (running, or suspended until the page is touched) and can be disposed', state === 'running' || state === 'suspended', state, 'running | suspended');
+    live.dispose();
+  }
+} catch (e) {
+  add('the self-test ran to the end', false, String(e && e.stack || e), 'no exception');
+}
+
+const ok = Object.values(checks).every((c) => c.ok);
+await fetch('/report', { method: 'POST', body: JSON.stringify({ ok, checks, userAgent: navigator.userAgent }) });
+</script>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/build · Astreon Engine</title>
+<meta name="description" content="Production build (bundle, minify, content-hashed files, manifest, precompression) and a dev server with live manifest and page reload.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html" class="on">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginebuild">@engine/build</h1>
+<p>Production build (bundle, minify, content-hashed files, manifest, precompression) and a dev server with live manifest and page reload.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/build</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/build.html">packages/build</a>) explains how the pieces fit together; this page lists every export.</p>
+<p>Command line: <code>engine-build</code></p>
+<h2 id="contents-16-of-16-documented">Contents (16 of 16 documented)<a class="anchor" href="#contents-16-of-16-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-bundleerror"><code>BundleError</code></a></td><td>class</td><td>The bundler could not bundle the code (a missing file, a circular import, an unsupported form).</td></tr><tr><td><a href="#build"><code>build</code></a></td><td>function</td><td>Build a project.</td></tr><tr><td><a href="#bundle"><code>bundle</code></a></td><td>function</td><td>Bundle an entry module and everything it imports.</td></tr><tr><td><a href="#codetest"><code>codeTest</code></a></td><td>function</td><td>A function that says whether an offset is code (not inside a comment, string, regular expression or the text of a template).</td></tr><tr><td><a href="#findimportmap"><code>findImportMap</code></a></td><td>function</td><td>Browsers cannot resolve <code>import '@engine/render'</code>; an import map tells them where it is.</td></tr><tr><td><a href="#formatreport"><code>formatReport</code></a></td><td>function</td><td>A short text report of a build.</td></tr><tr><td><a href="#globtoregexp"><code>globToRegExp</code></a></td><td>function</td><td><code>*</code> = within a folder, <code>**</code> = any folders, <code>?</code> = one character, <code>{a,b}</code> = either.</td></tr><tr><td><a href="#hashbytes"><code>hashBytes</code></a></td><td>function</td><td>A short SHA-256 hex digest of some bytes, used in hashed file names (<code>length</code> hex digits, default 8).</td></tr><tr><td><a href="#matchfiles"><code>matchFiles</code></a></td><td>function</td><td>Files below <code>root</code> matching any of the globs (relative to root), sorted.</td></tr><tr><td><a href="#minifycss"><code>minifyCss</code></a></td><td>function</td><td>CSS without comments and with the whitespace that does not matter removed.</td></tr><tr><td><a href="#minifyjs"><code>minifyJs</code></a></td><td>function</td><td>Makes JavaScript smaller without changing what it does: removes comments and indentation (keeping every line break, and anything inside strings, templates and regular expressions exactly).</td></tr><tr><td><a href="#minifyjson"><code>minifyJson</code></a></td><td>function</td><td>JSON without whitespace (throws on invalid JSON with the position).</td></tr><tr><td><a href="#resolveimport"><code>resolveImport</code></a></td><td>function</td><td>Where an import specifier points.</td></tr><tr><td><a href="#scan"><code>scan</code></a></td><td>function</td><td>Split source text into the parts that are not code.</td></tr><tr><td><a href="#serve"><code>serve</code></a></td><td>function</td><td><code>handle(req, res)</code> runs first for every request: return true if it answered (your own API next to the pages).</td></tr><tr><td><a href="#transformmodule"><code>transformModule</code></a></td><td>function</td><td>Rewrite one module's imports and exports.</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="build"><code>build</code><a class="anchor" href="#build" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">build</span>(config = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Build a project. Same input, same output, byte for byte.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>config</code></td><td><code>BuildConfig</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{outDir: string, files: Array&lt;{path: string, bytes: number, gzip?: number, brotli?: number}&gt;, manifest: any, bundles: Array&lt;{page: string, entry: string, file: string, modules: number, source: number, minified: number, gzip: number}&gt;, warnings: string[]}</code></p>
+<p><sub>src/build.js:51</sub></p>
+<h3 id="bundle"><code>bundle</code><a class="anchor" href="#bundle" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">bundle</span>(entry, { root, minify = <span class="tk-k">false</span>, alias = {}, define = {} } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Bundle an entry module and everything it imports.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>entry</code></td><td><code>string</code></td><td>Path to the entry file.</td></tr><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.root</code> (optional)</td><td><code>string</code></td><td>Module ids are paths relative to this (default: the entry's folder).</td></tr><tr><td><code>o.minify</code> (optional)</td><td><code>boolean</code></td><td></td></tr><tr><td><code>o.alias</code> (optional)</td><td><code>Record&lt;string, string&gt;</code></td><td>Replace the start of a specifier: <code>{ '@game': '/abs/path/src' }</code>.</td></tr><tr><td><code>o.define</code> (optional)</td><td><code>Record&lt;string, string&gt;</code></td><td>Replace plain identifiers with literal text: <code>{ DEBUG: 'false' }</code> (code only, never inside strings).</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{code: string, modules: Array&lt;{id: string, file: string, bytes: number}&gt;}</code> — modules in the order they run</p>
+<p><sub>src/bundle.js:137</sub></p>
+<h3 id="codetest"><code>codeTest</code><a class="anchor" href="#codetest" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">codeTest</span>(segments)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A function that says whether an offset is code (not inside a comment, string, regular expression or the text of a template).</p>
+<p><sub>src/lexer.js:71</sub></p>
+<h3 id="findimportmap"><code>findImportMap</code><a class="anchor" href="#findimportmap" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">findImportMap</span>(root)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Browsers cannot resolve <code>import '@engine/render'</code>; an import map tells them where it is. This lists the <code>@engine/*</code> packages installed in the project's node_modules and maps each to a URL under <code>/@modules/</code>, which the dev server serves from there.</p>
+<p><strong>Returns</strong> <code>{imports: Record&lt;string, string&gt;, packages: Map&lt;string, string&gt;}</code></p>
+<p><sub>src/dev.js:15</sub></p>
+<h3 id="formatreport"><code>formatReport</code><a class="anchor" href="#formatreport" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">formatReport</span>(result)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A short text report of a build.</p>
+<p><sub>src/build.js:166</sub></p>
+<h3 id="globtoregexp"><code>globToRegExp</code><a class="anchor" href="#globtoregexp" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">globToRegExp</span>(glob)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><code>*</code> = within a folder, <code>**</code> = any folders, <code>?</code> = one character, <code>{a,b}</code> = either.</p>
+<p><sub>src/files.js:7</sub></p>
+<h3 id="hashbytes"><code>hashBytes</code><a class="anchor" href="#hashbytes" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">hashBytes</span>(bytes, length = <span class="tk-n">8</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A short SHA-256 hex digest of some bytes, used in hashed file names (<code>length</code> hex digits, default 8).</p>
+<p><sub>src/files.js:43</sub></p>
+<h3 id="matchfiles"><code>matchFiles</code><a class="anchor" href="#matchfiles" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">matchFiles</span>(root, globs)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Files below <code>root</code> matching any of the globs (relative to root), sorted.</p>
+<p><sub>src/files.js:37</sub></p>
+<h3 id="minifycss"><code>minifyCss</code><a class="anchor" href="#minifycss" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">minifyCss</span>(src)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>CSS without comments and with the whitespace that does not matter removed.</p>
+<p><sub>src/minify.js:48</sub></p>
+<h3 id="minifyjs"><code>minifyJs</code><a class="anchor" href="#minifyjs" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">minifyJs</span>(src, { keepLicense = <span class="tk-k">true</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Makes JavaScript smaller without changing what it does: removes comments and indentation (keeping every line break, and anything inside strings, templates and regular expressions exactly). Names are not shortened.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>src</code></td><td><code>string</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{keepLicense?: boolean}</code></td><td>Keep comments that begin with <code>/*!</code> (default true).</td></tr></tbody></table></div>
+<p><sub>src/minify.js:12</sub></p>
+<h3 id="minifyjson"><code>minifyJson</code><a class="anchor" href="#minifyjson" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">minifyJson</span>(text)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>JSON without whitespace (throws on invalid JSON with the position).</p>
+<p><sub>src/minify.js:43</sub></p>
+<h3 id="resolveimport"><code>resolveImport</code><a class="anchor" href="#resolveimport" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">resolveImport</span>(spec, fromFile, { alias = {} } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Where an import specifier points.</p>
+<p><strong>Returns</strong> <code>string</code> — an absolute file path</p>
+<p><sub>src/bundle.js:37</sub></p>
+<h3 id="scan"><code>scan</code><a class="anchor" href="#scan" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">scan</span>(src)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Split source text into the parts that are not code.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>src</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Array&lt;{start: number, end: number, type: 'comment' \| 'string' \| 'template' \| 'regex'}&gt;</code> — in order, end exclusive. <code>${...}</code> inside a template is code.</p>
+<p><sub>src/lexer.js:12</sub></p>
+<h3 id="serve"><code>serve</code><a class="anchor" href="#serve" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">serve</span>({ root = <span class="tk-s">'.'</span>, assets = [], port = <span class="tk-n">8080</span>, host = <span class="tk-s">'127.0.0.1'</span>, liveReload = <span class="tk-k">true</span>, writable = [], handle, log = () =&gt; {} } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><code>handle(req, res)</code> runs first for every request: return true if it answered (your own API next to the pages). <code>writable</code> lets pages (the scene editor) list, read, write and delete files in chosen folders: <code>[{ route: '/__scenes', dir: 'scenes', ext: '.json' }]</code>. Names are checked, only that extension is touched, bodies are capped, JSON is validated, writes are atomic, and requests from other origins are refused.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>{root?: string, assets?: string[], port?: number, host?: string, publicPath?: string, liveReload?: boolean, writable?: Array&lt;{route: string, dir: string, ext?: string, maxBytes?: number}&gt;, handle?: (req: any, res: any) =&gt; boolean | void, log?: (msg: string) =&gt; void}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Promise&lt;{server: http.Server, port: number, url: string, close(): Promise&lt;void&gt;, manifest(): any, changed(path?: string): void}&gt;</code></p>
+<p><sub>src/dev.js:39</sub></p>
+<h3 id="transformmodule"><code>transformModule</code><a class="anchor" href="#transformmodule" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">transformModule</span>(src, file, resolveId, { id = file } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Rewrite one module's imports and exports.</p>
+<p><strong>Returns</strong> <code>{code: string, deps: string[]}</code> — deps are absolute paths, in order</p>
+<p><sub>src/bundle.js:66</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-bundleerror"><code>class BundleError</code><a class="anchor" href="#class-bundleerror" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> BundleError <span class="tk-k">extends</span> Error</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The bundler could not bundle the code (a missing file, a circular import, an unsupported form). The message names the file.</p>
+<h4 id="bundleerrorconstructor"><code>BundleError.constructor</code><a class="anchor" href="#bundleerrorconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(message)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/bundle.js:16</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="buildconfig"><code>BuildConfig</code><a class="anchor" href="#buildconfig" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>root</code> (optional)</td><td><code>string</code></td><td>The project folder (default: the current folder). Everything below is relative to it.</td></tr><tr><td><code>outDir</code> (optional)</td><td><code>string</code></td><td>Where the build goes (<code>dist</code>). It is emptied first.</td></tr><tr><td><code>pages</code> (optional)</td><td><code>string[]</code></td><td>HTML pages to process (<code>['index.html']</code>): their module scripts are bundled, files they refer to are hashed.</td></tr><tr><td><code>assets</code> (optional)</td><td><code>string[]</code></td><td>Globs of files the game loads at run time (<code>['assets/**']</code>): they get hashed names and manifest entries.</td></tr><tr><td><code>publicPath</code> (optional)</td><td><code>string</code></td><td>URL prefix the build will be served under (<code>''</code> = next to the page, <code>'/game/'</code>...).</td></tr><tr><td><code>minify</code> (optional)</td><td><code>boolean</code></td><td>Default true.</td></tr><tr><td><code>compress</code> (optional)</td><td><code>Array&lt;'gzip' | 'brotli'&gt;</code></td><td>Precompressed copies written next to files that shrink (default both).</td></tr><tr><td><code>hashLength</code> (optional)</td><td><code>number</code></td><td>Hex digits of the content hash in file names (8).</td></tr><tr><td><code>alias</code> (optional)</td><td><code>Record&lt;string, string&gt;</code></td><td>Import specifier prefixes to replace.</td></tr><tr><td><code>define</code> (optional)</td><td><code>Record&lt;string, string&gt;</code></td><td>Identifiers replaced by literal text in the code (<code>{ DEBUG: 'false' }</code>).</td></tr><tr><td><code>transforms</code> (optional)</td><td><code>Record&lt;string, (bytes: Buffer, file: string) =&gt; Buffer | string&gt;</code></td><td>By extension (<code>'.png'</code>): change a file's bytes before hashing (compress textures, convert audio...).</td></tr><tr><td><code>log</code> (optional)</td><td><code>(msg: string) =&gt; void</code></td><td></td></tr></tbody></table></div><div class="pager"><a href="editor.html"><small>Previous</small>editor</a><a class="next" href="create-game.html"><small>Next</small>create-game</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-16-of-16-documented">Contents (16 of 16 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#build">build</a><a class="l3" href="#bundle">bundle</a><a class="l3" href="#codetest">codeTest</a><a class="l3" href="#findimportmap">findImportMap</a><a class="l3" href="#formatreport">formatReport</a><a class="l3" href="#globtoregexp">globToRegExp</a><a class="l3" href="#hashbytes">hashBytes</a><a class="l3" href="#matchfiles">matchFiles</a><a class="l3" href="#minifycss">minifyCss</a><a class="l3" href="#minifyjs">minifyJs</a><a class="l3" href="#minifyjson">minifyJson</a><a class="l3" href="#resolveimport">resolveImport</a><a class="l3" href="#scan">scan</a><a class="l3" href="#serve">serve</a><a class="l3" href="#transformmodule">transformModule</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-bundleerror">class BundleError</a><a class="l2" href="#types">Types</a><a class="l3" href="#buildconfig">BuildConfig</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

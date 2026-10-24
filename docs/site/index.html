@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-base="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Astreon Engine: fast browser games, alone or together</title>
+<meta name="description" content="A modular, zero-dependency JavaScript engine for browser games.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="guide/start-here.html">Guide</a><a href="tutorials/2d-platformer.html">Tutorials</a><a href="packages/index.html">Packages</a><a href="api/index.html">API</a><a href="reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<main style="padding:0"><section class="hero"><h1>Build <em>fast browser games</em>, alone or together.</h1>
+<p class="lead">A modular, zero-dependency JavaScript game engine with 2D and 3D rendering, real-time and turn-based multiplayer, and tools to make, test and ship your game.</p>
+<div class="btns"><a class="btn primary" href="guide/start-here.html">Start here</a><a class="btn" href="guide/architecture.html">How it works</a><a class="btn" href="packages/index.html">Browse packages</a></div>
+<div class="code"><pre><code>npx create-game my-game --template 3d
+cd my-game &amp;&amp; npm run dev</code></pre><button class="copy" type="button">Copy</button></div></section>
+<div class="wrap"><div class="stats"><div class="stat"><b>31</b><span>packages</span></div><div class="stat"><b>1076</b><span>documented exports</span></div><div class="stat"><b>7</b><span>example games</span></div><div class="stat"><b>0</b><span>runtime dependencies</span></div></div>
+<section class="section"><h2>Why this engine</h2><p>Built for games that need to feel instant, and small enough to understand completely.</p><div class="features"><div class="feature"><div class="ic">⚡</div><h3>Fast, fair multiplayer</h3><p>An authoritative server, client prediction, delta snapshots and interest management keep a game responsive over a bad connection and small on the wire.</p></div><div class="feature"><div class="ic">🎮</div><h3>2D and 3D, WebGPU first</h3><p>One renderer API over WebGPU, WebGL2 and Canvas2D. Shadows, bloom, particles, glTF and a character controller are included.</p></div><div class="feature"><div class="ic">🧩</div><h3>Every system is optional</h3><p>Twenty-six small packages with enforced import rules. Take the renderer without the networking, or the server without the renderer.</p></div><div class="feature"><div class="ic">🔁</div><h3>Deterministic by design</h3><p>Fixed timestep, seeded randomness and a maths library that gives the same bits in Node, Chrome and Firefox: replays and tests need no browser.</p></div><div class="feature"><div class="ic">📦</div><h3>Zero dependencies</h3><p>Plain JavaScript with JSDoc. No bundler, no framework, nothing to audit but this repository. It runs from source and builds to static files.</p></div><div class="feature"><div class="ic">🛠</div><h3>Tools included</h3><p>A scene editor, a build tool, a debug overlay with a packet inspector, a load tester, a mod sandbox and a project generator.</p></div></div></section>
+<section class="section"><h2>Learn by building</h2><p>Three complete games, each with a written walkthrough and tests. Read the rules, then change them.</p><div class="games">
+<a class="card" href="tutorials/2d-platformer.html"><img src="img/platformer.jpg" alt="" loading="lazy"><span class="tag">2D</span><h3>A platformer</h3><p>Tile levels, jumps that feel right (coyote time, jump buffer), enemies, springs, sound made in code.</p></a>
+<a class="card" href="tutorials/3d-shooter.html"><img src="img/shooter.jpg" alt="" loading="lazy"><span class="tag">3D</span><h3>A first-person shooter</h3><p>Ray-cast shots with headshots, robots that see you and aim, waves, shadows, bloom and particles.</p></a>
+<a class="card" href="tutorials/multiplayer-card-game.html"><img src="img/crazy-eights.jpg" alt="" loading="lazy"><span class="tag">Multiplayer</span><h3>An online card game</h3><p>Hidden hands, matchmaking, ratings, a leaderboard, robots for empty seats and reconnecting.</p></a>
+</div></section>
+<section class="section"><h2>Where to go next</h2><div class="cards">
+<a class="card" href="guide/start-here.html"><h3>Start here</h3><p>Pick the packages for the game you want to make and get it running in five minutes.</p></a>
+<a class="card" href="guide/architecture.html"><h3>How it works</h3><p>The layers, the loop, the rules that keep the packages apart, and why.</p></a>
+<a class="card" href="guide/multiplayer-explained.html"><h3>Multiplayer, explained</h3><p>Lag, prediction, interpolation and deltas in plain language, with pictures.</p></a>
+<a class="card" href="api/index.html"><h3>API reference</h3><p>Every export of every package, generated from the source.</p></a>
+</div></section></div></main>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="assets/search-index.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

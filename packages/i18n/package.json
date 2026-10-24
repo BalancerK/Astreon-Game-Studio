@@ -1,0 +1,31 @@
+{
+  "name": "@engine/i18n",
+  "version": "0.1.0",
+  "description": "Localisation: plural forms for every language, contexts, gettext .po and CSV import, fallback chains (pt-BR to pt), pseudo-localisation, a list of what is untranslated",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "API.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "game-engine",
+    "javascript",
+    "webgpu",
+    "multiplayer",
+    "i18n"
+  ]
+}

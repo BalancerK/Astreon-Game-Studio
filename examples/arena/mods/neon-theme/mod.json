@@ -1,0 +1,10 @@
+{
+  "id": "neon-theme",
+  "version": "1.0.0",
+  "name": "Neon theme",
+  "description": "Presentation only: colours and a title. Clients apply it after verifying its hash.",
+  "tier": "data",
+  "client": {
+    "theme": { "floor": [8, 6, 24], "wall": [255, 40, 160], "dot": [40, 255, 200], "title": "NEON ARENA" }
+  }
+}

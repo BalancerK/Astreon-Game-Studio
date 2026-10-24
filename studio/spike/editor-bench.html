@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Editor bench</title>
+<style>html, body { margin: 0; height: 100%; background: #0d1017; } #host { height: 100vh; }</style>
+</head>
+<body>
+<div id="host"></div>
+<script type="module">
+import { createEditor } from './editor.js';
+// a file of N lines that looks like code: functions, comments, strings, numbers and a few block comments and templates
+const n = Number(new URLSearchParams(location.search).get('lines') ?? 1000);
+const lines = [];
+for (let i = 0; i < n; i++) {
+  const k = i % 10;
+  lines.push(k === 0 ? `// section ${i}` : k === 1 ? `export function f${i}(a, b) {` : k === 2 ? `  const label = 'value ' + a + ${i};` : k === 3 ? '  /* a note' : k === 4 ? '     that spans two lines */'
+    : k === 5 ? '  const t = `template ${a}' : k === 6 ? '  and a second line`;' : k === 7 ? '  if (a > 3.5) return b * 2; else return a;' : k === 8 ? '}' : '');
+}
+const editor = createEditor(document.getElementById('host'), { value: lines.join('\n') });
+window.__bench = { editor, lines: n };
+</script>
+</body>
+</html>

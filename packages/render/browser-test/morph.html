@@ -1,0 +1,73 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Morph targets self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { createRenderer3D, Camera3D, DrawList3D, createLighting, createMesh, createSkinnedMesh, MorphTargets } from '../src/index.js';
+
+const W = 240, H = 120, CLEAR = [0.1, 0.1, 0.1, 1];
+// a square one metre wide at the left of the picture, facing the camera; the target stretches its right edge two metres to the right
+const quadVertices = [-2, 0.5, 0, 0, 0, 1, -1, 0.5, 0, 0, 0, 1, -1, -0.5, 0, 0, 0, 1, -2, -0.5, 0, 0, 0, 1];
+const quadIndices = [0, 3, 2, 0, 2, 1];
+const stretch = { name: 'stretch', position: Float32Array.from([0, 0, 0, 2, 0, 0, 2, 0, 0, 0, 0, 0]) };
+const identity = Float32Array.from([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+
+function read(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d');
+  g.drawImage(renderer.canvas, 0, 0);
+  return (x, y) => [...g.getImageData(x, y, 1, 1).data.slice(0, 3)];
+}
+const isClear = (p) => p.every((v, i) => Math.abs(v - Math.round(CLEAR[i] * 255)) <= 3);
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer3D({ prefer: [kind], antialias: false });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const cam = new Camera3D({ x: 0, y: 0, z: 6, fovY: 0.8, viewW: W, viewH: H });
+    const L = { ...createLighting(), fogDensity: 0, pointLights: [] };
+    const list = new DrawList3D();
+    const draw = (build) => { list.clear(); build(); cam.update(); renderer.render({ camera: cam, list, clear: CLEAR, lighting: L }); return read(renderer); };
+    const at = (x) => { const p = cam.worldToScreen(x, 0, 0); return [Math.round(p.x), Math.round(p.y)]; };
+
+    for (const skinned of [false, true]) {
+      const label = skinned ? 'a skinned mesh' : 'a plain mesh';
+      const base = skinned ? createSkinnedMesh(quadVertices, quadIndices, new Array(16).fill(0), [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 1, 'skinned-quad') : createMesh(quadVertices, quadIndices, 'quad');
+      const morph = new MorphTargets(base, [stretch]);
+      const put = () => { if (skinned) list.addSkinned(morph.mesh, identity, identity, 1, 1, 1, 1); else list.add(morph.mesh, identity, 1, 1, 1, 1); };
+      let px = draw(put);
+      const [x0, y0] = at(-1.5), [x1, y1] = at(0.5);
+      add(`${label}: before morphing the square is drawn and the space to its right is empty`, !isClear(px(x0, y0)) && isClear(px(x1, y1)), [px(x0, y0), px(x1, y1)], 'square, then clear');
+      morph.set('stretch', 1); morph.update();
+      px = draw(put);
+      add(`${label}: after morphing, the stretched square covers the space to the right`, !isClear(px(x1, y1)), px(x1, y1), 'not clear');
+      morph.set('stretch', 0.5); morph.update();
+      px = draw(put);
+      const [xm, ym] = at(-0.5), [xf, yf] = at(0.5);
+      add(`${label}: half way, it reaches half as far`, !isClear(px(xm, ym)) && isClear(px(xf, yf)), [px(xm, ym), px(xf, yf)], 'covers -0.5, not 0.5');
+      morph.set('stretch', 0); morph.update();
+      px = draw(put);
+      add(`${label}: back to zero it shrinks back (the vertices are uploaded again)`, isClear(px(x1, y1)) && !isClear(px(x0, y0)), [px(x1, y1), px(x0, y0)], 'square only');
+    }
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) {
+    out.unavailable = String(e.message ?? e);
+    out.stack = String(e.stack ?? '');
+  }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

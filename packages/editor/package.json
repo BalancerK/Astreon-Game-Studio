@@ -1,0 +1,37 @@
+{
+  "name": "@engine/editor",
+  "version": "0.1.0",
+  "description": "Browser scene editor: viewport with gizmos, hierarchy, inspector generated from prefabs, undo, saving, Play-in-editor; the pieces also work without a page",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "API.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "game-engine",
+    "javascript",
+    "webgpu",
+    "multiplayer",
+    "editor"
+  ],
+  "dependencies": {
+    "@engine/math": "^0.1.0",
+    "@engine/prefab": "^0.1.0",
+    "@engine/render": "^0.1.0",
+    "@engine/scene": "^0.1.0"
+  }
+}

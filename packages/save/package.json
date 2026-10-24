@@ -1,0 +1,31 @@
+{
+  "name": "@engine/save",
+  "version": "0.1.0",
+  "description": "Save and load: slots, quick and auto saves, checksums and backups, all-or-nothing loads, versioned data with migrations, sections for the scene, physics and state machines, storage in memory, localStorage, IndexedDB, files or over HTTP",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "API.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "game-engine",
+    "javascript",
+    "webgpu",
+    "multiplayer",
+    "save"
+  ]
+}

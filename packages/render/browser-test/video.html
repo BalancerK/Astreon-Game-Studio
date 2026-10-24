@@ -1,0 +1,120 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Video texture self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { createRenderer3D, createRenderer, Camera3D, Camera, DrawList3D, SpriteBatch, Atlas, TextureSet, VideoTexture, VideoSprite, createLighting, createBox } from '../src/index.js';
+
+const W = 160, H = 100, CLEAR = [0.1, 0.1, 0.1, 1];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// a real video element: it plays a live stream from a canvas that goes red, green, blue and round again every half second (a recording would need an encoder, which a
+// headless browser may not have; a stream element has the same readyState, currentTime and videoWidth as a file)
+async function makeVideo() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  document.body.append(c);
+  const g = c.getContext('2d');
+  const colours = ['#f00', '#0f0', '#00f'];
+  let step = 0;
+  const paint = () => { g.fillStyle = colours[Math.floor(step / 12) % 3]; g.fillRect(0, 0, 64, 64); g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect((step * 7) % 60, (step * 3) % 60, 4, 4); step++; };
+  paint();
+  const timer = setInterval(paint, 40);
+  const v = document.createElement('video');
+  v.muted = true; v.playsInline = true;
+  v.srcObject = c.captureStream(30);
+  await v.play();
+  await new Promise((res, rej) => { const t0 = performance.now(); const tick = () => (v.readyState >= 2 && v.videoWidth > 0 ? res() : performance.now() - t0 > 5000 ? rej(new Error('the stream video never produced a frame')) : setTimeout(tick, 20)); tick(); });
+  v.stopPainting = () => clearInterval(timer);
+  return v;
+}
+
+function read(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d');
+  g.drawImage(renderer.canvas, 0, 0);
+  return (x, y) => [...g.getImageData(x, y, 1, 1).data.slice(0, 3)];
+}
+const dominant = (p) => { const m = Math.max(...p); if (m < 60) return 'dark'; const i = p.indexOf(m); return p.filter((v) => v > m * 0.6).length > 1 ? 'mixed' : ['red', 'green', 'blue'][i]; };
+
+async function check(kind, video, mode) {
+  const out = { kind: `${kind} ${mode}`, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    let renderer, show;
+    if (mode === '3d') {
+      renderer = await createRenderer3D({ prefer: [kind], antialias: false });
+      if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+      const set = new TextureSet({ size: 64, maxLayers: 4 });
+      const vt = new VideoTexture(set, video, { name: 'tv' });
+      renderer.setTextures(set);
+      renderer.resize(W, H, 1);
+      document.body.append(renderer.canvas);
+      const cam = new Camera3D({ x: 0, y: 0, z: 4, fovY: 0.8, viewW: W, viewH: H }).update();
+      const list = new DrawList3D(), box = createBox(2, 2, 0.2), L = { ...createLighting(), fogDensity: 0, pointLights: [] };
+      show = () => {
+        const updated = vt.update();
+        list.clear(); list.setCamera(null); list.setMaterial(vt.layer, 'uv', 1);
+        list.addTransform(box, 0, 0, 0, null, 1, 1, 1, 1, 1, 1);
+        renderer.render({ camera: cam, list, clear: CLEAR, lighting: L });
+        return { updated, px: read(renderer)(W / 2, H / 2) };
+      };
+      out.vt = vt;
+    } else {
+      const atlas = new Atlas({ size: 128 });
+      const vs = new VideoSprite(atlas, video, { name: 'tv', width: 64, height: 64 });
+      renderer = await createRenderer({ atlas, prefer: [kind] });
+      if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+      document.body.append(renderer.canvas);
+      renderer.resize(W, H, 1);
+      const camera = new Camera({ x: 0, y: 0, zoom: 1, viewW: W, viewH: H }), batch = new SpriteBatch(16);
+      show = () => {
+        const updated = vs.update();
+        batch.clear(); batch.push(0, 0, 64, 64, 0, vs.sprite);
+        renderer.render({ camera, batch, clear: CLEAR });
+        return { updated, px: read(renderer)(W / 2, H / 2) };
+      };
+      out.vt = vs;
+    }
+    // a video that has not started shows its first frame; playing, the three colours come round
+    const seen = new Set(), seenUpdates = { yes: 0, no: 0 };
+    await video.play();
+    const t0 = performance.now();
+    while (performance.now() - t0 < 2600 && (seen.size < 3 || seenUpdates.no < 3)) {
+      const r = show();
+      seen.add(dominant(r.px)); r.updated ? seenUpdates.yes++ : seenUpdates.no++;
+      await sleep(4);
+    }
+    add('playing, the picture goes through red, green and blue as the video does', ['red', 'green', 'blue'].every((c) => seen.has(c)), [...seen], 'red green blue');
+    add('frames are uploaded only when there is a new one', seenUpdates.yes > 3 && seenUpdates.no > 0, seenUpdates, 'some updates and some skips');
+    video.pause();
+    await sleep(150);
+    show();
+    const stillAfter = show().px;
+    const before = out.vt.frames;
+    for (let i = 0; i < 10; i++) { show(); await sleep(10); }
+    add('a paused video costs nothing (no frames uploaded)', out.vt.frames === before, out.vt.frames - before, 0);
+    add('...and the last picture stays on screen', dominant(stillAfter) !== 'dark', stillAfter, 'not dark');
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    delete out.vt;
+    renderer.destroy?.();
+  } catch (e) {
+    out.unavailable = String(e.message ?? e);
+    out.stack = String(e.stack ?? '');
+    delete out.vt;
+  }
+  return out;
+}
+
+const results = [];
+try {
+  const video = await makeVideo();
+  for (const kind of ['webgpu', 'webgl2']) results.push(await check(kind, video, '3d'));
+  for (const kind of ['webgpu', 'webgl2', 'canvas2d']) results.push(await check(kind, video, '2d'));
+  await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+} catch (e) { fail(e.stack ?? e); }
+</script>

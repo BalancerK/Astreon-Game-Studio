@@ -1,0 +1,97 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>WebRTC game self-test</title>
+<body>
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { World, defineComponent } from '../../core/src/index.js';
+import { BinaryWriter, BinaryReader, NetSchema, SnapshotCodec, SnapshotHistory, MissingBaselineError, InputSchema, InputBatch, encodeInput, decodeInput, packetType, MSG, q, u8 } from '../../protocol/src/index.js';
+import { LoopbackSignaling, listenWebRTC, connectWebRTC, CHANNEL, createRng } from '../src/index.js';
+
+// The real replication protocol (delta snapshots against the last tick the client acknowledged) between a host and a player, over real WebRTC: the host's browser is the game server.
+const Pos = defineComponent('g:pos', { x: 'f32', y: 'f32' });
+const Hp = defineComponent('g:hp', { hp: 'u8' });
+const schema = new NetSchema([{ component: Pos, codecs: { x: q(-500, 500, 16), y: q(-500, 500, 16) } }, { component: Hp, codecs: { hp: u8 } }]);
+const inputSchema = new InputSchema({ buttons: u8 });
+const CAP = 64, TICK_MS = 50, TICKS = 100;
+const checks = {};
+const add = (name, ok, got, want) => { checks[name] = { ok, got, want }; };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+try {
+  const signaling = new LoopbackSignaling();
+  const listener = await listenWebRTC(signaling, { maxPeers: 2 });
+  const rand = createRng(5);
+  const world = new World(CAP); world.register(Pos); world.register(Hp);
+  const serverCodec = new SnapshotCodec(schema, CAP), serverHistory = new SnapshotHistory(schema, CAP, 32);
+  const truth = new Map(), ids = new Uint32Array(CAP), w = new BinaryWriter(4096), inBatch = new InputBatch(inputSchema);
+  let conn = null, ackTick = 0, newestSeq = -1, serverTick = 0;
+  const stats = { deltas: 0, fulls: 0 };
+  listener.onConnection = (c) => {
+    conn = c;
+    c.onMessage = (bytes) => {
+      if (packetType(bytes) !== MSG.INPUT) return;
+      decodeInput(new BinaryReader(bytes), inBatch);
+      const last = inBatch.firstSeq + inBatch.count - 1;
+      if (last <= newestSeq) return;
+      newestSeq = last; ackTick = inBatch.ackTick;
+    };
+  };
+  for (let i = 0; i < 20; i++) { const e = world.create(); world.add(e, Pos, { x: rand() * 400 - 200, y: rand() * 400 - 200 }); if (i % 3 === 0) world.add(e, Hp, { hp: 100 }); }
+
+  const clientCodec = new SnapshotCodec(schema, CAP), clientHistory = new SnapshotHistory(schema, CAP, 32);
+  const client = connectWebRTC(signaling, listener.room);
+  const batch = new InputBatch(inputSchema), cw = new BinaryWriter(256);
+  let latestTick = 0, seq = 0, needFull = false, mismatches = 0;
+  const accepted = [];
+  client.onMessage = (bytes) => {
+    if (packetType(bytes) !== MSG.SNAPSHOT) return;
+    const r = new BinaryReader(bytes); r.u8();
+    const slot = clientHistory.acquire();
+    try { clientCodec.decode(r, (t) => clientHistory.get(t), slot); } catch (e) { if (e instanceof MissingBaselineError) { needFull = true; return; } throw e; }
+    if (slot.tick <= latestTick) return;
+    latestTick = slot.tick; needFull = false; clientHistory.commit(slot); accepted.push(slot.tick);
+    const t = truth.get(slot.tick);
+    const same = slot.count === t.ids.length && [...slot.ids.subarray(0, slot.count)].join() === [...t.ids].join() && [...slot.vals.subarray(0, slot.count * schema.fieldCount)].join() === [...t.vals].join();
+    if (!same) mismatches++;
+  };
+
+  const t0 = performance.now();
+  while (client.state !== 'open' || !conn) { if (performance.now() - t0 > 8000) throw new Error('did not connect'); await wait(5); }
+  add('a player joins the host\'s game over WebRTC', true, performance.now() - t0 < 8000, 'connected');
+
+  const serverStep = () => {
+    serverTick++;
+    const n0 = world.query(ids, [Pos]);
+    for (let k = 0; k < n0; k++) { if (rand() >= 0.08) continue; const i = ids[k] & 0xfffff; world.data(Pos).x[i] += (rand() - 0.5) * 8; world.data(Pos).y[i] += (rand() - 0.5) * 8; }
+    if (rand() < 0.1 && n0 > 5) world.destroy(ids[(rand() * n0) | 0]);
+    if (rand() < 0.1) { const e = world.create(); world.add(e, Pos, { x: 0, y: 0 }); }
+    const slot = serverHistory.acquire(), n = world.query(ids, [Pos]);
+    slot.capture(world, serverTick, ids, n); serverHistory.commit(slot);
+    truth.set(serverTick, { ids: slot.ids.slice(0, n), vals: slot.vals.slice(0, n * schema.fieldCount) });
+    const baseline = ackTick > 0 ? serverHistory.get(ackTick) : undefined;
+    w.reset(); w.u8(MSG.SNAPSHOT); serverCodec.encode(w, slot, baseline ?? null);
+    if (w.bytes[1] === 1) stats.deltas++; else stats.fulls++;
+    conn.send(w.finish(), CHANNEL.UNRELIABLE);
+  };
+  const clientStep = () => {
+    seq++; batch.clear(); batch.ackTick = needFull ? 0 : latestTick; batch.firstSeq = Math.max(1, seq - 2);
+    for (let s = batch.firstSeq; s <= seq; s++) batch.push(0, [s & 255]);
+    cw.reset(); encodeInput(cw, batch); client.send(cw.finish(), CHANNEL.UNRELIABLE);
+  };
+  for (let t = 0; t < TICKS; t++) { serverStep(); await wait(TICK_MS / 2); clientStep(); await wait(TICK_MS / 2); }
+  await wait(300);
+
+  add('every snapshot the player accepts matches the host\'s world at that tick', mismatches === 0 && accepted.length > 0, { accepted: accepted.length, mismatches }, 'no mismatches');
+  add('most snapshots arrive (a clean local path)', accepted.length > TICKS * 0.6, { accepted: accepted.length, of: TICKS }, 'over 60%');
+  add('ticks only move forward', accepted.every((v, i) => i === 0 || v > accepted[i - 1]), accepted.length, 'increasing');
+  add('after the first, snapshots are deltas against what the player acknowledged', stats.deltas > stats.fulls * 3, stats, 'mostly deltas');
+  add('the player is caught up at the end', latestTick >= serverTick - 3, { latestTick, serverTick }, 'within a few ticks');
+  client.close(); listener.close();
+} catch (e) { add('no exceptions', false, String(e.stack ?? e), 'none'); }
+
+const ok = Object.values(checks).every((c) => c.ok);
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results: [{ kind: 'webrtc-game', checks, ok }], userAgent: navigator.userAgent }) });
+</script>

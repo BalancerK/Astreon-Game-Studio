@@ -1,0 +1,71 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Debug overlay test</title>
+<body style="background:#0d0d14;margin:0">
+<script type="module">
+import { DebugOverlay } from '../src/index.js';
+
+const checks = {};
+const ok = (name, cond, detail) => { checks[name] = { ok: !!cond, detail }; };
+let report;
+try {
+  let tick = 0, bytes = 0;
+  const overlay = new DebugOverlay({ title: 'Selftest', open: true, hotkey: 'F3', intervalMs: 1_000_000 });
+  overlay.addSeries('rtt', { label: 'RTT', unit: 'ms', read: () => 40 + ((tick * 7) % 90), warnAbove: 100 })
+    .addSeries('down', { label: 'Down', unit: 'KB/s', read: () => bytes, rate: true, scale: 1 / 1024 })
+    .addSeries('flat', { label: 'Flat', unit: '', read: () => 3 })
+    .addInfo('state', () => 'playing').addInfo('renderer', () => 'selftest');
+  for (tick = 0; tick < 60; tick++) {
+    bytes += 1000 + tick * 20;
+    overlay.model.sample();
+    await new Promise((r) => setTimeout(r, 2)); // let wall time pass so rate samples are finite
+  }
+  for (let i = 0; i < 30; i++) {
+    overlay.model.packets.add({ time: performance.now(), dir: i % 3 ? 'in' : 'out', channel: i % 2, size: 100 + i, type: i % 3 ? 'SNAPSHOT' : 'INPUT', summary: `row ${i}` });
+  }
+  overlay.refresh();
+
+  const root = document.querySelector('[data-debug-overlay]');
+  ok('panel exists and is visible', root && root.style.display !== 'none' && root.getBoundingClientRect().width > 300);
+  const canvases = [...root.querySelectorAll('canvas')];
+  ok('one graph per series', canvases.length === 3, canvases.length);
+  const painted = canvases.map((c) => {
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 0) n++;
+    return n / (d.length / 4);
+  });
+  ok('every graph has drawn pixels', painted.every((p) => p > 0.05), painted.map((p) => p.toFixed(2)).join(','));
+  const text = root.innerText;
+  ok('series labels and units shown', /RTT/.test(text) && /KB\/s/.test(text), text.slice(0, 80));
+  ok('current value formatted', /RTT\s+\d+\.\d ms\s+avg/.test(text.replace(/\n/g, ' ')) || /\d+\.\d ms\s+avg/.test(text), text.slice(0, 200));
+  ok('info lines shown', /state\s+playing/.test(text) && /renderer\s+selftest/.test(text));
+  const packetLines = root.querySelector('pre').textContent.split('\n');
+  ok('packet inspector lists 14 newest packets', packetLines.length === 14 && /row 29/.test(packetLines[0]), packetLines[0]);
+  ok('packet totals shown', /in 20 .* out 10 /.test(root.innerText.replace(/\n/g, ' ')));
+
+  // F3 toggles
+  dispatchEvent(new KeyboardEvent('keydown', { code: 'F3' }));
+  const hidden = root.style.display === 'none';
+  dispatchEvent(new KeyboardEvent('keydown', { code: 'F3' }));
+  ok('F3 hides then shows', hidden && root.style.display !== 'none');
+
+  // pause freezes the visible list while totals continue
+  const pause = [...root.querySelectorAll('button')].find((b) => /pause/.test(b.textContent));
+  pause.click();
+  overlay.model.packets.add({ time: performance.now(), dir: 'in', channel: 1, size: 1, type: 'SNAPSHOT', summary: 'after pause' });
+  overlay.refresh();
+  ok('pause freezes the list', !/after pause/.test(root.querySelector('pre').textContent) && /paused/.test(root.innerText) && /in 21 /.test(root.innerText.replace(/\n/g, ' ')));
+  [...root.querySelectorAll('button')].find((b) => /resume/.test(b.textContent)).click();
+
+  overlay.close();
+  ok('close hides', root.style.display === 'none');
+  overlay.open();
+  overlay.destroy();
+  ok('destroy removes the panel', !document.querySelector('[data-debug-overlay]'));
+  report = { userAgent: navigator.userAgent, checks, ok: Object.values(checks).every((c) => c.ok) };
+} catch (e) {
+  report = { userAgent: navigator.userAgent, error: String(e && e.stack || e), checks };
+}
+await fetch('/report', { method: 'POST', body: JSON.stringify(report) });
+</script>

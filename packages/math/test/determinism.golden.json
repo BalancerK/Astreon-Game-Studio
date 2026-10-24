@@ -1,0 +1,14 @@
+{
+  "math.sin": "f621e020",
+  "math.cos": "695629c6",
+  "math.tan": "8954df02",
+  "math.sincos": "b48cdad3",
+  "math.atan": "9dd1d52f",
+  "math.atan2": "909fc43a",
+  "math.asin": "a1777e29",
+  "math.acos": "80f821d2",
+  "math.angles": "ff5cbaf6",
+  "math.vec3": "3c8261a4",
+  "math.quat": "964b626b",
+  "math.mat4": "8772d713"
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shooter (tutorial game) · Astreon Engine</title>
+<meta name="description" content="A small first-person shooter: five waves of robots in an arena with cover. Grunts aim (with a warning) and shoot, rushers run in and bite. A hitscan rifle with headshots and reloading, health and ammo">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html" class="on">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><h4>Tutorials</h4><a href="../tutorials/2d-platformer.html">a 2D platformer</a><a href="../tutorials/3d-shooter.html">a 3D first-person shooter</a><a href="../tutorials/multiplayer-card-game.html">a multiplayer card game</a><h4>Example games</h4><a href="arena.html">arena</a><a href="arena3d.html">arena3d</a><a href="platformer.html">platformer</a><a href="shooter.html" class="on">shooter</a></nav><main><article><h1 id="shooter-tutorial-game">Shooter (tutorial game)</h1>
+<p>A small first-person shooter: five waves of robots in an arena with cover. Grunts aim (with a warning) and shoot, rushers run in and bite. A hitscan rifle with headshots and reloading, health and ammo pickups, sun shadows, bloom, particles, sound made in code and a saved best score. Walkthrough: <a href="../tutorials/3d-shooter.html"><code>docs/tutorials/3d-shooter.md</code></a>.</p>
+<div class="code"><pre><code class="lang-text">npm run shooter      # then open the printed address</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Click the game to capture the mouse, then press Enter. WASD move, mouse aims, left click fires, R reloads, Space jumps, Shift runs. A gamepad works too.</p>
+<div class="table"><table><thead><tr><th>File</th><th>What it is</th></tr></thead><tbody><tr><td><code>src/level.js</code></td><td>The arena: collision triangles and drawn boxes from one description, spawn points, lamps</td></tr><tr><td><code>src/game.js</code></td><td>The rules: <code>createGame</code>, <code>step(game, input)</code>, <code>replay</code>, <code>botInput</code>. Seeded, no screen, no clock</td></tr><tr><td><code>src/main.js</code></td><td>The page: input, drawing, particles, HUD, sound, saved score</td></tr><tr><td><code>test/game.test.js</code></td><td>Walking, rifle, hits and cover, enemies, waves, replays, a bot that wins</td></tr></tbody></table></div>
+<p>Tests: <code>npm test</code> runs <code>test/game.test.js</code>; <code>node tools/shooter-test.js</code> plays in Chrome with real keys and mouse clicks on both renderers (<code>SHOOTER_MS=15000</code> shortens it).</p><div class="pager"><a href="platformer.html"><small>Previous</small>platformer</a><span></span></div></article></main><aside class="toc"></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

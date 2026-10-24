@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/scene · Astreon Engine</title>
+<meta name="description" content="Levels as data (scene files, validation, migrations, loading and unloading) and the undoable SceneDocument the editor uses.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html" class="on">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginescene">@engine/scene</h1>
+<p>Levels as data (scene files, validation, migrations, loading and unloading) and the undoable SceneDocument the editor uses.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/scene</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/scene.html">packages/scene</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-11-of-11-documented">Contents (11 of 11 documented)<a class="anchor" href="#contents-11-of-11-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-loadedscene"><code>LoadedScene</code></a></td><td>class</td><td>A scene that has been spawned.</td></tr><tr><td><a href="#scene_format"><code>SCENE_FORMAT</code></a></td><td>constant</td><td>The <code>format</code> field of every scene file (<code>&quot;engine-scene&quot;</code>).</td></tr><tr><td><a href="#scene_version"><code>SCENE_VERSION</code></a></td><td>constant</td><td>The version of the scene file format this code writes and reads.</td></tr></tbody></table></div>
+<p>| <a href="#class-scenedocument"><code>SceneDocument</code></a> | class | A scene being edited: add, remove, reparent, rename, duplicate and patch entities, with undo and redo (one step per operation, <code>batch</code> to group, <code>merge</code> to fold a drag into one step), change events and dirty tracking. | | <a href="#class-sceneerror"><code>SceneError</code></a> | class | A failure to read a scene, with every problem found. | | <a href="#emptyscene"><code>emptyScene</code></a> | function | An empty scene. | | <a href="#loadscene"><code>loadScene</code></a> | function | Load a scene's assets, then spawn its entities. | | <a href="#migratescene"><code>migrateScene</code></a> | function | Bring an older scene up to the current version, one step at a time. | | <a href="#normalizescene"><code>normalizeScene</code></a> | function | Fill in the optional parts so code can rely on them. | | <a href="#spawnentities"><code>spawnEntities</code></a> | function | Spawn the entities of an already-normalized scene into <code>loaded</code> (shared by <code>loadScene</code> and the editor's play mode). | | <a href="#validatescene"><code>validateScene</code></a> | function | Every problem in a scene, without loading anything. |</p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="emptyscene"><code>emptyScene</code><a class="anchor" href="#emptyscene" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">emptyScene</span>(name = <span class="tk-s">'Untitled'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>An empty scene.</p>
+<p><sub>src/format.js:23</sub></p>
+<h3 id="loadscene"><code>loadScene</code><a class="anchor" href="#loadscene" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">loadScene</span>(data, spawner, { assets, offset, onProgress, validate = <span class="tk-k">true</span>, filter } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Load a scene's assets, then spawn its entities. Parents are spawned before their children; a child's <code>at</code> is relative to its parent.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>any</code></td><td>The scene file (parsed JSON; older versions are upgraded).</td></tr><tr><td><code>spawner</code></td><td><code>import('../../prefab/src/spawner.js').PrefabSpawner</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.assets</code> (optional)</td><td><code>import('../../assets/src/manager.js').AssetManager</code></td><td>Loads the scene's <code>assets</code> first (and holds them until the scene is unloaded).</td></tr><tr><td><code>o.offset</code> (optional)</td><td><code>{x?: number, y?: number, z?: number}</code></td><td>Move the whole scene (streaming levels side by side). Only applies to entities without a parent.</td></tr><tr><td><code>o.onProgress</code> (optional)</td><td><code>(p: {loaded: number, total: number, path: string}) =&gt; void</code></td><td></td></tr><tr><td><code>o.validate</code> (optional)</td><td><code>boolean</code></td><td>Check the scene against the prefab library first (default true): every problem is reported together, before anything spawns.</td></tr><tr><td><code>o.filter</code> (optional)</td><td><code>(entity: any) =&gt; boolean</code></td><td>Skip entities (and their children) for which this returns false.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Promise&lt;LoadedScene&gt;</code></p>
+<p><sub>src/runtime.js:39</sub></p>
+<h3 id="migratescene"><code>migrateScene</code><a class="anchor" href="#migratescene" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">migrateScene</span>(data, migrations = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Bring an older scene up to the current version, one step at a time.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>any</code></td><td></td></tr><tr><td><code>migrations</code> (optional)</td><td><code>Record&lt;number, (scene: any) =&gt; any&gt;</code></td><td><code>{ 1: (scene) =&gt; sceneAtVersion2 }</code></td></tr></tbody></table></div>
+<p><sub>src/format.js:37</sub></p>
+<h3 id="normalizescene"><code>normalizeScene</code><a class="anchor" href="#normalizescene" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">normalizeScene</span>(data)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Fill in the optional parts so code can rely on them.</p>
+<p><strong>Returns</strong> <code>any</code> — a new object</p>
+<p><sub>src/format.js:50</sub></p>
+<h3 id="spawnentities"><code>spawnEntities</code><a class="anchor" href="#spawnentities" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">spawnEntities</span>(scene, spawner, loaded, { offset, filter } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Spawn the entities of an already-normalized scene into <code>loaded</code> (shared by <code>loadScene</code> and the editor's play mode).</p>
+<p><sub>src/runtime.js:55</sub></p>
+<h3 id="validatescene"><code>validateScene</code><a class="anchor" href="#validatescene" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">validateScene</span>(data, { library, assetTypes } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Every problem in a scene, without loading anything. Problems are <code>{path, message, severity}</code> with paths like <code>entities[3].prefab</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>any</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{library?: import('../../prefab/src/library.js').PrefabLibrary, assetTypes?: string[]}</code></td><td>With a library, prefab names and parameters are checked too.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Array&lt;{path: string, message: string, severity: 'error' \| 'warning'}&gt;</code></p>
+<p><sub>src/format.js:65</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-loadedscene"><code>class LoadedScene</code><a class="anchor" href="#class-loadedscene" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> LoadedScene</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A scene that has been spawned.</p>
+<h4 id="loadedsceneconstructor"><code>LoadedScene.constructor</code><a class="anchor" href="#loadedsceneconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(spawner, name, settings)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="loadedsceneget"><code>LoadedScene.get</code><a class="anchor" href="#loadedsceneget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The instance of a scene entity (throws if the scene has no such entity).</p>
+<h4 id="loadedsceneidof"><code>LoadedScene.idOf</code><a class="anchor" href="#loadedsceneidof" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">idOf</span>(instance)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The scene entity id of a prefab instance, or null if it did not come from this scene.</p>
+<h4 id="loadedsceneunload"><code>LoadedScene.unload</code><a class="anchor" href="#loadedsceneunload" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">unload</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Destroy everything the scene spawned (children before parents) and release its assets.</p>
+<p><sub>src/runtime.js:5</sub></p>
+<h3 id="class-scenedocument"><code>class SceneDocument</code><a class="anchor" href="#class-scenedocument" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> SceneDocument</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A scene being edited: add, remove, reparent, rename, duplicate and patch entities, with undo and redo (one step per operation, <code>batch</code> to group, <code>merge</code> to fold a drag into one step), change events and dirty tracking. Always stays a valid scene file (<code>toJSON()</code>).</p>
+<h4 id="scenedocumentconstructor"><code>SceneDocument.constructor</code><a class="anchor" href="#scenedocumentconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(data, { library, maxHistory = <span class="tk-n">200</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code> (optional)</td><td><code>any</code></td><td>A scene file (or nothing for an empty one).</td></tr><tr><td><code>o</code> (optional)</td><td><code>{library?: import('../../prefab/src/library.js').PrefabLibrary, maxHistory?: number}</code></td><td>With a <code>library</code>, new entities must name a known prefab.</td></tr></tbody></table></div>
+<h4 id="scenedocumentget"><code>SceneDocument.get</code><a class="anchor" href="#scenedocumentget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumenthas"><code>SceneDocument.has</code><a class="anchor" href="#scenedocumenthas" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">has</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentsize"><code>SceneDocument.size</code><a class="anchor" href="#scenedocumentsize" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> size</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumententities"><code>SceneDocument.entities</code><a class="anchor" href="#scenedocumententities" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> entities</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Entities in order.</p>
+<h4 id="scenedocumentchildren"><code>SceneDocument.children</code><a class="anchor" href="#scenedocumentchildren" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">children</span>(id = <span class="tk-k">null</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Children of an entity (or the roots, for null), in order.</p>
+<h4 id="scenedocumentsubtree"><code>SceneDocument.subtree</code><a class="anchor" href="#scenedocumentsubtree" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">subtree</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>An entity and everything below it, parents first.</p>
+<h4 id="scenedocumentancestors"><code>SceneDocument.ancestors</code><a class="anchor" href="#scenedocumentancestors" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">ancestors</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumenttojson"><code>SceneDocument.toJSON</code><a class="anchor" href="#scenedocumenttojson" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">toJSON</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The scene as a file (a copy).</p>
+<h4 id="scenedocumentseteditor"><code>SceneDocument.setEditor</code><a class="anchor" href="#scenedocumentseteditor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setEditor</span>(key, value)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Keep a note with the scene for the editor (a key and its value; <code>null</code> forgets it). It is saved with the scene but is not an edit: it cannot be undone and does not make the scene &quot;changed&quot;, so moving a 3D cursor does not ask to be saved.</p>
+<h4 id="scenedocumentvalidate"><code>SceneDocument.validate</code><a class="anchor" href="#scenedocumentvalidate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">validate</span>(o = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentdirty"><code>SceneDocument.dirty</code><a class="anchor" href="#scenedocumentdirty" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> dirty</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentmarksaved"><code>SceneDocument.markSaved</code><a class="anchor" href="#scenedocumentmarksaved" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">markSaved</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentcanundo"><code>SceneDocument.canUndo</code><a class="anchor" href="#scenedocumentcanundo" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> canUndo</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentcanredo"><code>SceneDocument.canRedo</code><a class="anchor" href="#scenedocumentcanredo" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> canRedo</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentonchange"><code>SceneDocument.onChange</code><a class="anchor" href="#scenedocumentonchange" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">onChange</span>(fn)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Call <code>fn(event)</code> after every change: <code>{kind: 'edit'|'undo'|'redo'|'load', label, ids}</code>.</p>
+<p><strong>Returns</strong> <code>() =&gt; void</code> — unsubscribe</p>
+<h4 id="scenedocumentbatch"><code>SceneDocument.batch</code><a class="anchor" href="#scenedocumentbatch" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">batch</span>(label, fn, { merge } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Run <code>fn</code> as one undo step. Everything it changes (even through several operations) is undone together; if it throws, nothing changed.</p>
+<h4 id="scenedocumentundo"><code>SceneDocument.undo</code><a class="anchor" href="#scenedocumentundo" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">undo</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentredo"><code>SceneDocument.redo</code><a class="anchor" href="#scenedocumentredo" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">redo</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentload"><code>SceneDocument.load</code><a class="anchor" href="#scenedocumentload" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">load</span>(data)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Replace everything with another scene file; this cannot be undone and clears the history.</p>
+<h4 id="scenedocumentfreeid"><code>SceneDocument.freeId</code><a class="anchor" href="#scenedocumentfreeid" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">freeId</span>(base)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A free id based on a name: 'crate' -&gt; 'crate-1', 'crate-2'.</p>
+<h4 id="scenedocumentadd"><code>SceneDocument.add</code><a class="anchor" href="#scenedocumentadd" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">add</span>(spec, { index } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Add an entity.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>spec</code></td><td><code>{prefab: string, id?: string, name?: string, at?: object, params?: object, overrides?: object, parent?: string | null}</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{index?: number}</code></td><td>Position among all entities (default: after its parent's last descendant, or at the end).</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>string</code> — the id</p>
+<h4 id="scenedocumentremove"><code>SceneDocument.remove</code><a class="anchor" href="#scenedocumentremove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">remove</span>(id, { keepChildren = <span class="tk-k">false</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Remove an entity and everything below it (or, with <code>keepChildren</code>, lift its children to its parent).</p>
+<h4 id="scenedocumentupdate"><code>SceneDocument.update</code><a class="anchor" href="#scenedocumentupdate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">update</span>(id, patch, { merge, label } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Change an entity: <code>patch</code> merges into it (<code>{ at: { x: 3 }, params: { hp: null } }</code>; null removes a key). <code>id</code> and <code>parent</code> cannot be patched here. Pass <code>merge</code> (any string, e.g. 'drag') so a series of small changes while dragging is one undo step.</p>
+<h4 id="scenedocumentset"><code>SceneDocument.set</code><a class="anchor" href="#scenedocumentset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span>(id, path, value, o)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Change one value by a path like 'at.x' or 'overrides.components.health.hp'.</p>
+<h4 id="scenedocumentreparent"><code>SceneDocument.reparent</code><a class="anchor" href="#scenedocumentreparent" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">reparent</span>(id, parent, { before } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Move an entity (and what is below it) under another entity, or to the top level (<code>null</code>), optionally before <code>beforeId</code>.</p>
+<h4 id="scenedocumentrename"><code>SceneDocument.rename</code><a class="anchor" href="#scenedocumentrename" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">rename</span>(id, newId)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Give an entity another id; its children and any other reference follow.</p>
+<h4 id="scenedocumentduplicate"><code>SceneDocument.duplicate</code><a class="anchor" href="#scenedocumentduplicate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">duplicate</span>(id, { offset } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Copy an entity with everything below it, placed right after the original.</p>
+<p><strong>Returns</strong> <code>string</code> — the id of the copy</p>
+<h4 id="scenedocumentsetname"><code>SceneDocument.setName</code><a class="anchor" href="#scenedocumentsetname" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setName</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentsetsettings"><code>SceneDocument.setSettings</code><a class="anchor" href="#scenedocumentsetsettings" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setSettings</span>(patch, o)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Merge into the scene's settings (null removes a key).</p>
+<h4 id="scenedocumentaddasset"><code>SceneDocument.addAsset</code><a class="anchor" href="#scenedocumentaddasset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addAsset</span>(type, path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentremoveasset"><code>SceneDocument.removeAsset</code><a class="anchor" href="#scenedocumentremoveasset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">removeAsset</span>(path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="scenedocumentsetprefab"><code>SceneDocument.setPrefab</code><a class="anchor" href="#scenedocumentsetprefab" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setPrefab</span>(spec)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Define (or replace) a prefab that only this scene uses.</p>
+<p><sub>src/document.js:23</sub></p>
+<h3 id="class-sceneerror"><code>class SceneError</code><a class="anchor" href="#class-sceneerror" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> SceneError <span class="tk-k">extends</span> Error</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A failure to read a scene, with every problem found.</p>
+<h4 id="sceneerrorconstructor"><code>SceneError.constructor</code><a class="anchor" href="#sceneerrorconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(message, problems = [])</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/format.js:28</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="scene_format"><code>SCENE_FORMAT</code><a class="anchor" href="#scene_format" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> SCENE_FORMAT</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The <code>format</code> field of every scene file (<code>&quot;engine-scene&quot;</code>).</p>
+<p>Value: <code>'engine-scene'</code></p>
+<p><sub>src/format.js:12</sub></p>
+<h3 id="scene_version"><code>SCENE_VERSION</code><a class="anchor" href="#scene_version" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> SCENE_VERSION</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The version of the scene file format this code writes and reads.</p>
+<p>Value: <code>1</code></p>
+<p><sub>src/format.js:14</sub></p><div class="pager"><a href="prefab.html"><small>Previous</small>prefab</a><a class="next" href="render.html"><small>Next</small>render</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-11-of-11-documented">Contents (11 of 11 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#emptyscene">emptyScene</a><a class="l3" href="#loadscene">loadScene</a><a class="l3" href="#migratescene">migrateScene</a><a class="l3" href="#normalizescene">normalizeScene</a><a class="l3" href="#spawnentities">spawnEntities</a><a class="l3" href="#validatescene">validateScene</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-loadedscene">class LoadedScene</a><a class="l3" href="#class-scenedocument">class SceneDocument</a><a class="l3" href="#class-sceneerror">class SceneError</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#scene_format">SCENE_FORMAT</a><a class="l3" href="#scene_version">SCENE_VERSION</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

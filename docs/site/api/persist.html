@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/persist · Astreon Engine</title>
+<meta name="description" content="What outlives a match: a versioned key-value store (memory, files), player profiles with a write-behind cache and migrations, leaderboards, guest accounts and an append-only log.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html" class="on">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginepersist">@engine/persist</h1>
+<p>What outlives a match: a versioned key-value store (memory, files), player profiles with a write-behind cache and migrations, leaderboards, guest accounts and an append-only log.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/persist</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/persist.html">packages/persist</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-10-of-10-documented">Contents (10 of 10 documented)<a class="anchor" href="#contents-10-of-10-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-leaderboard"><code>Leaderboard</code></a></td><td>class</td><td>A leaderboard: ranks, the best scores, and the players just above and below one player.</td></tr><tr><td><a href="#class-memorystore"><code>MemoryStore</code></a></td><td>class</td><td>Records in memory (tests, a single server that does not need to survive a restart).</td></tr><tr><td><a href="#class-profile"><code>Profile</code></a></td><td>class</td><td>A profile that is open: change <code>data</code>, then call <code>touch()</code> (or use <code>change</code>).</td></tr><tr><td><a href="#class-profiles"><code>Profiles</code></a></td><td>class</td><td>Player profiles: the data that outlives a match.</td></tr><tr><td><a href="#class-storeconflicterror"><code>StoreConflictError</code></a></td><td>class</td><td>A write expected an older version of the record than the one that exists.</td></tr><tr><td><a href="#checkname"><code>checkName</code></a></td><td>function</td><td>Throw unless a namespace or key is one of the safe names every store accepts (letters, digits and `_ .</td></tr><tr><td><a href="#updaterecord"><code>updateRecord</code></a></td><td>function</td><td>Read, change and write a record, trying again if someone else wrote it in between (so concurrent updates never lose each other's changes).</td></tr><tr><td><a href="#class-appendlog"><code>AppendLog</code></a></td><td>class (Node)</td><td>An append-only log of JSON lines (match results, purchases, moderation actions): cheap to write, rotated by size, easy to read back.</td></tr></tbody></table></div>
+<p>| <a href="#class-filestore"><code>FileStore</code></a> | class (Node) | Records as JSON files in a folder: <code>&lt;dir&gt;/&lt;namespace&gt;/&lt;two hex digits&gt;/&lt;key&gt;.json</code>, each written to a temporary file and renamed into place, so a crash never leaves half a record. | | <a href="#class-guestaccounts"><code>GuestAccounts</code></a> | class (Node) | Players without a sign-up: the first time someone plays they get an id and a secret to keep in the browser; showing the secret later proves it is the same player. |</p>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="checkname"><code>checkName</code><a class="anchor" href="#checkname" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">checkName</span>(kind, name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Throw unless a namespace or key is one of the safe names every store accepts (letters, digits and <code>_ . @ : -</code>, up to 128).</p>
+<p><sub>src/store.js:16</sub></p>
+<h3 id="updaterecord"><code>updateRecord</code><a class="anchor" href="#updaterecord" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">updateRecord</span>(store, ns, key, fn, { retries = <span class="tk-n">8</span>, create } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read, change and write a record, trying again if someone else wrote it in between (so concurrent updates never lose each other's changes). <code>fn(value, version)</code> returns the new value (or changes <code>value</code> in place and returns nothing). Every store's <code>update</code> is this.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>store</code></td><td><code>Store</code></td><td></td></tr><tr><td><code>ns</code></td><td><code>string</code></td><td></td></tr><tr><td><code>key</code></td><td><code>string</code></td><td></td></tr><tr><td><code>fn</code></td><td><code>(value: any, version: number) =&gt; any</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{retries?: number, create?: () =&gt; any}</code></td><td><code>create</code> makes the value when the record does not exist yet (without it, a missing record is an error).</td></tr></tbody></table></div>
+<p><sub>src/store.js:39</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-leaderboard"><code>class Leaderboard</code><a class="anchor" href="#class-leaderboard" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Leaderboard</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A leaderboard: ranks, the best scores, and the players just above and below one player. Kept sorted in memory (ranks are instant) and saved to a store as one record. A player appears once; ties go to whoever got the score first.</p>
+<h4 id="leaderboardconstructor"><code>Leaderboard.constructor</code><a class="anchor" href="#leaderboardconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ order = <span class="tk-s">'desc'</span>, maxEntries = Infinity, now = () =&gt; Date.<span class="tk-f">now</span>() } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.order</code> (optional)</td><td><code>'desc' | 'asc'</code></td><td><code>desc</code>: higher is better (points); <code>asc</code>: lower is better (race times).</td></tr><tr><td><code>o.maxEntries</code> (optional)</td><td><code>number</code></td><td>Keep only the best this many (default: all).</td></tr><tr><td><code>o.now</code> (optional)</td><td><code>() =&gt; number</code></td><td></td></tr></tbody></table></div>
+<h4 id="leaderboardsubmit"><code>Leaderboard.submit</code><a class="anchor" href="#leaderboardsubmit" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">submit</span>(id, score, { mode = <span class="tk-s">'best'</span>, meta } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Record a score.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td><code>string</code></td><td></td></tr><tr><td><code>score</code></td><td><code>number</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{mode?: 'best' | 'replace' | 'add', meta?: any}</code></td><td><code>best</code> keeps the player's better score (default); <code>replace</code> always takes the new one; <code>add</code> adds to the total.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{rank: number, score: number, improved: boolean}</code> — the player's rank (1 is first) and score after this</p>
+<h4 id="leaderboardremove"><code>Leaderboard.remove</code><a class="anchor" href="#leaderboardremove" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">remove</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="leaderboardrank"><code>Leaderboard.rank</code><a class="anchor" href="#leaderboardrank" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">rank</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A player's rank, 1 being the best, or 0 if they have no score.</p>
+<h4 id="leaderboardscore"><code>Leaderboard.score</code><a class="anchor" href="#leaderboardscore" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">score</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="leaderboardsize"><code>Leaderboard.size</code><a class="anchor" href="#leaderboardsize" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> size</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="leaderboardtop"><code>Leaderboard.top</code><a class="anchor" href="#leaderboardtop" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">top</span>(count = <span class="tk-n">10</span>, offset = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The best <code>count</code> entries from position <code>offset</code> (0 is the best), each with its <code>rank</code>.</p>
+<h4 id="leaderboardaround"><code>Leaderboard.around</code><a class="anchor" href="#leaderboardaround" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">around</span>(id, radius = <span class="tk-n">3</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A player and the <code>radius</code> entries above and below them (for &quot;you are here&quot;), or <code>[]</code> if they have no score.</p>
+<h4 id="leaderboardreset"><code>Leaderboard.reset</code><a class="anchor" href="#leaderboardreset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">reset</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Start a new season: empty the board and return what it held (to archive).</p>
+<h4 id="leaderboardtojson"><code>Leaderboard.toJSON</code><a class="anchor" href="#leaderboardtojson" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">toJSON</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="leaderboardfrom"><code>Leaderboard.from</code><a class="anchor" href="#leaderboardfrom" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">static</span> <span class="tk-k">from</span>(data, o = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>{order?: string, entries: any[]}</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>ConstructorParameters&lt;typeof Leaderboard&gt;[0]</code></td><td></td></tr></tbody></table></div>
+<h4 id="leaderboardsave"><code>Leaderboard.save</code><a class="anchor" href="#leaderboardsave" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">save</span>(store, ns, key)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Save to a store as one record.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>store</code></td><td><code>import('./store.js').Store</code></td><td></td></tr></tbody></table></div>
+<h4 id="leaderboardload"><code>Leaderboard.load</code><a class="anchor" href="#leaderboardload" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">static</span> <span class="tk-k">async</span> <span class="tk-f">load</span>(store, ns, key, o = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Load a board saved with <code>save</code> (an empty one if there is none).</p>
+<p><sub>src/leaderboard.js:8</sub></p>
+<h3 id="class-memorystore"><code>class MemoryStore</code><a class="anchor" href="#class-memorystore" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> MemoryStore</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Records in memory (tests, a single server that does not need to survive a restart). Values are copied in and out, so nothing aliases.</p>
+<h4 id="memorystoreconstructor"><code>MemoryStore.constructor</code><a class="anchor" href="#memorystoreconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="memorystoreget"><code>MemoryStore.get</code><a class="anchor" href="#memorystoreget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">get</span>(ns, key)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="memorystoreput"><code>MemoryStore.put</code><a class="anchor" href="#memorystoreput" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">put</span>(ns, key, value, { ifVersion } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="memorystoredelete"><code>MemoryStore.delete</code><a class="anchor" href="#memorystoredelete" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">delete</span>(ns, key, { ifVersion } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="memorystorelist"><code>MemoryStore.list</code><a class="anchor" href="#memorystorelist" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">list</span>(ns, { prefix = <span class="tk-s">''</span>, limit = <span class="tk-n">100</span>, after = <span class="tk-s">''</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="memorystoreupdate"><code>MemoryStore.update</code><a class="anchor" href="#memorystoreupdate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">update</span>(ns, key, fn, o)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="memorystoredump"><code>MemoryStore.dump</code><a class="anchor" href="#memorystoredump" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">dump</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A deep copy of everything, for tests and backups: <code>{ ns: { key: value } }</code>.</p>
+<p><sub>src/store.js:51</sub></p>
+<h3 id="class-profile"><code>class Profile</code><a class="anchor" href="#class-profile" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Profile</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A profile that is open: change <code>data</code>, then call <code>touch()</code> (or use <code>change</code>).</p>
+<h4 id="profileconstructor"><code>Profile.constructor</code><a class="anchor" href="#profileconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(manager, id, data, version, base)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="profiletouch"><code>Profile.touch</code><a class="anchor" href="#profiletouch" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">touch</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Say the data changed: it is written back at the next flush.</p>
+<h4 id="profilechange"><code>Profile.change</code><a class="anchor" href="#profilechange" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">change</span>(fn)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Change the data and mark it: <code>profile.change((d) =&gt; { d.coins += 5; })</code>.</p>
+<p><sub>src/profiles.js:15</sub></p>
+<h3 id="class-profiles"><code>class Profiles</code><a class="anchor" href="#class-profiles" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Profiles</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Player profiles: the data that outlives a match. A profile is open while its player is connected: changes are made in memory and written back in the background, when the player leaves and on shutdown. Old layouts are upgraded as they are read, and a write that finds another server changed the profile is merged (or the conflict is counted) rather than lost.</p>
+<h4 id="profilesconstructor"><code>Profiles.constructor</code><a class="anchor" href="#profilesconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ store, spec, ns = <span class="tk-s">'profiles'</span>, flushMs = <span class="tk-n">5000</span>, now = () =&gt; Date.<span class="tk-f">now</span>(), log = () =&gt; {} })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.store</code></td><td><code>import('./store.js').Store</code></td><td></td></tr><tr><td><code>o.spec</code></td><td><code>ProfileSpec</code></td><td></td></tr><tr><td><code>o.ns</code> (optional)</td><td><code>string</code></td><td>The store namespace (<code>&quot;profiles&quot;</code>).</td></tr><tr><td><code>o.flushMs</code> (optional)</td><td><code>number</code></td><td>How often dirty profiles are written back (5000; 0 = only when you call <code>flush</code>).</td></tr><tr><td><code>o.now</code> (optional)</td><td><code>() =&gt; number</code></td><td></td></tr><tr><td><code>o.log</code> (optional)</td><td><code>(msg: string) =&gt; void</code></td><td></td></tr></tbody></table></div>
+<h4 id="profilesopenprofile"><code>Profiles.openProfile</code><a class="anchor" href="#profilesopenprofile" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">openProfile</span>(playerId)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Open a player's profile (creating it the first time). Opening twice gives the same object. Call <code>close</code> when the player leaves.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>playerId</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Promise&lt;Profile&gt;</code></p>
+<h4 id="profilespeek"><code>Profiles.peek</code><a class="anchor" href="#profilespeek" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">peek</span>(playerId)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A profile without keeping it open (read once; changes are not tracked).</p>
+<h4 id="profilesflush"><code>Profiles.flush</code><a class="anchor" href="#profilesflush" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">flush</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Write the changed profiles now.</p>
+<p><strong>Returns</strong> <code>Promise&lt;number&gt;</code> — how many were written</p>
+<h4 id="profilesclose"><code>Profiles.close</code><a class="anchor" href="#profilesclose" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">close</span>(playerId)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The player left: write their profile and let go of it.</p>
+<h4 id="profilescloseall"><code>Profiles.closeAll</code><a class="anchor" href="#profilescloseall" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">closeAll</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Server shutdown: write everything and stop the timer.</p>
+<p><sub>src/profiles.js:32</sub></p>
+<h3 id="class-storeconflicterror"><code>class StoreConflictError</code><a class="anchor" href="#class-storeconflicterror" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> StoreConflictError <span class="tk-k">extends</span> Error</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A write expected an older version of the record than the one that exists.</p>
+<h4 id="storeconflicterrorconstructor"><code>StoreConflictError.constructor</code><a class="anchor" href="#storeconflicterrorconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(ns, key, expected, actual)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ns</code></td><td><code>string</code></td><td></td></tr><tr><td><code>key</code></td><td><code>string</code></td><td></td></tr><tr><td><code>expected</code></td><td><code>number</code></td><td></td></tr><tr><td><code>actual</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/store.js:6</sub></p>
+<h2 id="node-entry">Node entry<a class="anchor" href="#node-entry" aria-label="Link to this section">#</a></h2>
+<p>These come from <code>@engine/persist/src/node.js</code> and use Node's built-in modules, so they are for servers and tools, not browsers.</p>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">import</span> { AppendLog, FileStore, GuestAccounts } <span class="tk-k">from</span> <span class="tk-s">'@engine/persist/src/node.js'</span>;</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h3 id="class-appendlog"><code>class AppendLog</code><a class="anchor" href="#class-appendlog" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> AppendLog</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>An append-only log of JSON lines (match results, purchases, moderation actions): cheap to write, rotated by size, easy to read back.</p>
+<h4 id="appendlogconstructor"><code>AppendLog.constructor</code><a class="anchor" href="#appendlogconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(path, { maxBytes = <span class="tk-n">5_000_000</span>, keep = <span class="tk-n">3</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>path</code></td><td><code>string</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{maxBytes?: number, keep?: number}</code></td><td><code>maxBytes</code>: rotate at this size (5 MB); <code>keep</code>: how many old files to keep (3).</td></tr></tbody></table></div>
+<h4 id="appendlogappend"><code>AppendLog.append</code><a class="anchor" href="#appendlogappend" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">append</span>(record)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Add one record (any JSON value). Returns a promise for when it is written; writes keep their order.</p>
+<h4 id="appendlogtail"><code>AppendLog.tail</code><a class="anchor" href="#appendlogtail" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">tail</span>(count = <span class="tk-n">100</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The last <code>count</code> records, oldest first (looking back through rotated files if needed).</p>
+<h4 id="appendlogflush"><code>AppendLog.flush</code><a class="anchor" href="#appendlogflush" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">flush</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Wait until everything appended so far is on disk.</p>
+<p><sub>src/node.js:141</sub></p>
+<h3 id="class-filestore"><code>class FileStore</code><a class="anchor" href="#class-filestore" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> FileStore</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Records as JSON files in a folder: <code>&lt;dir&gt;/&lt;namespace&gt;/&lt;two hex digits&gt;/&lt;key&gt;.json</code>, each written to a temporary file and renamed into place, so a crash never leaves half a record. Writes to one record are queued, so version checks are exact inside one server process. Use it for one server (or one server per folder); several servers sharing records need a database behind the same <code>Store</code> contract. <code>list</code> reads folder names: fine for thousands of records, not for millions.</p>
+<h4 id="filestoreconstructor"><code>FileStore.constructor</code><a class="anchor" href="#filestoreconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(dir)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>dir</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<h4 id="filestoreget"><code>FileStore.get</code><a class="anchor" href="#filestoreget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">get</span>(ns, key)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="filestoreput"><code>FileStore.put</code><a class="anchor" href="#filestoreput" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">put</span>(ns, key, value, { ifVersion } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="filestoredelete"><code>FileStore.delete</code><a class="anchor" href="#filestoredelete" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">delete</span>(ns, key, { ifVersion } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="filestorelist"><code>FileStore.list</code><a class="anchor" href="#filestorelist" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">list</span>(ns, { prefix = <span class="tk-s">''</span>, limit = <span class="tk-n">100</span>, after = <span class="tk-s">''</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="filestoreupdate"><code>FileStore.update</code><a class="anchor" href="#filestoreupdate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">update</span>(ns, key, fn, { create } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read, change and write a record while holding its lock, so concurrent updates in this process queue up instead of retrying.</p>
+<p><sub>src/node.js:13</sub></p>
+<h3 id="class-guestaccounts"><code>class GuestAccounts</code><a class="anchor" href="#class-guestaccounts" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> GuestAccounts</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Players without a sign-up: the first time someone plays they get an id and a secret to keep in the browser; showing the secret later proves it is the same player. Only a hash of the secret is stored. Accounts can later be linked to a login from outside (a platform or social id), which is how a guest keeps their progress when they sign in on another device.</p>
+<h4 id="guestaccountsconstructor"><code>GuestAccounts.constructor</code><a class="anchor" href="#guestaccountsconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ store, now = () =&gt; Date.<span class="tk-f">now</span>(), ns = <span class="tk-s">'accounts'</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.store</code></td><td><code>import('./store.js').Store</code></td><td></td></tr><tr><td><code>o.now</code> (optional)</td><td><code>() =&gt; number</code></td><td></td></tr><tr><td><code>o.ns</code> (optional)</td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<h4 id="guestaccountscreate"><code>GuestAccounts.create</code><a class="anchor" href="#guestaccountscreate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">create</span>({ name = <span class="tk-k">null</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Make an account.</p>
+<p><strong>Returns</strong> <code>Promise&lt;{playerId: string, secret: string}&gt;</code> — give both to the player; the secret is not kept.</p>
+<h4 id="guestaccountsauthenticate"><code>GuestAccounts.authenticate</code><a class="anchor" href="#guestaccountsauthenticate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">authenticate</span>(playerId, secret)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Does this secret belong to this player? (Never throws; compares in constant time.)</p>
+<h4 id="guestaccountsget"><code>GuestAccounts.get</code><a class="anchor" href="#guestaccountsget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">get</span>(playerId)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="guestaccountssetname"><code>GuestAccounts.setName</code><a class="anchor" href="#guestaccountssetname" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">setName</span>(playerId, name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="guestaccountsrotatesecret"><code>GuestAccounts.rotateSecret</code><a class="anchor" href="#guestaccountsrotatesecret" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">rotateSecret</span>(playerId)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A new secret (the old one stops working): for &quot;log out everywhere&quot; or a lost device.</p>
+<h4 id="guestaccountslink"><code>GuestAccounts.link</code><a class="anchor" href="#guestaccountslink" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">link</span>(playerId, provider, externalId)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Tie an outside identity (<code>google</code>, <code>steam</code>…) to a player. One outside identity belongs to one player.</p>
+<p><strong>Returns</strong> <code>Promise&lt;boolean&gt;</code> — false if it already belongs to someone else</p>
+<h4 id="guestaccountsfindbylink"><code>GuestAccounts.findByLink</code><a class="anchor" href="#guestaccountsfindbylink" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">findByLink</span>(provider, externalId)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The player an outside identity belongs to, or null.</p>
+<h4 id="guestaccountsdelete"><code>GuestAccounts.delete</code><a class="anchor" href="#guestaccountsdelete" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">delete</span>(playerId)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Delete an account and its links.</p>
+<p><sub>src/node.js:93</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="profilespec"><code>ProfileSpec</code><a class="anchor" href="#profilespec" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>version</code> (optional)</td><td><code>number</code></td><td>The profile layout version (1).</td></tr><tr><td><code>create</code></td><td><code>(playerId: string) =&gt; any</code></td><td>The data of a brand-new player.</td></tr><tr><td><code>migrations</code> (optional)</td><td><code>Record&lt;number, (data: any) =&gt; any&gt;</code></td><td><code>{ 1: (old) =&gt; v2data }</code> upgrades data saved at that version by one step.</td></tr><tr><td><code>merge</code> (optional)</td><td><code>(mine: any, theirs: any, base: any) =&gt; any</code></td><td>When a write finds another server changed the profile, combine the two (default: keep ours).</td></tr></tbody></table></div>
+<h3 id="store"><code>Store</code><a class="anchor" href="#store" aria-label="Link to this section">#</a></h3>
+<p>What every store provides. <code>ifVersion</code> on a write: omit it to write regardless, <code>0</code> to create only (fail if it exists), or the version you read.</p>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>get</code></td><td><code>(ns: string, key: string) =&gt; Promise&lt;{value: any, version: number} | null&gt;</code></td><td></td></tr><tr><td><code>put</code></td><td><code>(ns: string, key: string, value: any, o?: {ifVersion?: number}) =&gt; Promise&lt;{version: number}&gt;</code></td><td></td></tr><tr><td><code>delete</code></td><td><code>(ns: string, key: string, o?: {ifVersion?: number}) =&gt; Promise&lt;boolean&gt;</code></td><td></td></tr><tr><td><code>list</code></td><td><code>(ns: string, o?: {prefix?: string, limit?: number, after?: string}) =&gt; Promise&lt;Array&lt;{key: string, version: number}&gt;&gt;</code></td><td></td></tr><tr><td><code>update</code></td><td><code>(ns: string, key: string, fn: (value: any, version: number) =&gt; any, o?: {retries?: number, create?: () =&gt; any}) =&gt; Promise&lt;{value: any, version: number}&gt;</code></td><td></td></tr></tbody></table></div><div class="pager"><a href="matchmaking.html"><small>Previous</small>matchmaking</a><a class="next" href="turns.html"><small>Next</small>turns</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-10-of-10-documented">Contents (10 of 10 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#checkname">checkName</a><a class="l3" href="#updaterecord">updateRecord</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-leaderboard">class Leaderboard</a><a class="l3" href="#class-memorystore">class MemoryStore</a><a class="l3" href="#class-profile">class Profile</a><a class="l3" href="#class-profiles">class Profiles</a><a class="l3" href="#class-storeconflicterror">class StoreConflictError</a><a class="l2" href="#node-entry">Node entry</a><a class="l3" href="#class-appendlog">class AppendLog</a><a class="l3" href="#class-filestore">class FileStore</a><a class="l3" href="#class-guestaccounts">class GuestAccounts</a><a class="l2" href="#types">Types</a><a class="l3" href="#profilespec">ProfileSpec</a><a class="l3" href="#store">Store</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

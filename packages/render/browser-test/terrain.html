@@ -1,0 +1,113 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Terrain self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { createRenderer3D, Camera3D, DrawList3D, createLighting, TextureSet, MaterialSet, Heightmap, Terrain, splatMap } from '../src/index.js';
+
+const W = 320, H = 240;
+const CLEAR = [0.02, 0.02, 0.02, 1];
+const solid = (size, rgb) => { const data = new Uint8Array(size * size * 4); for (let i = 0; i < size * size; i++) data.set([...rgb, 255], i * 4); return { width: size, height: size, data }; };
+
+function read(renderer) {
+  const c = document.createElement('canvas'); c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(renderer.canvas, 0, 0);
+  const img = g.getImageData(0, 0, c.width, c.height);
+  return { px: (x, y) => [...img.data.slice((y * c.width + x) * 4, (y * c.width + x) * 4 + 3)], img };
+}
+const near = (a, b, t = 40) => a.every((v, i) => Math.abs(v - b[i]) <= t);
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer3D({ prefer: [kind], antialias: false });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    // four pictures (red, green, blue, white) and a splat map: the left half is red, the right half green, with the bottom quarter blue and the top quarter white
+    const textures = new TextureSet({ size: 64, maxLayers: 8 });
+    const first = textures.add(solid(64, [255, 40, 40]));
+    textures.add(solid(64, [40, 255, 40])); textures.add(solid(64, [40, 40, 255])); textures.add(solid(64, [255, 255, 255]));
+    const splat = new Uint8Array(64 * 64 * 4);
+    for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
+      const w = [0, 0, 0, 0];
+      if (y < 12) w[3] = 255; else if (y >= 52) w[2] = 255; else if (x < 32) w[0] = 255; else w[1] = 255;
+      if (x >= 28 && x < 36 && y >= 12 && y < 52) { const t = (x - 28 + 0.5) / 8; w[0] = Math.round(255 * (1 - t)); w[1] = Math.round(255 * t); }     // a blend across the middle
+      splat.set(w, (y * 64 + x) * 4);
+    }
+    const splatLayer = textures.add({ width: 64, height: 64, data: splat });
+    renderer.setTextures(textures);
+
+    const map = Heightmap.fromFunction(65, () => 0, { cell: 1 });
+    const terrain = new Terrain(map, { chunkCells: 16, lods: 3 });
+    const L = { ...createLighting(), direction: [0, 1, 0], color: [0.6, 0.6, 0.6], ambientSky: [0.4, 0.4, 0.4], ambientGround: [0.4, 0.4, 0.4], fogDensity: 0 };
+    const list = new DrawList3D();
+    const cam = new Camera3D({ x: 32, y: 60, z: 32, fovY: 0.9, viewW: W, viewH: H }); cam.pitch = -Math.PI / 2; cam.yaw = 0; cam.update();
+    list.clear(); list.setTerrain(splatLayer, first, 0.25); terrain.addToDrawList(list, cam);
+    renderer.render({ camera: cam, list, clear: CLEAR, lighting: L });
+    const img = read(renderer);
+    const at = (wx, wz) => { const s = cam.worldToScreen(wx, 0, wz); return img.px(Math.round(s.x), Math.round(s.y)); };
+    // looking straight down with yaw 0: +x is to the right, +z is down the screen
+    const dominant = (c) => c.indexOf(Math.max(...c));
+    const left = at(16, 32), right = at(48, 32), bottom = at(32, 60), top = at(32, 3), mid = at(32, 32);
+    add('the left half shows the first picture (red)', dominant(left) === 0 && left[0] > 150 && left[1] < left[0] * 0.5, left, 'red');
+    add('the right half shows the second picture (green)', dominant(right) === 1 && right[1] > 150 && right[0] < right[1] * 0.5, right, 'green');
+    add('the strip at the bottom shows the third (blue)', dominant(bottom) === 2 && bottom[2] > 150 && bottom[0] < bottom[2] * 0.5, bottom, 'blue');
+    add('the strip at the top shows the fourth (white)', top.every((v) => v > 150) && Math.max(...top) - Math.min(...top) < 40, top, 'white');
+    add('the pictures blend across the middle', mid[0] > 60 && mid[1] > 60 && Math.abs(mid[0] - mid[1]) < 90, mid, 'red and green mixed');
+    // the splat map is stretched over the whole terrain, across chunk edges, with no cracks
+    const e0 = cam.worldToScreen(2, 0, 2), e1 = cam.worldToScreen(62, 0, 62);          // inside the terrain's edges
+    let holes = 0, seen = 0; for (let y = Math.max(2, Math.ceil(e0.y)); y < Math.min(H - 2, e1.y); y += 3) for (let x = Math.max(2, Math.ceil(e0.x)); x < Math.min(W - 2, e1.x); x += 3) { const s = img.px(x, y); seen++; if (s[0] < 12 && s[1] < 12 && s[2] < 12) holes++; }
+    add('the ground is one piece: no gaps between chunks', seen > 500 && holes === 0, { holes, seen }, 'none');
+    add('terrain does not trigger physically based shading', renderer.lastError === '' || renderer.lastError === undefined, renderer.lastError, 'no error');
+
+    // ---- hills, seen from an angle, with the levels of detail changing: no cracks show at the joins
+    const hills = Heightmap.fromNoise({ size: 129, seed: 11, amplitude: 14, base: 0, frequency: 3 });
+    const big = new Terrain(hills, { chunkCells: 32, lods: 4, lodDistance: 25, skirt: 3 });
+    const cam2 = new Camera3D({ x: 64, y: 40, z: -10, fovY: 1.0, viewW: W, viewH: H }); cam2.pitch = -0.55; cam2.yaw = Math.PI; cam2.update();
+    list.clear(); list.setTerrain(splatLayer, first, 0.25); big.addToDrawList(list, cam2);
+    renderer.render({ camera: cam2, list, clear: [0, 0, 0, 1], lighting: L });
+    const hill = read(renderer);
+    let gaps = 0, covered = 0;
+    for (let y = Math.floor(H * 0.55); y < H - 2; y += 2) for (let x = 2; x < W - 2; x += 2) { const s = hill.px(x, y); if (s[0] + s[1] + s[2] < 25) gaps++; else covered++; }
+    add('hills at mixed levels of detail show no cracks to the sky', gaps === 0 && covered > 1000, { gaps, covered }, 'no black pixels in the lower half');
+    const levels = new Set(big.chunks.map((c) => c.meshes.findIndex(Boolean)).filter((l) => l >= 0));
+    add('and really do use several levels', levels.size >= 3, [...levels], 'at least three');
+
+    // ---- a decal on the ground: a red disc with a see-through corner, drawn with a material that blends the picture's alpha
+    const dtex = new TextureSet({ size: 64, maxLayers: 8 });
+    const disc = new Uint8Array(64 * 64 * 4);
+    for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) { const inside = Math.hypot(x - 31.5, y - 31.5) < 26; disc.set(inside ? [255, 0, 0, 255] : [255, 255, 255, 0], (y * 64 + x) * 4); }
+    const discLayer = dtex.add({ width: 64, height: 64, data: disc });
+    const mats = new MaterialSet(); const decalMaterial = mats.add({ baseColor: [1, 1, 1, 1], baseColorTexture: discLayer, roughness: 0.9 });
+    renderer.setTextures(dtex); renderer.setMaterials(mats);
+    const flatMap = Heightmap.fromFunction(65, () => 0, { cell: 1 }), flat = new Terrain(flatMap, { chunkCells: 16, lods: 2 });
+    const decal = flat.createDecal({ position: [32, 0, 32], size: 16, depth: 2, offset: 0.02 });
+    const gray = (c) => Math.max(...c) - Math.min(...c) < 25;
+    const drawDecal = (withDecal) => {
+      list.clear(); list.setMaterial(null); flat.addToDrawList(list, cam, { r: 0.55, g: 0.55, b: 0.55 });
+      if (withDecal) { list.setSurface(decalMaterial); list.add(decal, new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]), 1, 1, 1, 1); list.setSurface(0); }
+      renderer.render({ camera: cam, list, clear: CLEAR, lighting: L }); return read(renderer);
+    };
+    const plain = drawDecal(false), stuck = drawDecal(true);
+    const d0 = cam.worldToScreen(32, 0, 32), d1 = cam.worldToScreen(32, 0, 32 + 7), d2 = cam.worldToScreen(32, 0, 32 + 14);
+    const centrePx = stuck.px(Math.round(d0.x), Math.round(d0.y)), cornerPx = stuck.px(Math.round(cam.worldToScreen(32 + 7.5, 0, 32 + 7.5).x), Math.round(cam.worldToScreen(32 + 7.5, 0, 32 + 7.5).y)), outsidePx = stuck.px(Math.round(d2.x), Math.round(d2.y));
+    add('a decal lies on the ground: red in the middle', centrePx[0] > 120 && centrePx[1] < 70 && centrePx[2] < 70, centrePx, 'red');
+    add('its see-through corner shows the ground, as does everything outside it', gray(cornerPx) && gray(outsidePx) && cornerPx.join() === plain.px(Math.round(cam.worldToScreen(32 + 7.5, 0, 32 + 7.5).x), Math.round(cam.worldToScreen(32 + 7.5, 0, 32 + 7.5).y)).join(), { cornerPx, outsidePx }, 'plain ground');
+    void d1;
+
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

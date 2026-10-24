@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>a 2D platformer · Astreon Engine</title>
+<meta name="description" content="You will build a small platformer: tile levels, a hero that runs and jumps the way players expect, enemies, springs, coins, sound without audio files, best times that are remembered, and tests that pr">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html" class="on">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><h4>Tutorials</h4><a href="2d-platformer.html" class="on">a 2D platformer</a><a href="3d-shooter.html">a 3D first-person shooter</a><a href="multiplayer-card-game.html">a multiplayer card game</a><h4>Example games</h4><a href="../examples/arena.html">arena</a><a href="../examples/arena3d.html">arena3d</a><a href="../examples/platformer.html">platformer</a><a href="../examples/shooter.html">shooter</a></nav><main><article><h1 id="tutorial-a-2d-platformer">Tutorial: a 2D platformer</h1>
+<p>You will build a small platformer: tile levels, a hero that runs and jumps the way players expect, enemies, springs, coins, sound without audio files, best times that are remembered, and tests that prove every level can be finished. The finished game is <code>examples/platformer</code>; run it with <code>npm run platformer</code> and open the printed address.</p>
+<p>Files: <code>src/level.js</code> (levels), <code>src/game.js</code> (the rules), <code>src/main.js</code> (the page), <code>levels/*.json</code>, <code>test/game.test.js</code>.</p>
+<h2 id="1-a-level-is-a-picture-made-of-letters">1. A level is a picture made of letters<a class="anchor" href="#1-a-level-is-a-picture-made-of-letters" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-text">..........
+..@.....G.
+####..####     # ground   ^ spikes   S spring   o coin   E enemy   @ start   G goal
+####..####</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><code>loadLevel(data)</code> checks the rows (same width, known letters, one start, one goal, with a message that names the row and column) and turns them into what the game needs. Neighbouring ground tiles are merged into as few rectangles as possible: a floor of 80 tiles is one box, so the hero never catches on the seams between tiles. Merged rectangles also make collision cheaper.</p>
+<p>To make a new level, add a file to <code>levels/</code> and its name to <code>levels/index.json</code>. The tests then check that it can be finished.</p>
+<h2 id="2-the-rules-know-nothing-about-the-screen">2. The rules know nothing about the screen<a class="anchor" href="#2-the-rules-know-nothing-about-the-screen" aria-label="Link to this section">#</a></h2>
+<p><code>step(game, input)</code> moves the game on by 1/60 s. The input is three bits (left, right, jump), so a whole run is a list of small numbers. The same inputs always give the same game, which gives you replays, ghosts, and tests that need no browser:</p>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> game = <span class="tk-f">createGame</span>(level);
+<span class="tk-f">step</span>(game, RIGHT | JUMP);           <span class="tk-c">// returns the events of this tick: jump, land, coin, stomp, spring, die, win</span></code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Collision is <code>@engine/physics</code>: the level's boxes go into a <code>SpatialHash</code> and <code>moveAndSlide</code> moves the hero's box sideways and then down or up. Moving the axes one at a time tells you exactly what you landed on or bumped. The swept motion cannot tunnel through a thin wall at any speed.</p>
+<h2 id="3-making-it-feel-right">3. Making it feel right<a class="anchor" href="#3-making-it-feel-right" aria-label="Link to this section">#</a></h2>
+<p>Four small ideas separate a good jump from a bad one. They are all in <code>step</code>, and all numbers in <code>MOVE</code>, so change one and feel it.</p>
+<ul><li><strong>Variable height.</strong> Let go of jump while rising and the upward speed is cut (<code>cut</code>). A tap is a hop, a hold is a full jump.</li><li><strong>Coyote time.</strong> You can still jump for 0.1 s after running off an edge (<code>coyote</code>). Players press jump when they <em>see</em> the edge, not when the game does.</li><li><strong>Jump buffer.</strong> A jump pressed up to 0.12 s before landing still happens on landing (<code>buffer</code>).</li><li><strong>Acceleration.</strong> Speed builds and fades instead of switching on and off, more slowly in the air.</li></ul>
+<p>Springs and stomps also clear the coyote timer. Without that, a leftover coyote jump overwrote the bounce. The computer player in the tests found this bug.</p>
+<h2 id="4-a-bot-that-finishes-every-level">4. A bot that finishes every level<a class="anchor" href="#4-a-bot-that-finishes-every-level" aria-label="Link to this section">#</a></h2>
+<p><code>botInput(game)</code> runs right and jumps when a wall, a gap, spikes or an enemy is ahead. The test lets it play every file in <code>levels/</code> and requires that it wins, never dies, and does it faster than the level's <code>par</code>. Add an impossible level and the test says where the bot got stuck. It cannot collect every coin, because they sit in places that need a player who looks around.</p>
+<h2 id="5-the-page">5. The page<a class="anchor" href="#5-the-page" aria-label="Link to this section">#</a></h2>
+<p><code>src/main.js</code> draws with the sprite renderer (one white square, circle and triangle, tinted), follows the hero with <code>camera.follow</code>, shakes the screen on a death, plays sounds made in code (<code>sfx.jump()</code>, <code>sfx.coin()</code>) after the first key press (browsers insist), and keeps best times with <code>@engine/save</code>. The controls are named actions with several bindings each (keys, gamepad, touch buttons), so the game code never mentions a key.</p>
+<p><code>node tools/platformer-test.js</code> opens the game in Chrome on both renderers, starts a level with the real Enter key, lets the bot press the real arrow keys and Space until the level is won, and checks that the time is saved.</p>
+<h2 id="6-make-it-yours">6. Make it yours<a class="anchor" href="#6-make-it-yours" aria-label="Link to this section">#</a></h2>
+<ul><li>Change <code>MOVE</code> (a floatier jump: lower <code>gravity</code>, higher <code>jump</code>).</li><li>Add a tile in <code>loadLevel</code> and a rule in <code>step</code> (a moving platform, a key and a door).</li><li>Replace the shapes in <code>main.js</code> with sprite art from an <code>Atlas</code> or loaded images.</li><li>Record a run (<code>inputs</code> list) and play it back as a ghost: <code>replay(level, inputs)</code> gives the same game every time.</li></ul><div class="pager"><span></span><a class="next" href="3d-shooter.html"><small>Next</small>a 3D first-person shooter</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#1-a-level-is-a-picture-made-of-letters">1. A level is a picture made of letters</a><a class="l2" href="#2-the-rules-know-nothing-about-the-screen">2. The rules know nothing about the screen</a><a class="l2" href="#3-making-it-feel-right">3. Making it feel right</a><a class="l2" href="#4-a-bot-that-finishes-every-level">4. A bot that finishes every level</a><a class="l2" href="#5-the-page">5. The page</a><a class="l2" href="#6-make-it-yours">6. Make it yours</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

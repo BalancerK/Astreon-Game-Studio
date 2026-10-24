@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/prefab · Astreon Engine</title>
+<meta name="description" content="Entity templates as JSON: inheritance, children, parameters, overrides, parent-child transforms, capturing what changed for saves.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html" class="on">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="engineprefab">@engine/prefab</h1>
+<p>Entity templates as JSON: inheritance, children, parameters, overrides, parent-child transforms, capturing what changed for saves.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/prefab</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/prefab.html">packages/prefab</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-13-of-13-documented">Contents (13 of 13 documented)<a class="anchor" href="#contents-13-of-13-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-componentregistry"><code>ComponentRegistry</code></a></td><td>class</td><td>Which components a prefab file may name, with the fields each takes (and optional named values for a field, like <code>team: red</code>).</td></tr><tr><td><a href="#identity"><code>IDENTITY</code></a></td><td>constant</td><td>Identity values for Transform / LocalTransform (a new component starts all zero, which is not a valid rotation or scale).</td></tr><tr><td><a href="#class-instance"><code>Instance</code></a></td><td>class</td><td>One spawned prefab: its entities by path, and whatever the game attached to it (physics bodies, meshes) to clean up with it.</td></tr><tr><td><a href="#localtransform"><code>LocalTransform</code></a></td><td>constant</td><td>Pose relative to the parent; the <code>TransformSystem</code> turns it into a world <code>Transform</code>.</td></tr><tr><td><a href="#parent"><code>Parent</code></a></td><td>constant</td><td>The entity this one is attached to (an entity id; 0 means none: ids start at slot 0 generation 0, so check <code>has(Parent)</code> instead of the value).</td></tr><tr><td><a href="#class-prefablibrary"><code>PrefabLibrary</code></a></td><td>class</td><td>A library of prefabs.</td></tr><tr><td><a href="#class-prefabspawner"><code>PrefabSpawner</code></a></td><td>class</td><td>Makes entities from prefabs and takes them apart again.</td></tr><tr><td><a href="#tags"><code>Tags</code></a></td><td>constant</td><td>Up to 32 tags as bits (see <code>PrefabLibrary.tag(name)</code>): &quot;enemy&quot;, &quot;breakable&quot;.</td></tr><tr><td><a href="#transform"><code>Transform</code></a></td><td>constant</td><td>Position, orientation (a quaternion) and scale in world space.</td></tr><tr><td><a href="#class-transformsystem"><code>TransformSystem</code></a></td><td>class</td><td>Keeps world <code>Transform</code>s of attached entities up to date from their <code>LocalTransform</code>s, parents before children.</td></tr><tr><td><a href="#composetransform"><code>composeTransform</code></a></td><td>function</td><td>parent (world) composed with local, into <code>out</code> ({x, y, z, qx.., sx..}).</td></tr><tr><td><a href="#expandpaths"><code>expandPaths</code></a></td><td>function</td><td><code>{ 'components.health.hp': 5 }</code> -&gt; <code>{ components: { health: { hp: 5 } } }</code> (keys without dots are kept; a dotted key is split at dots).</td></tr><tr><td><a href="#mergedeep"><code>mergeDeep</code></a></td><td>function</td><td>Deep merge: objects merge key by key, everything else (numbers, strings, arrays) is replaced.</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="composetransform"><code>composeTransform</code><a class="anchor" href="#composetransform" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">composeTransform</span>(out, pw, pi, l)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>parent (world) composed with local, into <code>out</code> ({x, y, z, qx.., sx..}). <code>pw</code> is the Transform component's data and <code>pi</code> the parent's slot.</p>
+<p><sub>src/transform.js:6</sub></p>
+<h3 id="expandpaths"><code>expandPaths</code><a class="anchor" href="#expandpaths" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">expandPaths</span>(flat)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><code>{ 'components.health.hp': 5 }</code> -&gt; <code>{ components: { health: { hp: 5 } } }</code> (keys without dots are kept; a dotted key is split at dots).</p>
+<p><sub>src/library.js:18</sub></p>
+<h3 id="mergedeep"><code>mergeDeep</code><a class="anchor" href="#mergedeep" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">mergeDeep</span>(a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Deep merge: objects merge key by key, everything else (numbers, strings, arrays) is replaced. Returns <code>a</code>.</p>
+<p><sub>src/library.js:9</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-componentregistry"><code>class ComponentRegistry</code><a class="anchor" href="#class-componentregistry" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> ComponentRegistry</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Which components a prefab file may name, with the fields each takes (and optional named values for a field, like <code>team: red</code>).</p>
+<h4 id="componentregistryconstructor"><code>ComponentRegistry.constructor</code><a class="anchor" href="#componentregistryconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="componentregistryadd"><code>ComponentRegistry.add</code><a class="anchor" href="#componentregistryadd" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">add</span>(component, { enums = {} } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>component</code></td><td><code>import('../../core/src/index.js').Component</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{enums?: Record&lt;string, Record&lt;string, number&gt;&gt;}</code></td><td></td></tr></tbody></table></div>
+<h4 id="componentregistryget"><code>ComponentRegistry.get</code><a class="anchor" href="#componentregistryget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="componentregistrynames"><code>ComponentRegistry.names</code><a class="anchor" href="#componentregistrynames" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> names</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="componentregistrytonumber"><code>ComponentRegistry.toNumber</code><a class="anchor" href="#componentregistrytonumber" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">toNumber</span>(componentName, field, v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Turn a spec value into the number stored: numbers as they are, booleans 1 / 0, strings through the field's named values.</p>
+<p><sub>src/library.js:31</sub></p>
+<h3 id="class-instance"><code>class Instance</code><a class="anchor" href="#class-instance" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Instance</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>One spawned prefab: its entities by path, and whatever the game attached to it (physics bodies, meshes) to clean up with it.</p>
+<h4 id="instanceconstructor"><code>Instance.constructor</code><a class="anchor" href="#instanceconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(spawner, name, spec, id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="instanceget"><code>Instance.get</code><a class="anchor" href="#instanceget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span>(path = <span class="tk-s">''</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The entity at a path ('' = the root).</p>
+<h4 id="instanceown"><code>Instance.own</code><a class="anchor" href="#instanceown" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">own</span>(fn)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Register something to undo when this instance is destroyed (runs in reverse order).</p>
+<h4 id="instancedestroy"><code>Instance.destroy</code><a class="anchor" href="#instancedestroy" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">destroy</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Remove every entity and run the cleanups. Safe to call twice.</p>
+<p><sub>src/spawner.js:11</sub></p>
+<h3 id="class-prefablibrary"><code>class PrefabLibrary</code><a class="anchor" href="#class-prefablibrary" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> PrefabLibrary</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A library of prefabs.</p>
+<h4 id="prefablibraryconstructor"><code>PrefabLibrary.constructor</code><a class="anchor" href="#prefablibraryconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(registry = <span class="tk-k">new</span> <span class="tk-f">ComponentRegistry</span>())</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>registry</code> (optional)</td><td><code>ComponentRegistry</code></td><td></td></tr></tbody></table></div>
+<h4 id="prefablibrarytag"><code>PrefabLibrary.tag</code><a class="anchor" href="#prefablibrarytag" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tag</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The bit for a tag name (assigned in order of first use, at most 32).</p>
+<h4 id="prefablibrarytagnames"><code>PrefabLibrary.tagNames</code><a class="anchor" href="#prefablibrarytagnames" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tagNames</span>(bits)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Tag names in a bit set.</p>
+<h4 id="prefablibrarydefine"><code>PrefabLibrary.define</code><a class="anchor" href="#prefablibrarydefine" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">define</span>(spec)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Add a prefab (or a list of them). A prefab with the same name replaces the old one.</p>
+<p><strong>Returns</strong> <code>this</code></p>
+<h4 id="prefablibraryload"><code>PrefabLibrary.load</code><a class="anchor" href="#prefablibraryload" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">load</span>(data)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Load prefabs from parsed JSON: an array of specs, or <code>{ prefabs: [...] }</code>.</p>
+<h4 id="prefablibraryhas"><code>PrefabLibrary.has</code><a class="anchor" href="#prefablibraryhas" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">has</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="prefablibrarynames"><code>PrefabLibrary.names</code><a class="anchor" href="#prefablibrarynames" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> names</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="prefablibraryresolve"><code>PrefabLibrary.resolve</code><a class="anchor" href="#prefablibraryresolve" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">resolve</span>(name, stack = [])</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The prefab with everything it inherits merged in: bases first (<code>extends</code> may be a name or a list), then its own values on top. Components and extras merge field by field; tags are united; children merge by name (a child of the same name changes the inherited one, a new name adds one); <code>params</code> merge by name. The result is a new object you may keep.</p>
+<p><strong>Returns</strong> <code>any</code></p>
+<h4 id="prefablibraryvalidate"><code>PrefabLibrary.validate</code><a class="anchor" href="#prefablibraryvalidate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">validate</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Check every prefab against the registry: components and fields exist, values can be numbers, child prefabs exist, no circles, parameters point at something. Throws an error listing every problem found.</p>
+<h4 id="prefablibrarytojson"><code>PrefabLibrary.toJSON</code><a class="anchor" href="#prefablibrarytojson" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">toJSON</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>All prefabs as plain JSON (the inverse of <code>load</code>).</p>
+<p><sub>src/library.js:56</sub></p>
+<h3 id="class-prefabspawner"><code>class PrefabSpawner</code><a class="anchor" href="#class-prefabspawner" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> PrefabSpawner</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Makes entities from prefabs and takes them apart again. <code>spawn(name, { at, params, overrides, parent, local, id })</code> returns an <code>Instance</code>; <code>extra(key, handler)</code> teaches it what the game's own data (physics bodies, meshes) means; <code>capture(instance)</code> gives just what changed since the spawn, for saves.</p>
+<h4 id="prefabspawnerconstructor"><code>PrefabSpawner.constructor</code><a class="anchor" href="#prefabspawnerconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(world, library, { strictExtras = <span class="tk-k">false</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>world</code></td><td><code>import('../../core/src/index.js').World</code></td><td></td></tr><tr><td><code>library</code></td><td><code>import('./library.js').PrefabLibrary</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{strictExtras?: boolean}</code></td><td>With <code>strictExtras</code>, an extras key nobody handles is an error (default: ignored, so data may carry things only some games use).</td></tr></tbody></table></div>
+<h4 id="prefabspawnerextra"><code>PrefabSpawner.extra</code><a class="anchor" href="#prefabspawnerextra" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">extra</span>(key, fn, { after = <span class="tk-k">false</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Teach the spawner what an <code>extras</code> key means: <code>fn(value, { entity, instance, world, spec, path })</code> is called for every part that has it, after its components exist (or, with <code>{ after: true }</code>, after its children have been made too). Return a function to be run when the instance is destroyed.</p>
+<h4 id="prefabspawneron"><code>PrefabSpawner.on</code><a class="anchor" href="#prefabspawneron" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">on</span>(event, fn)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Call <code>fn(instance)</code> after every spawn (<code>'spawn'</code>) or before every destroy (<code>'destroy'</code>).</p>
+<h4 id="prefabspawnerspawn"><code>PrefabSpawner.spawn</code><a class="anchor" href="#prefabspawnerspawn" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">spawn</span>(name, { at, params, overrides, parent, local, id } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Make an entity (and its children) from a prefab.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.at</code> (optional)</td><td><code>{x?: number, y?: number, z?: number, yaw?: number, rotation?: number[], scale?: number}</code></td><td>Where to put the root (position, a yaw in radians or a quaternion <code>rotation</code>, a uniform scale).</td></tr><tr><td><code>o.params</code> (optional)</td><td><code>Record&lt;string, any&gt;</code></td><td>The prefab's named knobs, e.g. <code>{ hp: 80 }</code>.</td></tr><tr><td><code>o.overrides</code> (optional)</td><td><code>Record&lt;string, any&gt;</code></td><td>Changes to any part of the resolved prefab: <code>{ components: { health: { hp: 5 } } }</code> or dotted <code>{ 'components.health.hp': 5, 'children.lamp.components.light.intensity': 2 }</code>; <code>null</code> removes a component or a child.</td></tr><tr><td><code>o.parent</code> (optional)</td><td><code>number</code></td><td>Attach the root to this entity.</td></tr><tr><td><code>o.local</code> (optional)</td><td><code>Record&lt;string, any&gt;</code></td><td>The root's pose relative to <code>parent</code>.</td></tr><tr><td><code>o.id</code> (optional)</td><td><code>number</code></td><td>Give the instance this id (loading a save); otherwise the next free one.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Instance</code></p>
+<h4 id="prefabspawnerdestroy"><code>PrefabSpawner.destroy</code><a class="anchor" href="#prefabspawnerdestroy" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">destroy</span>(instance)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Destroy an instance's entities (children first) and run its cleanups.</p>
+<h4 id="prefabspawnercapture"><code>PrefabSpawner.capture</code><a class="anchor" href="#prefabspawnercapture" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">capture</span>(instance)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What differs now from what the prefab says, as overrides: spawn the prefab again with these and you get the same thing back. Includes changed component values (relative to the prefab's own, not counting this instance's parameters and overrides), components added or removed since, changed tags, children's local poses, and children that were destroyed. Extras are not captured: they are the game's own business.</p>
+<p><strong>Returns</strong> <code>{prefab: string, overrides: Record&lt;string, any&gt;}</code></p>
+<p><sub>src/spawner.js:37</sub></p>
+<h3 id="class-transformsystem"><code>class TransformSystem</code><a class="anchor" href="#class-transformsystem" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> TransformSystem</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Keeps world <code>Transform</code>s of attached entities up to date from their <code>LocalTransform</code>s, parents before children. Call <code>update(world)</code> once per tick.</p>
+<h4 id="transformsystemconstructor"><code>TransformSystem.constructor</code><a class="anchor" href="#transformsystemconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(maxDepth = <span class="tk-n">32</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>maxDepth</code> (optional)</td><td><code>number</code></td><td>Deepest nesting looked at (a loop of parents stops there instead of hanging).</td></tr></tbody></table></div>
+<h4 id="transformsystemupdate"><code>TransformSystem.update</code><a class="anchor" href="#transformsystemupdate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">update</span>(world)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>world</code></td><td><code>import('../../core/src/index.js').World</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — how many entities were updated</p>
+<p><sub>src/transform.js:23</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="identity"><code>IDENTITY</code><a class="anchor" href="#identity" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> IDENTITY</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Identity values for Transform / LocalTransform (a new component starts all zero, which is not a valid rotation or scale).</p>
+<p>Value: <code>Object.freeze({ x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, sx: 1, sy: 1, sz:</code></p>
+<p><sub>src/components.js:15</sub></p>
+<h3 id="localtransform"><code>LocalTransform</code><a class="anchor" href="#localtransform" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> LocalTransform</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Pose relative to the parent; the <code>TransformSystem</code> turns it into a world <code>Transform</code>.</p>
+<p>Value: <code>defineComponent('local', { x: 'f64', y: 'f64', z: 'f64', qx: 'f32', qy: 'f32', q</code></p>
+<p><sub>src/components.js:10</sub></p>
+<h3 id="parent"><code>Parent</code><a class="anchor" href="#parent" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> Parent</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The entity this one is attached to (an entity id; 0 means none: ids start at slot 0 generation 0, so check <code>has(Parent)</code> instead of the value).</p>
+<p>Value: <code>defineComponent('parent', { id: 'u32' })</code></p>
+<p><sub>src/components.js:8</sub></p>
+<h3 id="tags"><code>Tags</code><a class="anchor" href="#tags" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> Tags</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Up to 32 tags as bits (see <code>PrefabLibrary.tag(name)</code>): &quot;enemy&quot;, &quot;breakable&quot;.</p>
+<p>Value: <code>defineComponent('tags', { bits: 'u32' })</code></p>
+<p><sub>src/components.js:12</sub></p>
+<h3 id="transform"><code>Transform</code><a class="anchor" href="#transform" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> Transform</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Position, orientation (a quaternion) and scale in world space.</p>
+<p>Value: <code>defineComponent('transform', { x: 'f64', y: 'f64', z: 'f64', qx: 'f32', qy: 'f32</code></p>
+<p><sub>src/components.js:6</sub></p><div class="pager"><a href="tween.html"><small>Previous</small>tween</a><a class="next" href="scene.html"><small>Next</small>scene</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-13-of-13-documented">Contents (13 of 13 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#composetransform">composeTransform</a><a class="l3" href="#expandpaths">expandPaths</a><a class="l3" href="#mergedeep">mergeDeep</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-componentregistry">class ComponentRegistry</a><a class="l3" href="#class-instance">class Instance</a><a class="l3" href="#class-prefablibrary">class PrefabLibrary</a><a class="l3" href="#class-prefabspawner">class PrefabSpawner</a><a class="l3" href="#class-transformsystem">class TransformSystem</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#identity">IDENTITY</a><a class="l3" href="#localtransform">LocalTransform</a><a class="l3" href="#parent">Parent</a><a class="l3" href="#tags">Tags</a><a class="l3" href="#transform">Transform</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

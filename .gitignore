@@ -1,0 +1,7 @@
+node_modules
+dist
+release
+
+# screenshots the browser tests write to the repository root
+/*.png
+/.*.png

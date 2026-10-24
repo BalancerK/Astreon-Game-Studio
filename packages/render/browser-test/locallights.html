@@ -1,0 +1,149 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Spot, area and shadowed lights self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { createRenderer3D, Camera3D, DrawList3D, createLighting, createBox, MaterialSet } from '../src/index.js';
+
+const W = 320, H = 180, CLEAR = [0.05, 0.05, 0.06, 1];
+const m4 = (x, y, z, sx = 1, sy = sx, sz = sx) => Float32Array.from([sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, sz, 0, x, y, z, 1]);
+const DARK = { ...createLighting(), color: [0, 0, 0], ambientSky: [0.04, 0.04, 0.04], ambientGround: [0.04, 0.04, 0.04], specular: 0, fogDensity: 0, pointLights: [] };
+
+function snapshot(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d');
+  g.drawImage(renderer.canvas, 0, 0);
+  return g.getImageData(0, 0, c.width, c.height).data;
+}
+const px = (cam, x, y, z) => { const m = cam.viewProj, w = m[3] * x + m[7] * y + m[11] * z + m[15]; return [Math.round(((m[0] * x + m[4] * y + m[8] * z + m[12]) / w * 0.5 + 0.5) * W), Math.round((0.5 - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * 0.5) * H)]; };
+const lumaAt = (img, [x, y]) => { let s = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const o = ((y + j) * W + x + i) * 4; s += img[o] + img[o + 1] + img[o + 2]; } return s / 27; };
+
+const images = {};
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer3D({ prefer: [kind], antialias: false });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const box = createBox(1, 1, 1);
+    const floor = (list) => list.add(box, m4(0, -0.5, 0, 80, 1, 80), 0.8, 0.8, 0.8);
+    const draw = (cam, lights, build, opts = {}) => {
+      const list = new DrawList3D();
+      list.setCamera(cam, { lights: opts.hideLights ? undefined : lights });
+      build(list);
+      renderer.render({ camera: cam, list, clear: CLEAR, lighting: { ...DARK, pointLights: lights }, localShadows: opts.localShadows });
+      return snapshot(renderer);
+    };
+    const look = new Camera3D({ x: 0, y: 9, z: 9, yaw: 0, pitch: -0.78, fovY: 0.9, viewW: W, viewH: H, far: 300 }).update();
+    const at = (img, p) => lumaAt(img, px(look, ...p));
+    const lamp = { x: 0, y: 4, z: 0, radius: 20, color: [1, 1, 1], intensity: 2 };
+
+    // ---- spot lights
+    const point = draw(look, [lamp], floor);
+    const spot = draw(look, [{ ...lamp, direction: [0, -1, 0], angle: 0.5 }], floor);       // the cone reaches 4 * tan(0.5) = 2.2 m from the centre
+    const base = draw(look, [], floor);
+    images.spot = spot;
+    add('a spot light lights the floor under it as much as a point light does', Math.abs(at(spot, [0, 0, 0]) - at(point, [0, 0, 0])) < 3 && at(spot, [0, 0, 0]) > at(base, [0, 0, 0]) * 4, [at(spot, [0, 0, 0]), at(point, [0, 0, 0]), at(base, [0, 0, 0])], 'equal, and well above the dark floor');
+    add('...but outside its cone the floor stays dark, where a point light lights it', at(spot, [3.6, 0, 0]) < at(base, [3.6, 0, 0]) + 2 && at(point, [3.6, 0, 0]) > at(base, [3.6, 0, 0]) * 3, [at(spot, [3.6, 0, 0]), at(point, [3.6, 0, 0]), at(base, [3.6, 0, 0])], 'dark vs lit');
+    add('...with a soft edge: dimmer near the rim than at the middle, but not dark', at(spot, [1.9, 0, 0]) < at(spot, [0, 0, 0]) * 0.85 && at(spot, [1.9, 0, 0]) > at(base, [1.9, 0, 0]) + 3, [at(spot, [1.9, 0, 0]), at(spot, [0, 0, 0])], 'between');
+    const aimed = draw(look, [{ ...lamp, y: 4, direction: [1, -1, 0], angle: 0.4 }], floor);       // pointing down and along +x: the lit patch is centred 4 m to the side
+    add('a spot light lights where it is pointed', at(aimed, [4, 0, 0]) > at(aimed, [-4, 0, 0]) * 2, [at(aimed, [4, 0, 0]), at(aimed, [-4, 0, 0])], 'brighter on the +x side');
+
+    // ---- area lights: a panel lights from its front only, and a bigger one lights more
+    const panel = { type: 'area', x: 0, y: 3, z: 0, radius: 20, color: [1, 1, 1], intensity: 2, direction: [0, -1, 0], width: 2, height: 2 };
+    const down = draw(look, [panel], floor);
+    const up = draw(look, [{ ...panel, direction: [0, 1, 0] }], floor);
+    const big = draw(look, [{ ...panel, width: 6, height: 6 }], floor);
+    images.panel = down;
+    add('an area light lights the floor in front of it', at(down, [0, 0, 0]) > at(base, [0, 0, 0]) * 3, [at(down, [0, 0, 0]), at(base, [0, 0, 0])], 'well above dark');
+    add('...and not behind it', Math.abs(at(up, [0, 0, 0]) - at(base, [0, 0, 0])) < 2, [at(up, [0, 0, 0]), at(base, [0, 0, 0])], 'dark');
+    add('...a bigger panel lights more', at(big, [0, 0, 0]) > at(down, [0, 0, 0]) * 1.5 && at(big, [3, 0, 0]) > at(down, [3, 0, 0]), [at(big, [0, 0, 0]), at(down, [0, 0, 0])], 'brighter');
+    add('...and its light is symmetrical about it', Math.abs(at(down, [2, 0, 0]) - at(down, [-2, 0, 0])) < 4 && Math.abs(at(down, [0, 0, 2]) - at(down, [0, 0, -2])) < 4, [at(down, [2, 0, 0]), at(down, [-2, 0, 0]), at(down, [0, 0, 2]), at(down, [0, 0, -2])], 'equal');
+
+    // ---- shadows from a point light: boxes on three sides throw shadows on the floor, in the directions of different faces of its cube
+    const lantern = { x: 0, y: 3, z: 0, radius: 15, color: [1, 1, 1], intensity: 2 };
+    const blockers = (list) => { floor(list); list.add(box, m4(2, 1.5, 0, 1, 1, 1), 0.5, 0.5, 0.5); list.add(box, m4(0, 1.5, -2, 1, 1, 1), 0.5, 0.5, 0.5); list.add(box, m4(-2, 1.5, 0, 1, 1, 1), 0.5, 0.5, 0.5); };
+    const open = draw(look, [lantern], blockers);
+    const shadowed = draw(look, [{ ...lantern, castShadow: true }], blockers);
+    images.pointShadow = shadowed;
+    const shaded = [[4, 0, 0], [0, 0, -6.5], [-4, 0, 0]], clear = [0, 0, 4];
+    const dim = (p) => at(shadowed, p) / Math.max(at(open, p), 1e-3);
+    add('a point light with castShadow puts the floor behind boxes in shadow (three faces of its cube)', shaded.every((p) => dim(p) < 0.4), shaded.map((p) => +dim(p).toFixed(2)), 'each below 0.4');
+    add('...while open floor the same distance away is as bright as without shadows', dim(clear) > 0.93, +dim(clear).toFixed(3), 'about 1');
+    add('...and without castShadow there are no shadows (open floor and "shaded" floor match)', Math.abs(at(open, shaded[0]) - at(open, clear)) < 25, [at(open, shaded[0]), at(open, clear)], 'similar');
+
+    // ---- shadows from a spot light
+    const table = (list) => { floor(list); list.add(box, m4(0, 2, 0, 2.5, 0.2, 2.5), 0.5, 0.5, 0.5); };
+    const sp = { x: 0, y: 5, z: 0, radius: 20, color: [1, 1, 1], intensity: 2, direction: [0, -1, 0], angle: 0.8, penumbra: 0.1 };
+    const spotOpen = draw(look, [sp], table);
+    const spotShade = draw(look, [{ ...sp, castShadow: true }], table);
+    images.spotShadow = spotShade;
+    const sdim = (p) => at(spotShade, p) / Math.max(at(spotOpen, p), 1e-3);
+    add('a spot light with castShadow: the floor under a table is in shadow', sdim([0, 0, 0]) < 0.35, +sdim([0, 0, 0]).toFixed(2), 'below 0.35');
+    add('...and the floor beside the table (inside the cone) is not', sdim([3.5, 0, 0]) > 0.93, +sdim([3.5, 0, 0]).toFixed(3), 'about 1');
+
+    // ---- a caster behind the camera still throws its shadow in front of it when the draw list is told about the light
+    const back = new Camera3D({ x: 0, y: 5, z: 12, yaw: 0, pitch: -0.55, fovY: 0.9, viewW: W, viewH: H, far: 300 }).update();
+    const behind = [0, 0, 7];
+    const wall = (list) => { floor(list); list.add(box, m4(0, 3.5, 18, 5, 5, 0.4), 0.5, 0.5, 0.5); };
+    const rear = { x: 0, y: 8, z: 24, radius: 40, color: [1, 1, 1], intensity: 2 };
+    const bOpen = draw(back, [rear], wall);
+    const bTold = draw(back, [{ ...rear, castShadow: true }], wall);
+    const bUntold = draw(back, [{ ...rear, castShadow: true }], wall, { hideLights: true });
+    const lb = (img) => lumaAt(img, px(back, ...behind));
+    add('an off-screen caster throws its shadow when the list knows the light', lb(bTold) / Math.max(lb(bOpen), 1e-3) < 0.4, +(lb(bTold) / Math.max(lb(bOpen), 1e-3)).toFixed(2), 'below 0.4');
+    add('...and is dropped (no shadow) when it does not', lb(bUntold) / Math.max(lb(bOpen), 1e-3) > 0.9, +(lb(bUntold) / Math.max(lb(bOpen), 1e-3)).toFixed(2), 'about 1');
+
+    // ---- layer budget: with room for only one spot light's map, the nearer light gets the shadow
+    const two = [{ ...sp, x: -6, castShadow: true }, { ...sp, x: 6, castShadow: true }];
+    const tableAt = (list) => { floor(list); list.add(box, m4(-6, 2, 0, 2.5, 0.2, 2.5), 0.5, 0.5, 0.5); list.add(box, m4(6, 2, 0, 2.5, 0.2, 2.5), 0.5, 0.5, 0.5); };
+    const budget = draw(look, two, tableAt, { localShadows: { layers: 1 } });
+    const budgetOpen = draw(look, two.map((l) => ({ ...l, castShadow: false })), tableAt);
+    const ratio = (x) => at(budget, [x, 0, 0]) / Math.max(at(budgetOpen, [x, 0, 0]), 1e-3);
+    add('a layer budget of one gives only one of two spot lights a shadow', (ratio(-6) < 0.4) !== (ratio(6) < 0.4), [+ratio(-6).toFixed(2), +ratio(6).toFixed(2)], 'one dark, one not');
+
+    // ---- the lights also work on physically based surfaces
+    const mats = new MaterialSet();
+    renderer.setMaterials(mats);
+    const stone = mats.add({ baseColor: [0.8, 0.8, 0.8, 1], roughness: 0.8, metallic: 0 });
+    const pbr = draw(look, [{ ...sp, castShadow: true }], (list) => { list.setSurface(stone); table(list); });
+    const pbrOpen = draw(look, [{ ...sp }], (list) => { list.setSurface(stone); table(list); });
+    const pdim = at(pbr, [0, 0, 0]) / Math.max(at(pbrOpen, [0, 0, 0]), 1e-3);
+    add('a shadow falls on a physically based floor too, and the cone is the same', pdim < 0.4 && at(pbrOpen, [0, 0, 0]) > 5, +pdim.toFixed(2), 'below 0.4');
+
+    // ---- both kinds at once, for comparing the backends
+    const mix = draw(look, [{ ...lantern, x: -3, castShadow: true }, { ...sp, x: 3, castShadow: true }, { ...panel, z: 3, y: 2 }], (list) => { blockers(list); table(list); });
+    images.mix = mix;
+
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) {
+    out.unavailable = String(e.message ?? e);
+    out.stack = String(e.stack ?? '');
+  }
+  return out;
+}
+
+const results = [], mixes = {};
+for (const kind of ['webgpu', 'webgl2']) { results.push(await check(kind)); mixes[kind] = { ...images }; }
+if (mixes.webgpu && mixes.webgl2 && results.every((r) => !r.unavailable)) {
+  const cmp = { kind: 'webgpu vs webgl2', checks: {} };
+  for (const name of ['spot', 'panel', 'pointShadow', 'spotShadow', 'mix']) {
+    const a = mixes.webgpu[name], b = mixes.webgl2[name];
+    let sum = 0, worst = 0, n = 0;
+    for (let i = 0; i < a.length; i += 4) { const d = Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2])); sum += d; n++; if (d > worst) worst = d; }
+    cmp.checks[name] = { ok: sum / n < 1.5, got: { mean: +(sum / n).toFixed(3), worst }, want: 'mean difference under 1.5 / 255' };
+  }
+  cmp.ok = Object.values(cmp.checks).every((c) => c.ok);
+  results.push(cmp);
+}
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

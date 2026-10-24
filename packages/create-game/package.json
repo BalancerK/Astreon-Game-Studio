@@ -1,0 +1,35 @@
+{
+  "name": "@engine/create-game",
+  "version": "0.1.0",
+  "description": "npx create-game my-game: a new project from a template (2D, 3D or multiplayer card game), wired to the dev server, the build and the editor",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "create-game": "src/cli.js"
+  },
+  "files": [
+    "src",
+    "templates",
+    "README.md",
+    "API.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "game-engine",
+    "javascript",
+    "webgpu",
+    "multiplayer",
+    "create-game"
+  ]
+}

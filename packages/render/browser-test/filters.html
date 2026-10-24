@@ -1,0 +1,100 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Filters self-test</title>
+<body style="background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { Atlas, Camera, SpriteBatch, createRenderer, packTint, Filter, planFilters, runFilters, toPremultiplied } from '../src/index.js';
+
+const W = 120, H = 80;
+
+function pixels(renderer) {
+  const c = document.createElement('canvas'); c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(renderer.canvas, 0, 0);
+  return { data: g.getImageData(0, 0, c.width, c.height).data, w: c.width, h: c.height };
+}
+/** How far apart two pictures are, as premultiplied colour: the mean and the largest difference over all channels. */
+function distance(a, b) {
+  let sum = 0, max = 0; const n = a.length;
+  for (let i = 0; i < n; i++) { const d = Math.abs(a[i] - b[i]); sum += d; if (d > max) max = d; }
+  return { mean: sum / n, max };
+}
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const atlas = new Atlas({ size: 256 });
+    const disc = atlas.add('disc', 32, 32, (g, x, y, w) => { const r = g.createRadialGradient(x + w / 2, y + w / 2, 1, x + w / 2, y + w / 2, w / 2); r.addColorStop(0, '#ffffff'); r.addColorStop(0.6, '#808080'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(x, y, w, w); });
+    const block = atlas.add('block', 16, 16, (g, x, y, w, h) => { g.fillStyle = '#fff'; g.fillRect(x, y, w, h); g.fillStyle = '#000'; g.fillRect(x + 4, y + 4, 8, 8); });
+    const solid = atlas.add('solid', 8, 8, (g, x, y, w, h) => { g.fillStyle = '#fff'; g.fillRect(x, y, w, h); });
+    const renderer = await createRenderer({ atlas, prefer: [kind], transparent: true });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    const group = new SpriteBatch(16);
+    group.push(40, 40, 40, 40, 0, disc, packTint(255, 80, 60));
+    group.push(78, 36, 28, 28, 0.5, block, packTint(60, 200, 255));
+    group.push(84, 58, 24, 24, 0, disc, packTint(255, 230, 60, 200));
+
+    for (const dpr of kind === 'canvas2d' ? [1] : [1, 2]) {
+      renderer.resize(W, H, dpr);
+      const camera = Camera.screen(W, H);
+      const clear = [0, 0, 0, 0];
+      renderer.render({ camera, batch: group, clear });
+      const base = pixels(renderer);
+      add(`the unfiltered scene draws something (dpr ${dpr})`, base.data.some((v, i) => i % 4 === 3 && v > 200), null, 'opaque pixels');
+      const reference = (filters) => runFilters(planFilters(filters, { scale: dpr }), toPremultiplied(base.data), base.w, base.h);
+      const cases = {
+        'blur 6': [Filter.blur(6)], 'blur 30 (several passes)': [Filter.blur(30)],
+        glow: [Filter.glow({ color: '#40ff80', radius: 8, strength: 2 })], 'drop shadow': [Filter.dropShadow({ dx: 4, dy: 5, alpha: 0.7, blur: 4 })],
+        outline: [Filter.outline({ color: '#ffff00', width: 2.5 })], pixelate: [Filter.pixelate(5)],
+        'gradient map': [Filter.gradientMap([[0, '#000040'], [0.4, '#ff2000'], [1, '#ffffa0']])],
+        grayscale: [Filter.grayscale()], sepia: [Filter.sepia(0.8)], 'hue rotate': [Filter.hueRotate(110)], contrast: [Filter.contrast(1.6)], invert: [Filter.invert()],
+        vignette: [Filter.vignette({ radius: 0.4, softness: 0.5, strength: 0.9, color: '#200040' })], 'wave x': [Filter.wave({ amplitude: 3, wavelength: 25, phase: 1.1 })], 'wave y': [Filter.wave({ amplitude: 2, wavelength: 30, phase: 0.3, axis: 'y' })],
+        'a chain': [Filter.blur(2), Filter.glow({ color: '#ff00ff', radius: 6 }), Filter.pixelate(2), Filter.sepia(0.5), Filter.vignette()],
+      };
+      for (const [name, filters] of Object.entries(cases)) {
+        renderer.render({ camera, batch: group, clear, filters });
+        const got = pixels(renderer), want = reference(filters);
+        const d = distance(toPremultiplied(got.data), want);
+        // the GPUs round to 8 bits after every pass; the Canvas2D path runs the reference itself, but its software layer rasterises hard sprite edges a little differently from the main canvas (a few edge pixels)
+        const tol = kind === 'canvas2d' ? { mean: 0.003, max: 0.25 } : { mean: 0.004, max: 0.06 };
+        add(`${name} matches the reference (dpr ${dpr}; mean ${d.mean.toFixed(4)}, max ${d.max.toFixed(3)})`, d.mean < tol.mean && d.max < tol.max, { mean: +d.mean.toFixed(5), max: +d.max.toFixed(4) }, tol);
+      }
+      renderer.render({ camera, batch: group, clear, filters: [] });
+      const plain = distance(toPremultiplied(pixels(renderer).data), toPremultiplied(base.data));
+      add(`an empty filter list is the plain path (dpr ${dpr})`, plain.max < 0.01, plain, 'identical');
+    }
+
+    // ---- layers: a filtered group over what is already drawn, in order, each with its own filters
+    renderer.resize(W, H, 1);
+    const cam = Camera.screen(W, H);
+    const back = new SpriteBatch(4), front = new SpriteBatch(4);
+    back.push(30, 40, 40, 40, 0, solid, packTint(0, 255, 0));
+    front.push(90, 40, 40, 40, 0, solid, packTint(255, 255, 255));
+    renderer.renderLayers({ camera: cam, clear: [0, 0, 0, 1], layers: [{ batch: back }, { batch: front, filters: [Filter.tint('#ff0000', 1)] }] });
+    const px = pixels(renderer), at = (x, y) => Array.from(px.data.slice((y * px.w + x) * 4, (y * px.w + x) * 4 + 4));
+    const near = (a, b, t = 14) => a.every((v, i) => Math.abs(v - b[i]) <= t);
+    add('layers: the first layer is drawn as it is', near(at(24, 34), [0, 255, 0, 255]), at(24, 34), '0,255,0');
+    add('layers: the second is recoloured by its own filter only', near(at(84, 34), [255, 0, 0, 255]), at(84, 34), '255,0,0');
+    add('layers: the background and the first layer survive the second pass', near(at(24, 34), [0, 255, 0, 255]) && near(at(60, 5), [0, 0, 0, 255]), at(60, 5), 'background kept');
+
+    // ---- a whole camera: a vignette over an opaque scene darkens the corners and keeps the middle
+    const full = new SpriteBatch(4); full.push(60, 40, 120, 80, 0, solid, packTint(255, 255, 255));
+    renderer.render({ camera: cam, batch: full, clear: [0, 0, 0, 1], filters: [Filter.vignette({ radius: 0.5, softness: 0.4, strength: 1, color: '#000000' })] });
+    const v = pixels(renderer), vat = (x, y) => Array.from(v.data.slice((y * v.w + x) * 4, (y * v.w + x) * 4 + 3));
+    add('camera filter: corners dark, middle untouched', vat(1, 1)[0] < 40 && vat(60, 40)[0] > 200, [vat(1, 1), vat(60, 40)], 'dark corner, light middle');
+
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2', 'canvas2d']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

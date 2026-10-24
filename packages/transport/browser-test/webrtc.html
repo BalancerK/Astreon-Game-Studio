@@ -1,0 +1,99 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>WebRTC self-test</title>
+<body>
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import {
+  CHANNEL, LoopbackSignaling, BroadcastSignaling, connectSignalingServer, listenWebRTC, connectWebRTC, createInvitation, acceptInvitation, decodeCode,
+} from '../src/index.js';
+
+const signalUrl = new URLSearchParams(location.search).get('signal');
+const checks = {};
+const add = (name, ok, got, want) => { checks[name] = { ok, got, want }; };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(cond, ms = 8000) { const t0 = performance.now(); while (!cond()) { if (performance.now() - t0 > ms) return false; await wait(5); } return true; }
+const u32 = (n) => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, n); return b; };
+const readU32 = (b) => new DataView(b.buffer, b.byteOffset, b.byteLength).getUint32(0);
+
+/** A host and a client over a given signalling provider, ready and open; the host echoes nothing, it records. */
+async function connect(provider, label, extra = {}) {
+  const listener = await listenWebRTC(provider, { maxPeers: 4, ...extra });
+  const hostSide = [];
+  listener.onConnection = (c) => { hostSide.push(c); };
+  const client = connectWebRTC(provider, listener.room, extra);
+  const opened = await until(() => client.state === 'open' && hostSide.length === 1);
+  add(`${label}: a host and a client connect over real WebRTC`, opened, { client: client.state, joined: hostSide.length }, 'both open');
+  return { listener, client, host: hostSide[0] };
+}
+
+async function exercise(label, { listener, client, host }) {
+  if (!host) return;
+  // reliable: thousands of messages arrive complete and in order
+  const got = []; host.onMessage = (b, ch) => { if (ch === CHANNEL.RELIABLE) got.push(readU32(b)); };
+  for (let i = 0; i < 3000; i++) client.send(u32(i), CHANNEL.RELIABLE);
+  await until(() => got.length === 3000);
+  add(`${label}: 3000 reliable messages arrive, all of them, in order`, got.length === 3000 && got.every((v, i) => v === i), got.length, 3000);
+  // a big one, byte for byte
+  const big = new Uint8Array(60000).map((_, i) => (i * 31) & 255), back = [];
+  client.onMessage = (b) => back.push(b);
+  host.send(big, CHANNEL.RELIABLE);
+  await until(() => back.length === 1);
+  add(`${label}: a 60 KB message arrives intact`, back.length === 1 && back[0].length === big.length && back[0].every((v, i) => v === big[i]), back[0]?.length, big.length);
+  // unreliable: most arrive (loopback is clean), none corrupted, and they have their own channel tag
+  const un = []; host.onMessage = (b, ch) => { if (ch === CHANNEL.UNRELIABLE) un.push(readU32(b)); };
+  for (let i = 0; i < 400; i++) client.send(u32(i), CHANNEL.UNRELIABLE);
+  await wait(300);
+  add(`${label}: unreliable messages arrive on their own channel`, un.length > 100 && un.every((v) => v >= 0 && v < 400), un.length, 'most of 400');
+  // statistics and round trip time
+  add(`${label}: the counters add up`, client.stats.sentMessages === 3000 + 400 - client.stats.droppedMessages && host.stats.receivedMessages >= 3000 + un.length, { sent: client.stats.sentMessages, received: host.stats.receivedMessages }, 'sent = received (reliable)');
+  const rtt = await client.measureRtt();
+  add(`${label}: the round trip time is measured`, rtt === null || (rtt >= 0 && rtt < 1000), rtt, 'a small number of ms');
+  // closing from the client reaches the host with a reason, and the listener forgets the peer
+  const reasons = []; host.onClose = (w) => reasons.push(w);
+  client.close('bye');
+  const closed = await until(() => host.state === 'closed');
+  add(`${label}: closing one end closes the other`, closed && reasons.length === 1 && listener.peers.size === 0, { state: host.state, reasons, peers: listener.peers.size }, 'closed and forgotten');
+  listener.close();
+}
+
+try {
+  add('this browser has WebRTC', typeof RTCPeerConnection === 'function', typeof RTCPeerConnection, 'function');
+
+  // ---- in one page (loopback signalling), the easy case
+  const loop = await connect(new LoopbackSignaling(), 'loopback');
+  await exercise('loopback', loop);
+
+  // ---- between tabs of one site (BroadcastChannel signalling)
+  const bc = await connect(new BroadcastSignaling({ prefix: 'engine-rtc-test' }), 'broadcast');
+  add('broadcast: a second host cannot take the same room', await new BroadcastSignaling({ prefix: 'engine-rtc-test' }).host({ room: bc.listener.room }).then(() => false, (e) => /taken/.test(e.message)), bc.listener.room, 'refused');
+  bc.client.close(); bc.listener.close();
+
+  // ---- through a signalling server (when the runner started one)
+  if (signalUrl) {
+    const provider = connectSignalingServer(signalUrl);
+    const srv = await connect(provider, 'server', { isPublic: true, name: 'Test room' });
+    const rooms = await provider.list();
+    add('server: the public room is listed', rooms.some((r) => r.room === srv.listener.room && r.name === 'Test room'), rooms, 'listed');
+    await exercise('server', srv);
+    const lost = connectWebRTC(provider, 'ZZZZZ'); const why = []; lost.onClose = (w) => why.push(w);
+    await until(() => why.length === 1);
+    add('server: joining a room that does not exist says so', /no such room/.test(why[0] ?? ''), why, 'no such room');
+  }
+
+  // ---- no server at all: invitation codes
+  const invitation = await createInvitation();
+  add('invitation: the code holds a real handshake', /^ENGINE1\./.test(invitation.code) && decodeCode(invitation.code, 'offer').startsWith('v=0') && decodeCode(invitation.code, 'offer').includes('a=candidate'), invitation.code.length, 'a few KB of text with candidates');
+  const friend = await acceptInvitation(invitation.code);
+  const [h, g] = await Promise.all([invitation.accept(friend.answer), friend.transport]);
+  const echo = []; g.onMessage = (b) => echo.push(Array.from(b)); h.send(Uint8Array.of(1, 2, 3));
+  await until(() => echo.length === 1);
+  add('invitation: pasting the answer connects the two browsers', h.state === 'open' && g.state === 'open' && echo.length === 1 && echo[0].join() === '1,2,3', { h: h.state, g: g.state, echo }, 'open and talking');
+  h.close('done'); g.close('done');
+} catch (e) { add('no exceptions', false, String(e.stack ?? e), 'none'); }
+
+const ok = Object.values(checks).every((c) => c.ok);
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results: [{ kind: 'webrtc', checks, ok }], userAgent: navigator.userAgent }) });
+</script>

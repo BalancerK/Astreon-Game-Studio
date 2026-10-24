@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/protocol · Astreon Engine</title>
+<meta name="description" content="Binary codecs, quantization, delta snapshots with acks, handshake, inputs.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html" class="on">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="engineprotocol">@engine/protocol</h1>
+<p>Binary codecs, quantization, delta snapshots with acks, handshake, inputs.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/protocol</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/protocol.html">packages/protocol</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-48-of-48-documented">Contents (48 of 48 documented)<a class="anchor" href="#contents-48-of-48-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-binaryreader"><code>BinaryReader</code></a></td><td>class</td><td>Bounds-checked little-endian reader.</td></tr><tr><td><a href="#class-binarywriter"><code>BinaryWriter</code></a></td><td>class</td><td>Little-endian binary writer over a growable buffer.</td></tr><tr><td><a href="#class-inputbatch"><code>InputBatch</code></a></td><td>class</td><td>Reusable input packet: the newest <code>count</code> inputs (resent redundantly to survive loss) plus the newest snapshot tick the client has received, which the server uses as the delta baseline.</td></tr><tr><td><a href="#class-inputschema"><code>InputSchema</code></a></td><td>class</td><td>Layout of one input sample.</td></tr><tr><td><a href="#max_inputs_per_packet"><code>MAX_INPUTS_PER_PACKET</code></a></td><td>constant</td><td>The most inputs one packet may carry (older unacknowledged ones are resent with newer ones).</td></tr><tr><td><a href="#msg"><code>MSG</code></a></td><td>constant</td><td>First byte of every packet.</td></tr><tr><td><a href="#class-missingbaselineerror"><code>MissingBaselineError</code></a></td><td>class</td><td>The decoder needs a baseline snapshot it does not have; ask the server for a full one.</td></tr><tr><td><a href="#class-netschema"><code>NetSchema</code></a></td><td>class</td><td>The agreed list of replicated components and fields.</td></tr><tr><td><a href="#protocol_version"><code>PROTOCOL_VERSION</code></a></td><td>constant</td><td>Bump when the wire format changes incompatibly.</td></tr><tr><td><a href="#class-protocolerror"><code>ProtocolError</code></a></td><td>class</td><td>Thrown for any malformed, truncated or out-of-range wire data.</td></tr><tr><td><a href="#reject"><code>REJECT</code></a></td><td>constant</td><td>Reasons a server refuses a connection: <code>VERSION_MISMATCH</code>, <code>SCHEMA_MISMATCH</code>, <code>SERVER_FULL</code>, <code>BAD_REQUEST</code>, …</td></tr><tr><td><a href="#class-snapshot"><code>Snapshot</code></a></td><td>class</td><td>Replicated world state at one tick, in quantized &quot;stored&quot; form, rows sorted by entity slot index.</td></tr><tr><td><a href="#class-snapshotcodec"><code>SnapshotCodec</code></a></td><td>class</td><td>Encodes/decodes snapshots as full state or as a delta against an acked baseline.</td></tr><tr><td><a href="#class-snapshothistory"><code>SnapshotHistory</code></a></td><td>class</td><td>Fixed ring of recent snapshots, looked up by tick.</td></tr><tr><td><a href="#codecs"><code>codecs</code></a></td><td>namespace</td><td></td></tr><tr><td><a href="#decodehello"><code>decodeHello</code></a></td><td>function</td><td>Read the first message a client sends: protocol version, the hashes of the schemas it was built with, and an optional token.</td></tr><tr><td><a href="#decodeinput"><code>decodeInput</code></a></td><td>function</td><td>Read a batch of inputs into <code>out</code> (whose schema says what a record holds).</td></tr><tr><td><a href="#decodereject"><code>decodeReject</code></a></td><td>function</td><td>Read a rejection: the reason code and a message.</td></tr><tr><td><a href="#decodewelcome"><code>decodeWelcome</code></a></td><td>function</td><td>Read the server's answer to a hello: the client id, tick rate, current tick and what to expect.</td></tr><tr><td><a href="#describepacket"><code>describePacket</code></a></td><td>function</td><td>Human-readable description of one packet, for packet inspectors and logs.</td></tr><tr><td><a href="#encodehello"><code>encodeHello</code></a></td><td>function</td><td>Client -&gt; server.</td></tr><tr><td><a href="#encodeinput"><code>encodeInput</code></a></td><td>function</td><td>Write a batch of inputs (the newest few, so a lost packet costs nothing) into <code>w</code>.</td></tr><tr><td><a href="#encodereject"><code>encodeReject</code></a></td><td>function</td><td>Write a rejection (a reason code and a short message) into <code>w</code>.</td></tr><tr><td><a href="#encodewelcome"><code>encodeWelcome</code></a></td><td>function</td><td>Server -&gt; client.</td></tr><tr><td><a href="#f32"><code>f32</code></a></td><td>constant</td><td>32-bit floating point field (4 bytes, about 7 digits).</td></tr><tr><td><a href="#f64"><code>f64</code></a></td><td>constant</td><td>64-bit floating point field (8 bytes, full precision).</td></tr><tr><td><a href="#fnv1a"><code>fnv1a</code></a></td><td>function</td><td>FNV-1a, 32-bit.</td></tr><tr><td><a href="#i16"><code>i16</code></a></td><td>constant</td><td>Signed 16-bit integer field (-32768 to 32767).</td></tr><tr><td><a href="#i32"><code>i32</code></a></td><td>constant</td><td>Signed 32-bit integer field (-2147483648 to 2147483647).</td></tr><tr><td><a href="#i8"><code>i8</code></a></td><td>constant</td><td>Signed 8-bit integer field (-128 to 127).</td></tr><tr><td><a href="#packettype"><code>packetType</code></a></td><td>function</td><td>Peek at a packet's type without consuming it.</td></tr><tr><td><a href="#peeksnapshotheader"><code>peekSnapshotHeader</code></a></td><td>function</td><td>Read just the header of a snapshot payload (what <code>SnapshotCodec.encode</code> writes first), without decoding entities.</td></tr><tr><td><a href="#q"><code>q</code></a></td><td>function</td><td>Float in [min, max] stored as an unsigned integer of <code>bits</code> (8, 16 or 32).</td></tr><tr><td><a href="#quantizationstep"><code>quantizationStep</code></a></td><td>function</td><td>Largest possible quantization error for a q codec of this range and width.</td></tr><tr><td><a href="#readsnapshotheader"><code>readSnapshotHeader</code></a></td><td>function</td><td>Read the start of a snapshot message and return <code>inputAck</code>: the last input sequence number the server applied for this client.</td></tr><tr><td><a href="#u16"><code>u16</code></a></td><td>constant</td><td>Unsigned 16-bit integer field (0 to 65535).</td></tr><tr><td><a href="#u32"><code>u32</code></a></td><td>constant</td><td>Unsigned 32-bit integer field (0 to 4294967295).</td></tr><tr><td><a href="#u8"><code>u8</code></a></td><td>constant</td><td>Unsigned 8-bit integer field (0 to 255).</td></tr><tr><td><a href="#writesnapshotheader"><code>writeSnapshotHeader</code></a></td><td>function</td><td>SNAPSHOT packet layout: <code>[MSG.SNAPSHOT][varuint inputAck][SnapshotCodec payload]</code>.</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="decodehello"><code>decodeHello</code><a class="anchor" href="#decodehello" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">decodeHello</span>(r)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read the first message a client sends: protocol version, the hashes of the schemas it was built with, and an optional token.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>r</code></td><td><code>import('./binary.js').BinaryReader</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/messages.js:43</sub></p>
+<h3 id="decodeinput"><code>decodeInput</code><a class="anchor" href="#decodeinput" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">decodeInput</span>(r, out)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read a batch of inputs into <code>out</code> (whose schema says what a record holds). Returns <code>out</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>r</code></td><td><code>import('./binary.js').BinaryReader</code></td><td></td></tr><tr><td><code>out</code></td><td><code>InputBatch</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>InputBatch</code> — <code>out</code></p>
+<p><sub>src/messages.js:183</sub></p>
+<h3 id="decodereject"><code>decodeReject</code><a class="anchor" href="#decodereject" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">decodeReject</span>(r)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read a rejection: the reason code and a message.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>r</code></td><td><code>import('./binary.js').BinaryReader</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/messages.js:103</sub></p>
+<h3 id="decodewelcome"><code>decodeWelcome</code><a class="anchor" href="#decodewelcome" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">decodeWelcome</span>(r)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read the server's answer to a hello: the client id, tick rate, current tick and what to expect.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>r</code></td><td><code>import('./binary.js').BinaryReader</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/messages.js:73</sub></p>
+<h3 id="describepacket"><code>describePacket</code><a class="anchor" href="#describepacket" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">describePacket</span>(bytes)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Human-readable description of one packet, for packet inspectors and logs. Never throws: malformed packets are reported as type <code>INVALID</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bytes</code></td><td><code>Uint8Array</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{type: string, summary: string, fields: Record&lt;string, any&gt;}</code></p>
+<p><sub>src/describe.js:14</sub></p>
+<h3 id="encodehello"><code>encodeHello</code><a class="anchor" href="#encodehello" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">encodeHello</span>(w, m)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Client -&gt; server. <code>schemaHash</code> and <code>inputHash</code> pin the replicated-state and input layouts.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>w</code></td><td><code>import('./binary.js').BinaryWriter</code></td><td></td></tr><tr><td><code>m</code></td><td><code>{schemaHash: number, inputHash: number, token?: string}</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/messages.js:30</sub></p>
+<h3 id="encodeinput"><code>encodeInput</code><a class="anchor" href="#encodeinput" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">encodeInput</span>(w, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Write a batch of inputs (the newest few, so a lost packet costs nothing) into <code>w</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>w</code></td><td><code>import('./binary.js').BinaryWriter</code></td><td></td></tr><tr><td><code>b</code></td><td><code>InputBatch</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/messages.js:163</sub></p>
+<h3 id="encodereject"><code>encodeReject</code><a class="anchor" href="#encodereject" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">encodeReject</span>(w, reason, message = <span class="tk-s">''</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Write a rejection (a reason code and a short message) into <code>w</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>w</code></td><td><code>import('./binary.js').BinaryWriter</code></td><td></td></tr><tr><td><code>reason</code></td><td><code>number</code></td><td>One of REJECT.</td></tr><tr><td><code>message</code> (optional)</td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/messages.js:92</sub></p>
+<h3 id="encodewelcome"><code>encodeWelcome</code><a class="anchor" href="#encodewelcome" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">encodeWelcome</span>(w, m)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Server -&gt; client. Lists the plugins (id, version, content hash) the client must load.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>w</code></td><td><code>import('./binary.js').BinaryWriter</code></td><td><code>session</code> is an unguessable token the client presents in HELLO (<code>token</code>) to resume this player after a disconnect; <code>resumed</code> says the server honoured such a token (same player, same state) rather than starting a new one.</td></tr><tr><td><code>m</code></td><td><code>{clientId: number, tickRate: number, serverTick: number, plugins?: {id: string, version: string, hash: string}[], session?: string, resumed?: boolean}</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/messages.js:55</sub></p>
+<h3 id="fnv1a"><code>fnv1a</code><a class="anchor" href="#fnv1a" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">fnv1a</span>(s)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>FNV-1a, 32-bit.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>s</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/schema.js:8</sub></p>
+<h3 id="packettype"><code>packetType</code><a class="anchor" href="#packettype" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">packetType</span>(bytes)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Peek at a packet's type without consuming it.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bytes</code></td><td><code>Uint8Array</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/messages.js:200</sub></p>
+<h3 id="peeksnapshotheader"><code>peekSnapshotHeader</code><a class="anchor" href="#peeksnapshotheader" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">peekSnapshotHeader</span>(r)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read just the header of a snapshot payload (what <code>SnapshotCodec.encode</code> writes first), without decoding entities. For debugging tools and packet inspectors.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>r</code></td><td><code>import('./binary.js').BinaryReader</code></td><td>Positioned at the snapshot kind byte.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{kind: 'full' \| 'delta', tick: number, baselineTick: number \| null, removed: number, changed: number}</code></p>
+<p><sub>src/snapshot.js:108</sub></p>
+<h3 id="q"><code>q</code><a class="anchor" href="#q" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">q</span>(min, max, bits)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Float in [min, max] stored as an unsigned integer of <code>bits</code> (8, 16 or 32). Error is at most (max - min) / (2^bits - 1) / 2. Out-of-range values clamp.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>min</code></td><td><code>number</code></td><td></td></tr><tr><td><code>max</code></td><td><code>number</code></td><td></td></tr><tr><td><code>bits</code></td><td><code>8|16|32</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Codec</code></p>
+<p><sub>src/codecs.js:75</sub></p>
+<h3 id="quantizationstep"><code>quantizationStep</code><a class="anchor" href="#quantizationstep" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">quantizationStep</span>(min, max, bits)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Largest possible quantization error for a q codec of this range and width.</p>
+<p><sub>src/codecs.js:94</sub></p>
+<h3 id="readsnapshotheader"><code>readSnapshotHeader</code><a class="anchor" href="#readsnapshotheader" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">readSnapshotHeader</span>(r)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read the start of a snapshot message and return <code>inputAck</code>: the last input sequence number the server applied for this client.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>r</code></td><td><code>import('./binary.js').BinaryReader</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — inputAck</p>
+<p><sub>src/messages.js:223</sub></p>
+<h3 id="writesnapshotheader"><code>writeSnapshotHeader</code><a class="anchor" href="#writesnapshotheader" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">writeSnapshotHeader</span>(w, inputAck)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>SNAPSHOT packet layout: <code>[MSG.SNAPSHOT][varuint inputAck][SnapshotCodec payload]</code>. <code>inputAck</code> is the newest input sequence number the server has applied for this client, which lets the client drop acknowledged inputs and reconcile its prediction.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>w</code></td><td><code>import('./binary.js').BinaryWriter</code></td><td></td></tr><tr><td><code>inputAck</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/messages.js:212</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-binaryreader"><code>class BinaryReader</code><a class="anchor" href="#class-binaryreader" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> BinaryReader</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Bounds-checked little-endian reader. Every overrun throws ProtocolError.</p>
+<h4 id="binaryreaderconstructor"><code>BinaryReader.constructor</code><a class="anchor" href="#binaryreaderconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(bytes)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bytes</code></td><td><code>Uint8Array</code></td><td></td></tr></tbody></table></div>
+<h4 id="binaryreaderremaining"><code>BinaryReader.remaining</code><a class="anchor" href="#binaryreaderremaining" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> remaining</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binaryreaderu8"><code>BinaryReader.u8</code><a class="anchor" href="#binaryreaderu8" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">u8</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binaryreaderi8"><code>BinaryReader.i8</code><a class="anchor" href="#binaryreaderi8" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">i8</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binaryreaderu16"><code>BinaryReader.u16</code><a class="anchor" href="#binaryreaderu16" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">u16</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binaryreaderi16"><code>BinaryReader.i16</code><a class="anchor" href="#binaryreaderi16" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">i16</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binaryreaderu32"><code>BinaryReader.u32</code><a class="anchor" href="#binaryreaderu32" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">u32</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binaryreaderi32"><code>BinaryReader.i32</code><a class="anchor" href="#binaryreaderi32" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">i32</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binaryreaderf32"><code>BinaryReader.f32</code><a class="anchor" href="#binaryreaderf32" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">f32</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binaryreaderf64"><code>BinaryReader.f64</code><a class="anchor" href="#binaryreaderf64" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">f64</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binaryreadervaruint"><code>BinaryReader.varuint</code><a class="anchor" href="#binaryreadervaruint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">varuint</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binaryreaderbytesraw"><code>BinaryReader.bytesRaw</code><a class="anchor" href="#binaryreaderbytesraw" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">bytesRaw</span>(n)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>n</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Uint8Array</code> — View into the packet.</p>
+<h4 id="binaryreaderstring"><code>BinaryReader.string</code><a class="anchor" href="#binaryreaderstring" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">string</span>(maxLength = <span class="tk-n">1024</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>maxLength</code> (optional)</td><td><code>number</code></td><td>Max bytes accepted.</td></tr></tbody></table></div>
+<p><sub>src/binary.js:65</sub></p>
+<h3 id="class-binarywriter"><code>class BinaryWriter</code><a class="anchor" href="#class-binarywriter" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> BinaryWriter</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Little-endian binary writer over a growable buffer. <code>finish()</code> returns a view, not a copy.</p>
+<h4 id="binarywriterconstructor"><code>BinaryWriter.constructor</code><a class="anchor" href="#binarywriterconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(capacity = <span class="tk-n">1024</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>capacity</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="binarywriterreset"><code>BinaryWriter.reset</code><a class="anchor" href="#binarywriterreset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">reset</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binarywriterfinish"><code>BinaryWriter.finish</code><a class="anchor" href="#binarywriterfinish" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">finish</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><strong>Returns</strong> <code>Uint8Array</code> — View of the written bytes (valid until the next write/reset).</p>
+<h4 id="binarywriteru8"><code>BinaryWriter.u8</code><a class="anchor" href="#binarywriteru8" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">u8</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binarywriteri8"><code>BinaryWriter.i8</code><a class="anchor" href="#binarywriteri8" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">i8</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binarywriteru16"><code>BinaryWriter.u16</code><a class="anchor" href="#binarywriteru16" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">u16</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binarywriteri16"><code>BinaryWriter.i16</code><a class="anchor" href="#binarywriteri16" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">i16</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binarywriteru32"><code>BinaryWriter.u32</code><a class="anchor" href="#binarywriteru32" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">u32</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binarywriteri32"><code>BinaryWriter.i32</code><a class="anchor" href="#binarywriteri32" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">i32</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binarywriterf32"><code>BinaryWriter.f32</code><a class="anchor" href="#binarywriterf32" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">f32</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binarywriterf64"><code>BinaryWriter.f64</code><a class="anchor" href="#binarywriterf64" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">f64</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="binarywritervaruint"><code>BinaryWriter.varuint</code><a class="anchor" href="#binarywritervaruint" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">varuint</span>(v)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Unsigned LEB128, up to 32 bits (1-5 bytes).</p>
+<h4 id="binarywriterbytesraw"><code>BinaryWriter.bytesRaw</code><a class="anchor" href="#binarywriterbytesraw" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">bytesRaw</span>(b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>b</code></td><td><code>Uint8Array</code></td><td></td></tr></tbody></table></div>
+<h4 id="binarywriterstring"><code>BinaryWriter.string</code><a class="anchor" href="#binarywriterstring" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">string</span>(s)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Length-prefixed UTF-8.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>s</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/binary.js:14</sub></p>
+<h3 id="class-inputbatch"><code>class InputBatch</code><a class="anchor" href="#class-inputbatch" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> InputBatch</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Reusable input packet: the newest <code>count</code> inputs (resent redundantly to survive loss) plus the newest snapshot tick the client has received, which the server uses as the delta baseline. Values are natural (dequantized).</p>
+<h4 id="inputbatchconstructor"><code>InputBatch.constructor</code><a class="anchor" href="#inputbatchconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(schema)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>schema</code></td><td><code>InputSchema</code></td><td></td></tr></tbody></table></div>
+<h4 id="inputbatchclear"><code>InputBatch.clear</code><a class="anchor" href="#inputbatchclear" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">clear</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="inputbatchpush"><code>InputBatch.push</code><a class="anchor" href="#inputbatchpush" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">push</span>(subTick, values)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Append the next input (sequence = firstSeq + count).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>subTick</code></td><td><code>number</code></td><td>0-255: where within its tick the input was sampled.</td></tr><tr><td><code>values</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td>One per schema field, in schema order.</td></tr></tbody></table></div>
+<p><sub>src/messages.js:130</sub></p>
+<h3 id="class-inputschema"><code>class InputSchema</code><a class="anchor" href="#class-inputschema" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> InputSchema</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Layout of one input sample. Fields are codecs, same idea as replicated state. Example: <code>{ buttons: u16, moveX: q(-1, 1, 8), aim: q(0, 6.2832, 16) }</code>.</p>
+<h4 id="inputschemaconstructor"><code>InputSchema.constructor</code><a class="anchor" href="#inputschemaconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(fields)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>fields</code></td><td><code>Record&lt;string, import('./codecs.js').Codec&gt;</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/messages.js:112</sub></p>
+<h3 id="class-missingbaselineerror"><code>class MissingBaselineError</code><a class="anchor" href="#class-missingbaselineerror" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> MissingBaselineError <span class="tk-k">extends</span> ProtocolError</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The decoder needs a baseline snapshot it does not have; ask the server for a full one.</p>
+<h4 id="missingbaselineerrorconstructor"><code>MissingBaselineError.constructor</code><a class="anchor" href="#missingbaselineerrorconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(baselineTick)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>baselineTick</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/snapshot.js:9</sub></p>
+<h3 id="class-netschema"><code>class NetSchema</code><a class="anchor" href="#class-netschema" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> NetSchema</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The agreed list of replicated components and fields. Client and server must build the identical schema; <code>hash</code> is compared in the handshake. Component position in the list is its wire id (max 32), field order is its wire order.</p>
+<h4 id="netschemaconstructor"><code>NetSchema.constructor</code><a class="anchor" href="#netschemaconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(entries)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>entries</code></td><td><code>NetEntry[]</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/schema.js:19</sub></p>
+<h3 id="class-protocolerror"><code>class ProtocolError</code><a class="anchor" href="#class-protocolerror" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> ProtocolError <span class="tk-k">extends</span> Error</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Thrown for any malformed, truncated or out-of-range wire data. Never trust the network.</p>
+<h4 id="protocolerrorconstructor"><code>ProtocolError.constructor</code><a class="anchor" href="#protocolerrorconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(message)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>message</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/binary.js:2</sub></p>
+<h3 id="class-snapshot"><code>class Snapshot</code><a class="anchor" href="#class-snapshot" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Snapshot</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Replicated world state at one tick, in quantized &quot;stored&quot; form, rows sorted by entity slot index. Row r has id <code>ids[r]</code>, component presence bits <code>masks[r]</code>, and <code>schema.fieldCount</code> values starting at <code>r * fieldCount</code>.</p>
+<h4 id="snapshotconstructor"><code>Snapshot.constructor</code><a class="anchor" href="#snapshotconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(schema, capacity)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>schema</code></td><td><code>import('./schema.js').NetSchema</code></td><td></td></tr><tr><td><code>capacity</code></td><td><code>number</code></td><td>Max entities.</td></tr></tbody></table></div>
+<h4 id="snapshotclear"><code>Snapshot.clear</code><a class="anchor" href="#snapshotclear" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">clear</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="snapshotcapture"><code>Snapshot.capture</code><a class="anchor" href="#snapshotcapture" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">capture</span>(world, tick, ids, n)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Capture entities from a core World. <code>ids</code> must be live entity ids in ascending slot-index order (e.g. from <code>world.query</code>, or interest management).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>world</code></td><td><code>{stores: Map&lt;any, {data: Record&lt;string, any&gt;, present: Uint8Array}&gt;}</code></td><td></td></tr><tr><td><code>tick</code></td><td><code>number</code></td><td></td></tr><tr><td><code>ids</code></td><td><code>Uint32Array</code></td><td></td></tr><tr><td><code>n</code></td><td><code>number</code></td><td>Number of ids to use.</td></tr></tbody></table></div>
+<h4 id="snapshotrowof"><code>Snapshot.rowOf</code><a class="anchor" href="#snapshotrowof" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">rowOf</span>(id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><strong>Returns</strong> <code>number</code> — Row of the entity with this exact id, or -1.</p>
+<h4 id="snapshotget"><code>Snapshot.get</code><a class="anchor" href="#snapshotget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span>(row, compBit, fieldName)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Natural (dequantized) value of one field.</p>
+<p><sub>src/snapshot.js:23</sub></p>
+<h3 id="class-snapshotcodec"><code>class SnapshotCodec</code><a class="anchor" href="#class-snapshotcodec" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> SnapshotCodec</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Encodes/decodes snapshots as full state or as a delta against an acked baseline. Holds scratch buffers, so create one per schema and reuse it.</p>
+<p>Delta layout (after a kind byte and tick): baseline tick, removed ids, then only entities that changed: slot-index gap, generation, presence mask, and per present component either all fields (new) or a changed-field mask followed by just those fields.</p>
+<h4 id="snapshotcodecconstructor"><code>SnapshotCodec.constructor</code><a class="anchor" href="#snapshotcodecconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(schema, capacity)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>schema</code></td><td><code>import('./schema.js').NetSchema</code></td><td></td></tr><tr><td><code>capacity</code></td><td><code>number</code></td><td>Max entities per snapshot (also the decode limit).</td></tr></tbody></table></div>
+<h4 id="snapshotcodecencode"><code>SnapshotCodec.encode</code><a class="anchor" href="#snapshotcodecencode" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">encode</span>(w, cur, baseline)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>w</code></td><td><code>import('./binary.js').BinaryWriter</code></td><td></td></tr><tr><td><code>cur</code></td><td><code>Snapshot</code></td><td></td></tr><tr><td><code>baseline</code></td><td><code>Snapshot | null</code></td><td>Must be an acked snapshot the receiver still holds; null = full.</td></tr></tbody></table></div>
+<h4 id="snapshotcodecdecode"><code>SnapshotCodec.decode</code><a class="anchor" href="#snapshotcodecdecode" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">decode</span>(r, getBaseline, out)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>r</code></td><td><code>import('./binary.js').BinaryReader</code></td><td></td></tr><tr><td><code>getBaseline</code></td><td><code>(tick: number) =&gt; Snapshot | undefined</code></td><td>Look up a held snapshot by tick.</td></tr><tr><td><code>out</code></td><td><code>Snapshot</code></td><td>Receives the result; must not be a held baseline.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Snapshot</code> — <code>out</code></p>
+<p><sub>src/snapshot.js:130</sub></p>
+<h3 id="class-snapshothistory"><code>class SnapshotHistory</code><a class="anchor" href="#class-snapshothistory" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> SnapshotHistory</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Fixed ring of recent snapshots, looked up by tick. The server keeps one per client (or one shared) to find the acked baseline for deltas; the client keeps one to decode incoming deltas.</p>
+<p>Usage: <code>slot = h.acquire()</code>, fill it (capture/decode), then <code>h.commit(slot)</code>. A slot that was acquired but never committed (e.g. decode threw) is never returned by <code>get</code>, so a half-written snapshot can't become a baseline. Acquiring evicts the oldest entry, so size the ring larger than the longest ack lag you want to serve deltas for; beyond that, <code>get</code> returns undefined and the sender falls back to a full snapshot.</p>
+<h4 id="snapshothistoryconstructor"><code>SnapshotHistory.constructor</code><a class="anchor" href="#snapshothistoryconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(schema, capacity, size = <span class="tk-n">32</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>schema</code></td><td><code>import('./schema.js').NetSchema</code></td><td></td></tr><tr><td><code>capacity</code></td><td><code>number</code></td><td>Entities per snapshot.</td></tr><tr><td><code>size</code> (optional)</td><td><code>number</code></td><td>Snapshots kept.</td></tr></tbody></table></div>
+<h4 id="snapshothistoryacquire"><code>SnapshotHistory.acquire</code><a class="anchor" href="#snapshothistoryacquire" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">acquire</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><strong>Returns</strong> <code>Snapshot</code> — The oldest slot, emptied and invalid until committed.</p>
+<h4 id="snapshothistorycommit"><code>SnapshotHistory.commit</code><a class="anchor" href="#snapshothistorycommit" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">commit</span>(slot)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>slot</code></td><td><code>Snapshot</code></td><td></td></tr></tbody></table></div>
+<h4 id="snapshothistoryget"><code>SnapshotHistory.get</code><a class="anchor" href="#snapshothistoryget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span>(tick)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>tick</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Snapshot \| undefined</code></p>
+<h4 id="snapshothistoryaround"><code>SnapshotHistory.around</code><a class="anchor" href="#snapshothistoryaround" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">around</span>(tick)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Committed snapshots closest to <code>tick</code> on each side, for interpolation. <code>before.tick &lt;= tick &lt;= after.tick</code> when both exist; either may be undefined.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>tick</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{before: Snapshot \| undefined, after: Snapshot \| undefined}</code></p>
+<h4 id="snapshothistorylatest"><code>SnapshotHistory.latest</code><a class="anchor" href="#snapshothistorylatest" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">latest</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><strong>Returns</strong> <code>Snapshot \| undefined</code> — The most recently committed snapshot.</p>
+<p><sub>src/history.js:15</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="max_inputs_per_packet"><code>MAX_INPUTS_PER_PACKET</code><a class="anchor" href="#max_inputs_per_packet" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> MAX_INPUTS_PER_PACKET</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The most inputs one packet may carry (older unacknowledged ones are resent with newer ones).</p>
+<p>Value: <code>16</code></p>
+<p><sub>src/messages.js:14</sub></p>
+<h3 id="msg"><code>MSG</code><a class="anchor" href="#msg" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> MSG</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>First byte of every packet.</p>
+<p>Value: <code>Object.freeze({ HELLO: 1, WELCOME: 2, REJECT: 3, INPUT: 4, SNAPSHOT: 5, EVENT: 6</code></p>
+<p><sub>src/messages.js:7</sub></p>
+<h3 id="protocol_version"><code>PROTOCOL_VERSION</code><a class="anchor" href="#protocol_version" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> PROTOCOL_VERSION</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Bump when the wire format changes incompatibly. Checked in the handshake.</p>
+<p>Value: <code>1</code></p>
+<p><sub>src/messages.js:4</sub></p>
+<h3 id="reject"><code>REJECT</code><a class="anchor" href="#reject" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> REJECT</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Reasons a server refuses a connection: <code>VERSION_MISMATCH</code>, <code>SCHEMA_MISMATCH</code>, <code>SERVER_FULL</code>, <code>BAD_REQUEST</code>, …</p>
+<p>Value: <code>Object.freeze({ VERSION_MISMATCH: 1, SCHEMA_MISMATCH: 2, SERVER_FULL: 3, BAD_REQ</code></p>
+<p><sub>src/messages.js:10</sub></p>
+<h3 id="f32"><code>f32</code><a class="anchor" href="#f32" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> f32</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>32-bit floating point field (4 bytes, about 7 digits).</p>
+<p>Value: <code>{</code></p>
+<p><sub>src/codecs.js:45</sub></p>
+<h3 id="f64"><code>f64</code><a class="anchor" href="#f64" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> f64</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>64-bit floating point field (8 bytes, full precision).</p>
+<p>Value: <code>{</code></p>
+<p><sub>src/codecs.js:58</sub></p>
+<h3 id="i16"><code>i16</code><a class="anchor" href="#i16" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> i16</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Signed 16-bit integer field (-32768 to 32767).</p>
+<p>Value: <code>intCodec('i16', -32768, 32767, 'i16', 'i16')</code></p>
+<p><sub>src/codecs.js:36</sub></p>
+<h3 id="i32"><code>i32</code><a class="anchor" href="#i32" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> i32</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Signed 32-bit integer field (-2147483648 to 2147483647).</p>
+<p>Value: <code>intCodec('i32', -2147483648, 2147483647, 'i32', 'i32')</code></p>
+<p><sub>src/codecs.js:38</sub></p>
+<h3 id="i8"><code>i8</code><a class="anchor" href="#i8" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> i8</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Signed 8-bit integer field (-128 to 127).</p>
+<p>Value: <code>intCodec('i8', -128, 127, 'i8', 'i8')</code></p>
+<p><sub>src/codecs.js:34</sub></p>
+<h3 id="u16"><code>u16</code><a class="anchor" href="#u16" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> u16</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Unsigned 16-bit integer field (0 to 65535).</p>
+<p>Value: <code>intCodec('u16', 0, 65535, 'u16', 'u16')</code></p>
+<p><sub>src/codecs.js:30</sub></p>
+<h3 id="u32"><code>u32</code><a class="anchor" href="#u32" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> u32</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Unsigned 32-bit integer field (0 to 4294967295).</p>
+<p>Value: <code>intCodec('u32', 0, 4294967295, 'u32', 'u32')</code></p>
+<p><sub>src/codecs.js:32</sub></p>
+<h3 id="u8"><code>u8</code><a class="anchor" href="#u8" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> u8</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Unsigned 8-bit integer field (0 to 255).</p>
+<p>Value: <code>intCodec('u8', 0, 255, 'u8', 'u8')</code></p>
+<p><sub>src/codecs.js:28</sub></p>
+<h2 id="namespaces">Namespaces<a class="anchor" href="#namespaces" aria-label="Link to this section">#</a></h2>
+<h3 id="codecs"><code>codecs</code><a class="anchor" href="#codecs" aria-label="Link to this section">#</a></h3>
+<h4 id="codecsf32"><code>codecs.f32</code><a class="anchor" href="#codecsf32" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> f32</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>32-bit floating point field (4 bytes, about 7 digits).</p>
+<p>Value: <code>{</code></p>
+<p><sub>src/codecs.js:45</sub></p>
+<h4 id="codecsf64"><code>codecs.f64</code><a class="anchor" href="#codecsf64" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> f64</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>64-bit floating point field (8 bytes, full precision).</p>
+<p>Value: <code>{</code></p>
+<p><sub>src/codecs.js:58</sub></p>
+<h4 id="codecsi16"><code>codecs.i16</code><a class="anchor" href="#codecsi16" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> i16</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Signed 16-bit integer field (-32768 to 32767).</p>
+<p>Value: <code>intCodec('i16', -32768, 32767, 'i16', 'i16')</code></p>
+<p><sub>src/codecs.js:36</sub></p>
+<h4 id="codecsi32"><code>codecs.i32</code><a class="anchor" href="#codecsi32" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> i32</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Signed 32-bit integer field (-2147483648 to 2147483647).</p>
+<p>Value: <code>intCodec('i32', -2147483648, 2147483647, 'i32', 'i32')</code></p>
+<p><sub>src/codecs.js:38</sub></p>
+<h4 id="codecsi8"><code>codecs.i8</code><a class="anchor" href="#codecsi8" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> i8</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Signed 8-bit integer field (-128 to 127).</p>
+<p>Value: <code>intCodec('i8', -128, 127, 'i8', 'i8')</code></p>
+<p><sub>src/codecs.js:34</sub></p>
+<h4 id="codecsq"><code>codecs.q</code><a class="anchor" href="#codecsq" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">q</span>(min, max, bits)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Float in [min, max] stored as an unsigned integer of <code>bits</code> (8, 16 or 32). Error is at most (max - min) / (2^bits - 1) / 2. Out-of-range values clamp.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>min</code></td><td><code>number</code></td><td></td></tr><tr><td><code>max</code></td><td><code>number</code></td><td></td></tr><tr><td><code>bits</code></td><td><code>8|16|32</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Codec</code></p>
+<p><sub>src/codecs.js:75</sub></p>
+<h4 id="codecsquantizationstep"><code>codecs.quantizationStep</code><a class="anchor" href="#codecsquantizationstep" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">quantizationStep</span>(min, max, bits)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Largest possible quantization error for a q codec of this range and width.</p>
+<p><sub>src/codecs.js:94</sub></p>
+<h4 id="codecsu16"><code>codecs.u16</code><a class="anchor" href="#codecsu16" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> u16</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Unsigned 16-bit integer field (0 to 65535).</p>
+<p>Value: <code>intCodec('u16', 0, 65535, 'u16', 'u16')</code></p>
+<p><sub>src/codecs.js:30</sub></p>
+<h4 id="codecsu32"><code>codecs.u32</code><a class="anchor" href="#codecsu32" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> u32</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Unsigned 32-bit integer field (0 to 4294967295).</p>
+<p>Value: <code>intCodec('u32', 0, 4294967295, 'u32', 'u32')</code></p>
+<p><sub>src/codecs.js:32</sub></p>
+<h4 id="codecsu8"><code>codecs.u8</code><a class="anchor" href="#codecsu8" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> u8</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Unsigned 8-bit integer field (0 to 255).</p>
+<p>Value: <code>intCodec('u8', 0, 255, 'u8', 'u8')</code></p>
+<p><sub>src/codecs.js:28</sub></p>
+<p><sub>src/codecs.js:1</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="codec"><code>Codec</code><a class="anchor" href="#codec" aria-label="Link to this section">#</a></h3>
+<p>A codec turns a number into a wire value and back. Values are held in &quot;stored&quot; form (quantized integer for q-codecs, the number itself otherwise), so change detection compares exact integers and never jitters.</p>
+<p>Type: <code>Object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td>Canonical description (feeds the schema hash).</td></tr><tr><td><code>quantize</code></td><td><code>(v: number) =&gt; number</code></td><td>Natural value -&gt; stored value.</td></tr><tr><td><code>dequantize</code></td><td><code>(s: number) =&gt; number</code></td><td>Stored value -&gt; natural value.</td></tr><tr><td><code>write</code></td><td><code>(w: import('./binary.js').BinaryWriter, s: number) =&gt; void</code></td><td></td></tr><tr><td><code>read</code></td><td><code>(r: import('./binary.js').BinaryReader) =&gt; number</code></td><td></td></tr></tbody></table></div>
+<h3 id="netentry"><code>NetEntry</code><a class="anchor" href="#netentry" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>Object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>component</code></td><td><code>{name: string, fields: string[]}</code></td><td>A core component.</td></tr><tr><td><code>codecs</code></td><td><code>Record&lt;string, import('./codecs.js').Codec&gt;</code></td><td>Replicated fields and how to encode each.</td></tr></tbody></table></div><div class="pager"><a href="mods.html"><small>Previous</small>mods</a><a class="next" href="transport.html"><small>Next</small>transport</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-48-of-48-documented">Contents (48 of 48 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#decodehello">decodeHello</a><a class="l3" href="#decodeinput">decodeInput</a><a class="l3" href="#decodereject">decodeReject</a><a class="l3" href="#decodewelcome">decodeWelcome</a><a class="l3" href="#describepacket">describePacket</a><a class="l3" href="#encodehello">encodeHello</a><a class="l3" href="#encodeinput">encodeInput</a><a class="l3" href="#encodereject">encodeReject</a><a class="l3" href="#encodewelcome">encodeWelcome</a><a class="l3" href="#fnv1a">fnv1a</a><a class="l3" href="#packettype">packetType</a><a class="l3" href="#peeksnapshotheader">peekSnapshotHeader</a><a class="l3" href="#q">q</a><a class="l3" href="#quantizationstep">quantizationStep</a><a class="l3" href="#readsnapshotheader">readSnapshotHeader</a><a class="l3" href="#writesnapshotheader">writeSnapshotHeader</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-binaryreader">class BinaryReader</a><a class="l3" href="#class-binarywriter">class BinaryWriter</a><a class="l3" href="#class-inputbatch">class InputBatch</a><a class="l3" href="#class-inputschema">class InputSchema</a><a class="l3" href="#class-missingbaselineerror">class MissingBaselineError</a><a class="l3" href="#class-netschema">class NetSchema</a><a class="l3" href="#class-protocolerror">class ProtocolError</a><a class="l3" href="#class-snapshot">class Snapshot</a><a class="l3" href="#class-snapshotcodec">class SnapshotCodec</a><a class="l3" href="#class-snapshothistory">class SnapshotHistory</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#max_inputs_per_packet">MAX_INPUTS_PER_PACKET</a><a class="l3" href="#msg">MSG</a><a class="l3" href="#protocol_version">PROTOCOL_VERSION</a><a class="l3" href="#reject">REJECT</a><a class="l3" href="#f32">f32</a><a class="l3" href="#f64">f64</a><a class="l3" href="#i16">i16</a><a class="l3" href="#i32">i32</a><a class="l3" href="#i8">i8</a><a class="l3" href="#u16">u16</a><a class="l3" href="#u32">u32</a><a class="l3" href="#u8">u8</a><a class="l2" href="#namespaces">Namespaces</a><a class="l3" href="#codecs">codecs</a><a class="l2" href="#types">Types</a><a class="l3" href="#codec">Codec</a><a class="l3" href="#netentry">NetEntry</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

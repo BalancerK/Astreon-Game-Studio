@@ -1,0 +1,243 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>2D lighting self-test</title>
+<body style="background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { Atlas, Camera, SpriteBatch, createRenderer, packTint, Lighting2D, Light2D, packLighting, lightPixel, shadowRing, MAX_LIGHTS } from '../src/index.js';
+
+const W = 160, H = 120;
+const D = 64;                                    // the dome sprite
+
+/** The dome's normal at a sprite pixel as 8-bit colour (green up the picture), then decoded the way the shader decodes it. */
+function domeBytes(x, y) {
+  const nx = (x + 0.5 - D / 2) / (D / 2), ny = -((y + 0.5 - D / 2) / (D / 2)), r2 = nx * nx + ny * ny;
+  const n = r2 >= 1 ? [0, 0, 1] : [nx, ny, Math.sqrt(1 - r2)];
+  return n.map((v) => Math.round((v * 0.5 + 0.5) * 255));
+}
+const decode = (b) => b.map((v) => (v / 255) * 2 - 1);
+const FLAT = [128, 128, 255];
+/** Screen-orientation normal (x right, y down, z out) from the bytes, turned by the sprite's rotation and mirror, as the shader does. */
+function worldNormal(bytes, rot = 0, mirror = false) {
+  const m = decode(bytes), x = m[0] * (mirror ? -1 : 1), y = -m[1], c = Math.cos(rot), s = Math.sin(rot);
+  return [x * c - y * s, x * s + y * c, m[2]];
+}
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const atlas = new Atlas({ size: 512 });
+    const dome = atlas.add('dome', D, D, (g, x, y, w, h) => { g.fillStyle = 'rgb(200,200,200)'; g.fillRect(x, y, w, h); },
+      { normal: (g, x, y) => { for (let j = 0; j < D; j++) for (let i = 0; i < D; i++) { const b = domeBytes(i, j); g.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`; g.fillRect(x + i, y + j, 1, 1); } } });
+    const plane = atlas.add('plane', 96, 96, (g, x, y, w, h) => { g.fillStyle = 'rgb(180,180,180)'; g.fillRect(x, y, w, h); });
+    const ramp = atlas.add('ramp', 32, 32, (g, x, y, w, h) => { g.fillStyle = 'rgb(255,255,255)'; g.fillRect(x, y, w, h); }, { normal: (g, x, y, w, h) => { g.fillStyle = 'rgb(220,128,200)'; g.fillRect(x, y, w, h); } });  // every normal leans right
+    const glow = atlas.add('glow', 16, 16, (g, x, y, w, h) => { g.fillStyle = 'rgb(255,255,0)'; g.fillRect(x, y, w, h); }, { unlit: true });
+    const solid = atlas.add('solid', 8, 8, (g, x, y, w, h) => { g.fillStyle = '#fff'; g.fillRect(x, y, w, h); });
+    const renderer = await createRenderer({ atlas, prefer: [kind], transparent: true });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    add('the renderer says lighting is supported', kind === 'canvas2d' ? renderer.lightingSupported !== true : renderer.lightingSupported === true, renderer.lightingSupported, kind === 'canvas2d' ? 'not on Canvas2D' : true);
+    if (kind === 'canvas2d') { out.ok = Object.values(out.checks).every((c) => c.ok); return out; }
+
+    const read = () => {
+      const c = document.createElement('canvas'); c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+      const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(renderer.canvas, 0, 0);
+      return { data: g.getImageData(0, 0, c.width, c.height).data, w: c.width };
+    };
+    const px = (img, x, y) => Array.from(img.data.slice((y * img.w + x) * 4, (y * img.w + x) * 4 + 4));
+    const CLEAR = [0, 0, 0, 1];
+
+    for (const dpr of [1, 2]) {
+      renderer.resize(W, H, dpr);
+      const cam = Camera.screen(W, H);
+      cam.zoom = 1;
+      const pw = W * dpr, ph = H * dpr;
+      const tag = `dpr ${dpr}`;
+      const make = (fn) => { const b = new SpriteBatch(32); fn(b); return b; };
+
+      /** Compare the lit picture of `world` with the reference in a rectangle, sampling every `stride` pixels. */
+      function compare(name, lighting, world, region, expectFn, tol, occluders, { stride = 3 } = {}) {
+        renderer.render({ camera: cam, batch: world, clear: CLEAR, lighting, occluders });
+        const img = read();
+        const hasOcc = !!(occluders && occluders.count);
+        const pack = packLighting(lighting, cam, { dpr, width: pw, height: ph, hasOccluders: hasOcc, hasNormals: true });
+        let sum = 0, max = 0, n = 0, worst = null;
+        for (let y = region.y0 * dpr; y < region.y1 * dpr; y += stride) {
+          for (let x = region.x0 * dpr; x < region.x1 * dpr; x += stride) {
+            const want = expectFn(x, y, pack), got = px(img, x, y);
+            for (let k = 0; k < 3; k++) { const d = Math.abs(want[k] - got[k]); sum += d; n++; if (d > max) { max = d; worst = { x, y, want, got }; } }
+          }
+        }
+        const mean = sum / n;
+        add(`${name} matches the reference (${tag}; mean ${mean.toFixed(2)}, max ${max.toFixed(0)} of 255)`, mean < tol.mean && max < tol.max, { mean: +mean.toFixed(3), max, worst }, tol);
+        return img;
+      }
+      const lightOf = (pack, lookups) => (x, y, bytes, colour, rot, mirror) => {
+        const { light, shine } = lightPixel(pack, x + 0.5, y + 0.5, worldNormal(bytes, rot, mirror), lookups);
+        return colour.map((c, k) => Math.max(0, Math.min(255, Math.round(c * light[k] + shine[k] * 255))));
+      };
+      const inRect = (x, y, r) => x >= r.x0 * dpr && x < r.x1 * dpr && y >= r.y0 * dpr && y < r.y1 * dpr;
+      const U = (v) => v * dpr;                                              // world to canvas pixels
+
+      // ---- ambient only: the colour of the picture times the ambient light
+      {
+        const lighting = new Lighting2D({ ambient: '#808040' });
+        const world = make((b) => b.push(80, 60, 96, 96, 0, plane, packTint(255, 255, 255)));
+        const img = compare('ambient light only', lighting, world, { x0: 40, y0: 20, x1: 120, y1: 100 }, () => [Math.round(180 * 128 / 255), Math.round(180 * 128 / 255), Math.round(180 * 64 / 255)], { mean: 0.5, max: 4 });
+        add(`pixels outside every sprite stay as cleared (${tag})`, px(img, 2, 2).join() === '0,0,0,255', px(img, 2, 2), '0,0,0,255');
+      }
+
+      // ---- a point light on a flat floor: bright in the middle, fading out to its radius
+      {
+        const lighting = new Lighting2D({ ambient: '#101018' });
+        lighting.add(Light2D.point({ x: 80, y: 60, radius: 50, color: '#ffe0a0', intensity: 1.2 }));
+        const world = make((b) => b.push(80, 60, 96, 96, 0, plane));
+        const pack0 = packLighting(lighting, cam, { dpr, width: pw, height: ph, hasNormals: true });
+        compare('a point light on a flat floor', lighting, world, { x0: 34, y0: 14, x1: 126, y1: 106 }, (x, y, pack) => lightOf(pack, {})(x, y, FLAT, [180, 180, 180], 0, false), { mean: 0.5, max: 4 });
+        renderer.render({ camera: cam, batch: world, clear: CLEAR, lighting });
+        const img = read(), c = px(img, U(80), U(60)), e = px(img, U(80 + 35), U(60)), f = px(img, U(120), U(100));
+        add(`the middle is brighter than the edge, and beyond the radius only ambient is left (${tag})`, c[0] > e[0] && e[0] > f[0] && f[0] < 40, [c, e, f], 'bright > dim > ambient');
+        void pack0;
+      }
+
+      // ---- a normal map: the dome is lit on the side facing the light
+      {
+        const lighting = new Lighting2D({ ambient: '#080808' });
+        lighting.add(Light2D.point({ x: 30, y: 60, radius: 140, color: '#ffffff', height: 25 }));
+        const world = make((b) => b.push(80, 60, D, D, 0, dome));
+        const region = { x0: 48, y0: 28, x1: 112, y1: 92 };
+        if (dpr === 1) compare('a dome with a normal map', lighting, world, region, (x, y, pack) => lightOf(pack, {})(x, y, domeBytes(x - 48, y - 28), [200, 200, 200], 0, false), { mean: 0.5, max: 4 });
+        renderer.render({ camera: cam, batch: world, clear: CLEAR, lighting });
+        const img = read(), left = px(img, U(60), U(60)), right = px(img, U(100), U(60));
+        add(`the side of the dome facing the light is brighter (${tag})`, left[0] > right[0] + 20, [left, right], 'left brighter');
+        const bumpOff = new Lighting2D({ ambient: '#080808', bump: 0 }); bumpOff.add(Light2D.point({ x: 30, y: 60, radius: 140, height: 25 }));
+        renderer.render({ camera: cam, batch: world, clear: CLEAR, lighting: bumpOff });
+        const flat = read(), a = px(flat, U(60), U(60)), b2 = px(flat, U(100), U(60));
+        add(`bump 0 turns the relief off (${tag})`, Math.abs(a[0] - b2[0]) < Math.abs(left[0] - right[0]) * 0.8, [a, b2], 'less difference');
+      }
+
+      // ---- the normal turns with the sprite: rotated 90 degrees, a normal that leaned right now leans down
+      {
+        const lighting = new Lighting2D({ ambient: '#000000' });
+        lighting.add(Light2D.point({ x: 80, y: 105, radius: 120, height: 15 }));
+        const rotated = make((b) => b.push(80, 60, 32, 32, Math.PI / 2, ramp));
+        compare('a rotated normal map', lighting, rotated, { x0: 66, y0: 46, x1: 94, y1: 74 }, (x, y, pack) => lightOf(pack, {})(x, y, [220, 128, 200], [255, 255, 255], Math.PI / 2, false), { mean: 0.5, max: 4 });
+        const mirrored = make((b) => b.push(80, 60, -32, 32, 0, ramp));
+        compare('a mirrored sprite flips its normals', lighting, mirrored, { x0: 66, y0: 46, x1: 94, y1: 74 }, (x, y, pack) => lightOf(pack, {})(x, y, [220, 128, 200], [255, 255, 255], 0, true), { mean: 0.5, max: 4 });
+      }
+
+      // ---- a spot light: lit inside the cone, dark outside
+      {
+        const lighting = new Lighting2D({ ambient: '#000000' });
+        lighting.add(Light2D.spot({ x: 20, y: 60, angle: 0, cone: 0.9, softness: 0.4, radius: 140, height: 30 }));
+        const world = make((b) => b.push(80, 60, 96, 96, 0, plane));
+        compare('a spot light', lighting, world, { x0: 34, y0: 14, x1: 126, y1: 106 }, (x, y, pack) => lightOf(pack, {})(x, y, FLAT, [180, 180, 180], 0, false), { mean: 0.5, max: 4 });
+        renderer.render({ camera: cam, batch: world, clear: CLEAR, lighting });
+        const img = read(), inCone = px(img, U(90), U(60)), outside = px(img, U(60), U(100));
+        add(`inside the cone is lit and outside is dark (${tag})`, inCone[0] > 60 && outside[0] < 10, [inCone, outside], 'lit / dark');
+      }
+
+      // ---- a sun
+      {
+        const lighting = new Lighting2D({ ambient: '#101010' });
+        lighting.add(Light2D.directional({ angle: Math.PI / 4, elevation: 0.7, color: '#fff0d0', intensity: 0.9 }));
+        const world = make((b) => { b.push(60, 60, 64, 64, 0, dome); b.push(130, 60, 32, 32, 0, ramp); });
+        if (dpr === 1) compare('a directional light with normals', lighting, world, { x0: 28, y0: 28, x1: 92, y1: 92 }, (x, y, pack) => lightOf(pack, {})(x, y, domeBytes(x - 28, y - 28), [200, 200, 200], 0, false), { mean: 0.5, max: 4 });
+      }
+
+      // ---- shadows from a point light: a wall between the light and the floor
+      {
+        const lighting = new Lighting2D({ ambient: '#080808' });
+        lighting.add(Light2D.point({ x: 30, y: 60, radius: 140, height: 40, shadows: true, size: 2 }));
+        const wall = { x0: 70, y0: 45, x1: 80, y1: 75 };
+        const world = make((b) => b.push(80, 60, 96, 96, 0, plane));
+        const walls = make((b) => b.push((wall.x0 + wall.x1) / 2, (wall.y0 + wall.y1) / 2, wall.x1 - wall.x0, wall.y1 - wall.y0, 0, solid));
+        const maskAt = (x, y) => (x >= wall.x0 * dpr && x < wall.x1 * dpr && y >= wall.y0 * dpr && y < wall.y1 * dpr ? 1 : 0);
+        const rings = new Map();
+        const img = compare('a shadow behind a wall', lighting, world, { x0: 34, y0: 14, x1: 126, y1: 106 }, (x, y, pack) => {
+          const ring = (row) => { if (!rings.has(row)) { const r = pack.shadowRows[row]; rings.set(row, shadowRing(maskAt, r.x, r.y, r.radius)); } return rings.get(row); };
+          return lightOf(pack, { ring, maskAt })(x, y, FLAT, [180, 180, 180], 0, false);
+        }, { mean: 2, max: 60 }, walls, { stride: 2 });
+        const shadow = px(img, U(105), U(60)), lit = px(img, U(105), U(100)), above = px(img, U(105), U(20));
+        add(`behind the wall is dark while the rest is lit (${tag})`, shadow[0] < 25 && lit[0] > 40 && above[0] > 25, [shadow, lit, above], 'dark / lit / lit');
+        const inside = px(img, U(75), U(60));
+        add(`the wall itself is lit, not shadowed by itself (${tag})`, inside[0] > shadow[0] + 20, [inside, shadow], 'wall lit');
+        const selfShadowed = new Lighting2D({ ambient: '#080808', selfShadow: true }); selfShadowed.add(Light2D.point({ x: 30, y: 60, radius: 140, height: 40, shadows: true, size: 2 }));
+        renderer.render({ camera: cam, batch: world, clear: CLEAR, lighting: selfShadowed, occluders: walls });
+        const ss = px(read(), U(75), U(60));
+        add(`selfShadow darkens the wall (${tag})`, ss[0] < inside[0], [ss, inside], 'darker');
+        const noOcc = new Lighting2D({ ambient: '#080808' }); noOcc.add(Light2D.point({ x: 30, y: 60, radius: 140, height: 40, shadows: true }));
+        renderer.render({ camera: cam, batch: world, clear: CLEAR, lighting: noOcc });
+        add(`no occluders, no shadow (${tag})`, px(read(), U(105), U(60))[0] > 30, null, 'lit');
+      }
+
+      // ---- shadows from the sun
+      {
+        const lighting = new Lighting2D({ ambient: '#080808' });
+        lighting.add(Light2D.directional({ angle: 0, elevation: 0.9, shadows: true, shadowLength: 60 }));
+        const world = make((b) => b.push(80, 60, 96, 96, 0, plane));
+        const wall = { x0: 50, y0: 50, x1: 56, y1: 70 };
+        const walls = make((b) => b.push(53, 60, 6, 20, 0, solid));
+        const maskAt = (x, y) => (x >= wall.x0 * dpr && x < wall.x1 * dpr && y >= wall.y0 * dpr && y < wall.y1 * dpr ? 1 : 0);
+        const img = compare('sun shadows', lighting, world, { x0: 34, y0: 14, x1: 126, y1: 106 }, (x, y, pack) => lightOf(pack, { maskAt })(x, y, FLAT, [180, 180, 180], 0, false), { mean: 2, max: 60 }, walls, { stride: 2 });
+        add(`the sun's shadow lies away from the light, and not past its length (${tag})`, px(img, U(75), U(60))[0] < 60 && px(img, U(40), U(60))[0] > 60 && px(img, U(75), U(100))[0] > 60 && px(img, U(125), U(60))[0] > 60, [px(img, U(75), U(60)), px(img, U(40), U(60)), px(img, U(125), U(60))], 'shadow right of the wall only');
+      }
+
+      // ---- unlit sprites ignore the light; a layer drawn without lighting is not dark
+      {
+        const lighting = new Lighting2D({ ambient: '#000000' });
+        const world = make((b) => { b.push(40, 60, 16, 16, 0, glow); b.push(100, 60, 16, 16, 0, solid, packTint(255, 255, 0)); });
+        renderer.render({ camera: cam, batch: world, clear: CLEAR, lighting });
+        const img = read(), a = px(img, U(40), U(60)), c = px(img, U(100), U(60));
+        add(`an unlit sprite draws at full brightness, a lit one in the dark (${tag})`, a[0] > 250 && a[1] > 250 && c[0] < 3, [a, c], 'bright / black');
+        renderer.render({ camera: cam, batch: world, clear: CLEAR });
+        add(`without lighting everything is drawn as before (${tag})`, px(read(), U(100), U(60))[0] > 250, null, 'bright');
+        lighting.enabled = false;
+        renderer.render({ camera: cam, batch: world, clear: CLEAR, lighting });
+        add(`lighting.enabled = false draws unlit (${tag})`, px(read(), U(100), U(60))[0] > 250, null, 'bright');
+      }
+
+      // ---- specular
+      {
+        const lighting = new Lighting2D({ ambient: '#000000', specular: 0.8, shininess: 20 });
+        lighting.add(Light2D.point({ x: 60, y: 40, radius: 150, height: 30 }));
+        const world = make((b) => b.push(80, 60, D, D, 0, dome));
+        if (dpr === 1) compare('a shiny dome', lighting, world, { x0: 48, y0: 28, x1: 112, y1: 92 }, (x, y, pack) => lightOf(pack, {})(x, y, domeBytes(x - 48, y - 28), [200, 200, 200], 0, false), { mean: 0.5, max: 4 });
+      }
+
+      // ---- many lights at once
+      {
+        const lighting = new Lighting2D({ ambient: '#040404' });
+        for (let i = 0; i < MAX_LIGHTS; i++) lighting.add(Light2D.point({ x: 10 + (i % 8) * 20, y: 10 + Math.floor(i / 8) * 14, radius: 25, color: i % 2 ? '#ff8040' : '#4080ff', intensity: 0.8, height: 10 }));
+        const world = make((b) => b.push(80, 60, 96, 96, 0, plane));
+        compare(`${MAX_LIGHTS} lights at once`, lighting, world, { x0: 34, y0: 14, x1: 126, y1: 106 }, (x, y, pack) => lightOf(pack, {})(x, y, FLAT, [180, 180, 180], 0, false), { mean: 0.5, max: 4 }, undefined, { stride: 4 });
+        for (let i = 0; i < 20; i++) lighting.add(Light2D.point({ x: 80, y: 60, radius: 30 }));
+        const pack = packLighting(lighting, cam, { dpr, width: pw, height: ph });
+        add(`lights beyond the limit are counted as dropped (${tag})`, pack.count === MAX_LIGHTS && pack.dropped === 20, { count: pack.count, dropped: pack.dropped }, { count: MAX_LIGHTS, dropped: 20 });
+      }
+
+      // ---- lighting with a filter on top, and layers
+      {
+        const lighting = new Lighting2D({ ambient: '#202020' });
+        lighting.add(Light2D.point({ x: 80, y: 60, radius: 70 }));
+        const world = make((b) => b.push(80, 60, 96, 96, 0, plane));
+        const hud = make((b) => b.push(10, 10, 8, 8, 0, solid, packTint(255, 0, 0)));
+        renderer.renderLayers({ camera: cam, clear: CLEAR, layers: [{ batch: world, lighting }, { batch: hud }] });
+        const img = read(), hudPx = px(img, U(10), U(10));
+        add(`an unlit layer over a lit one stays bright (${tag})`, hudPx[0] > 250 && hudPx[1] < 5, hudPx, '255,0,0');
+      }
+    }
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2', 'canvas2d']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

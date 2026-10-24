@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crazy Eights</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0e3322; overflow: hidden; font: 15px/1.4 system-ui, sans-serif; color: #f3f1e8; }
+  #stage { position: fixed; inset: 0; } #stage canvas { display: block; touch-action: none; }
+  .panel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; background: #12281fee; border: 1px solid #2f6b4e; border-radius: 14px; padding: 22px 24px; box-shadow: 0 12px 40px #0008; }
+  .panel h1 { margin: 0 0 4px; font-size: 28px; letter-spacing: .02em; } .panel h2 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #9fcdb3; }
+  #who { color: #bfe3cc; margin-bottom: 12px; }
+  button { font: inherit; color: #1b2a22; background: #f0d664; border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer; font-weight: 600; } button:hover { background: #f7e387; } button:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: #274c3a; color: #e8f4ec; } button.ghost:hover { background: #336149; }
+  #buttons { display: grid; gap: 10px; } #buttons .row { display: flex; gap: 8px; } input { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid #2f6b4e; background: #0b1c15; color: #f3f1e8; min-width: 0; }
+  #name { width: 100%; box-sizing: border-box; } #code { flex: 1; text-transform: uppercase; letter-spacing: .15em; }
+  #board { margin: 0; padding-left: 22px; } #board li.me { color: #f0d664; font-weight: 600; } #message { min-height: 1.4em; margin-top: 10px; color: #bfe3cc; } #message.bad { color: #ff9c8c; }
+  #ingame { position: fixed; top: 10px; right: 12px; } #after { position: fixed; left: 50%; bottom: 14%; transform: translateX(-50%); display: flex; gap: 12px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="menu" class="panel" hidden>
+  <h1>Crazy Eights</h1>
+  <div id="who">signing in…</div>
+  <div id="buttons">
+    <button id="play-bots">Play against robots</button>
+    <button id="play-online" class="ghost">Find other players</button>
+    <button id="private" class="ghost">Create a private table</button>
+    <div class="row"><input id="code" maxlength="5" placeholder="CODE" autocomplete="off"><button id="join" class="ghost">Join</button></div>
+  </div>
+  <div id="searching" hidden><span id="search-text">Looking for players…</span> <button id="cancel" class="ghost">Cancel</button></div>
+  <div id="message"></div>
+  <h2>Your name</h2><input id="name" maxlength="24">
+  <h2>Best players</h2><ol id="board"></ol><div id="board-empty" hidden>Nobody has played yet.</div>
+</div>
+<div id="ingame" hidden><button id="menu-button" class="ghost">Leave table</button></div>
+<div id="after" hidden><button id="rematch">Play again</button><button id="leave" class="ghost">Menu</button></div>
+<script type="module" src="./src/client/main.js"></script>
+</body>
+</html>

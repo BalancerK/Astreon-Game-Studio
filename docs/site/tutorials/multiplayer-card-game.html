@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>a multiplayer card game · Astreon Engine</title>
+<meta name="description" content="You will make a card game that strangers can play online: rules, a server that keeps cheaters honest, matchmaking, robots for empty seats, ratings, and a browser table. The finished game is examples/c">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html" class="on">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><h4>Tutorials</h4><a href="2d-platformer.html">a 2D platformer</a><a href="3d-shooter.html">a 3D first-person shooter</a><a href="multiplayer-card-game.html" class="on">a multiplayer card game</a><h4>Example games</h4><a href="../examples/arena.html">arena</a><a href="../examples/arena3d.html">arena3d</a><a href="../examples/platformer.html">platformer</a><a href="../examples/shooter.html">shooter</a></nav><main><article><h1 id="tutorial-a-multiplayer-card-game">Tutorial: a multiplayer card game</h1>
+<p>You will make a card game that strangers can play online: rules, a server that keeps cheaters honest, matchmaking, robots for empty seats, ratings, and a browser table. The finished game is <code>examples/crazy-eights</code>; <code>npx create-game my-cards --template multiplayer</code> gives you the same project to change.</p>
+<h2 id="1-the-rules-are-a-function-engineturns">1. The rules are a function (<code>@engine/turns</code>)<a class="anchor" href="#1-the-rules-are-a-function-engineturns" aria-label="Link to this section">#</a></h2>
+<p>Describe the game as data and functions. Nothing here knows about screens or networks.</p>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">export</span> <span class="tk-k">const</span> game = <span class="tk-f">defineGame</span>({
+  name: <span class="tk-s">'my-game'</span>, players: { min: <span class="tk-n">2</span>, max: <span class="tk-n">4</span> },
+  setup: ({ players, random }) =&gt; ({ deck: random.<span class="tk-f">shuffle</span>(<span class="tk-f">newDeck</span>()), hands: <span class="tk-f">dealTo</span>(players) }),
+  moves: { <span class="tk-f">play</span>(G, ctx, arg) { <span class="tk-k">if</span> (!G.hands[ctx.player].<span class="tk-f">includes</span>(arg.card)) ctx.<span class="tk-f">fail</span>(<span class="tk-s">'you do not have that card'</span>); <span class="tk-c">/* … */</span> ctx.<span class="tk-f">endTurn</span>(); } },
+  view: (G, player) =&gt; ({ hand: G.hands[player], counts: <span class="tk-f">countsOf</span>(G) }),   <span class="tk-c">// never reveal other hands</span>
+  endIf: (G) =&gt; (<span class="tk-f">someoneWon</span>(G) ? { winners: [<span class="tk-f">winner</span>(G)] } : <span class="tk-k">null</span>),
+  legalMoves: (G, player) =&gt; <span class="tk-c">/* every move this player could make */</span>,
+});</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Test it directly: <code>new Match(game, { players: ['ann', 'bob'], seed: 1 })</code>, call <code>match.move('ann', 'play', { card: 12 })</code>, look at <code>match.viewFor('bob')</code>. A refused move returns <code>{ ok: false, error }</code> and changes nothing. Let robots play 300 games in a test and check no move was ever illegal (see <code>examples/crazy-eights/test/rules.test.js</code>). Give the game a <code>bot({ view, legal })</code> and robots can fill empty seats.</p>
+<h2 id="2-one-line-makes-it-a-table">2. One line makes it a table<a class="anchor" href="#2-one-line-makes-it-a-table" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">export</span> <span class="tk-k">const</span> createRoom = <span class="tk-f">turnRoom</span>(game);   <span class="tk-c">// src/room.js: what the server's RoomManager loads</span></code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The room checks join tokens, starts the match, applies each move with your rules, sends every player only their own view, plays for robots and for players who are away, and enforces turn time limits.</p>
+<h2 id="3-a-server-around-it">3. A server around it<a class="anchor" href="#3-a-server-around-it" aria-label="Link to this section">#</a></h2>
+<p><code>server/server.js</code> puts the page, an HTTP API and the WebSockets on one port: guest accounts (<code>@engine/persist</code>), <code>POST /mm/queue</code> for matchmaking (<code>@engine/matchmaking</code>: the queue makes a table with your rooms and gives each player a signed token), private tables with join codes, and after every game the ratings and the leaderboard. Players can only enter a table with a token made for it.</p>
+<h2 id="4-the-table-in-the-browser">4. The table in the browser<a class="anchor" href="#4-the-table-in-the-browser" aria-label="Link to this section">#</a></h2>
+<p><code>src/client/table.js</code> draws everything from the player's view with the engine's sprite renderer. A click never decides anything: it calls <code>client.move('play', { card })</code> and the room answers. The client keeps the latest view and <code>legal</code> moves, so the page highlights what can be played, and reconnects with the same seat if the connection drops.</p>
+<h2 id="5-make-it-yours">5. Make it yours<a class="anchor" href="#5-make-it-yours" aria-label="Link to this section">#</a></h2>
+<p>Change <code>rules.js</code> (a new special card), then <code>table.js</code> (how it looks), or replace the game entirely with another <code>defineGame</code>. Before going online read the checklist in the template's README: set <code>JOIN_SECRET</code>, keep <code>--data</code>, use HTTPS.</p><div class="pager"><a href="3d-shooter.html"><small>Previous</small>a 3D first-person shooter</a><a class="next" href="../examples/arena.html"><small>Next</small>arena</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#1-the-rules-are-a-function-engineturns">1. The rules are a function (@engine/turns)</a><a class="l2" href="#2-one-line-makes-it-a-table">2. One line makes it a table</a><a class="l2" href="#3-a-server-around-it">3. A server around it</a><a class="l2" href="#4-the-table-in-the-browser">4. The table in the browser</a><a class="l2" href="#5-make-it-yours">5. Make it yours</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

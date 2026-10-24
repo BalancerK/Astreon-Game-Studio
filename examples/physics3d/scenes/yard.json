@@ -1,0 +1,863 @@
+{
+  "format": "engine-scene",
+  "version": 1,
+  "name": "Yard",
+  "settings": {},
+  "assets": [],
+  "prefabs": [],
+  "entities": [
+    {
+      "id": "crate-1",
+      "prefab": "crate",
+      "at": {
+        "x": -6,
+        "y": 0.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.62
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-2",
+      "prefab": "crate",
+      "at": {
+        "x": -4.98,
+        "y": 0.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.62
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-3",
+      "prefab": "crate",
+      "at": {
+        "x": -3.96,
+        "y": 0.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.62
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-4",
+      "prefab": "crate",
+      "at": {
+        "x": -2.94,
+        "y": 0.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.62
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-5",
+      "prefab": "crate",
+      "at": {
+        "x": -1.92,
+        "y": 0.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.62
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-6",
+      "prefab": "crate",
+      "at": {
+        "x": -0.9,
+        "y": 0.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.62
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-7",
+      "prefab": "crate",
+      "at": {
+        "x": 0.12,
+        "y": 0.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.62
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-8",
+      "prefab": "crate",
+      "at": {
+        "x": -5.5,
+        "y": 0.9,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.65
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-9",
+      "prefab": "crate",
+      "at": {
+        "x": -4.48,
+        "y": 0.9,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.65
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-10",
+      "prefab": "crate",
+      "at": {
+        "x": -3.46,
+        "y": 0.9,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.65
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-11",
+      "prefab": "crate",
+      "at": {
+        "x": -2.44,
+        "y": 0.9,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.65
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-12",
+      "prefab": "crate",
+      "at": {
+        "x": -1.42,
+        "y": 0.9,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.65
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-13",
+      "prefab": "crate",
+      "at": {
+        "x": -0.4,
+        "y": 0.9,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.65
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-14",
+      "prefab": "crate",
+      "at": {
+        "x": 0.62,
+        "y": 0.9,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.65
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-15",
+      "prefab": "crate",
+      "at": {
+        "x": -6,
+        "y": 1.5,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.68
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-16",
+      "prefab": "crate",
+      "at": {
+        "x": -4.98,
+        "y": 1.5,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.68
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-17",
+      "prefab": "crate",
+      "at": {
+        "x": -3.96,
+        "y": 1.5,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.68
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-18",
+      "prefab": "crate",
+      "at": {
+        "x": -2.94,
+        "y": 1.5,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.68
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-19",
+      "prefab": "crate",
+      "at": {
+        "x": -1.92,
+        "y": 1.5,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.68
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-20",
+      "prefab": "crate",
+      "at": {
+        "x": -0.9,
+        "y": 1.5,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.68
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-21",
+      "prefab": "crate",
+      "at": {
+        "x": 0.12,
+        "y": 1.5,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.68
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-22",
+      "prefab": "crate",
+      "at": {
+        "x": -5.5,
+        "y": 2.1,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.71
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-23",
+      "prefab": "crate",
+      "at": {
+        "x": -4.48,
+        "y": 2.1,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.71
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-24",
+      "prefab": "crate",
+      "at": {
+        "x": -3.46,
+        "y": 2.1,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.71
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-25",
+      "prefab": "crate",
+      "at": {
+        "x": -2.44,
+        "y": 2.1,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.71
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-26",
+      "prefab": "crate",
+      "at": {
+        "x": -1.42,
+        "y": 2.1,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.71
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-27",
+      "prefab": "crate",
+      "at": {
+        "x": -0.4,
+        "y": 2.1,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.71
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-28",
+      "prefab": "crate",
+      "at": {
+        "x": 0.62,
+        "y": 2.1,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.71
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-29",
+      "prefab": "crate",
+      "at": {
+        "x": -6,
+        "y": 2.7,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.74
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-30",
+      "prefab": "crate",
+      "at": {
+        "x": -4.98,
+        "y": 2.7,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.74
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-31",
+      "prefab": "crate",
+      "at": {
+        "x": -3.96,
+        "y": 2.7,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.74
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-32",
+      "prefab": "crate",
+      "at": {
+        "x": -2.94,
+        "y": 2.7,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.74
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-33",
+      "prefab": "crate",
+      "at": {
+        "x": -1.92,
+        "y": 2.7,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.74
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-34",
+      "prefab": "crate",
+      "at": {
+        "x": -0.9,
+        "y": 2.7,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.74
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-35",
+      "prefab": "crate",
+      "at": {
+        "x": 0.12,
+        "y": 2.7,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.74
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-36",
+      "prefab": "crate",
+      "at": {
+        "x": -5.5,
+        "y": 3.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.77
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-37",
+      "prefab": "crate",
+      "at": {
+        "x": -4.48,
+        "y": 3.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.77
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-38",
+      "prefab": "crate",
+      "at": {
+        "x": -3.46,
+        "y": 3.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.77
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-39",
+      "prefab": "crate",
+      "at": {
+        "x": -2.44,
+        "y": 3.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.77
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-40",
+      "prefab": "crate",
+      "at": {
+        "x": -1.42,
+        "y": 3.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.77
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-41",
+      "prefab": "crate",
+      "at": {
+        "x": -0.4,
+        "y": 3.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.77
+          }
+        }
+      }
+    },
+    {
+      "id": "crate-42",
+      "prefab": "crate",
+      "at": {
+        "x": 0.62,
+        "y": 3.3,
+        "z": -12
+      },
+      "overrides": {
+        "components": {
+          "colour": {
+            "g": 0.77
+          }
+        }
+      }
+    },
+    {
+      "id": "ball-1",
+      "prefab": "ball",
+      "at": {
+        "x": -22,
+        "y": 0.35,
+        "z": -6
+      }
+    },
+    {
+      "id": "ball-2",
+      "prefab": "ball",
+      "at": {
+        "x": -21.28,
+        "y": 0.35,
+        "z": -6
+      }
+    },
+    {
+      "id": "ball-3",
+      "prefab": "ball",
+      "at": {
+        "x": -20.56,
+        "y": 0.35,
+        "z": -6
+      }
+    },
+    {
+      "id": "ball-4",
+      "prefab": "ball",
+      "at": {
+        "x": -19.84,
+        "y": 0.35,
+        "z": -6
+      }
+    },
+    {
+      "id": "ball-5",
+      "prefab": "ball",
+      "at": {
+        "x": -21.64,
+        "y": 0.97,
+        "z": -6
+      }
+    },
+    {
+      "id": "ball-6",
+      "prefab": "ball",
+      "at": {
+        "x": -20.92,
+        "y": 0.97,
+        "z": -6
+      }
+    },
+    {
+      "id": "ball-7",
+      "prefab": "ball",
+      "at": {
+        "x": -20.2,
+        "y": 0.97,
+        "z": -6
+      }
+    },
+    {
+      "id": "ball-8",
+      "prefab": "ball",
+      "at": {
+        "x": -21.28,
+        "y": 1.59,
+        "z": -6
+      }
+    },
+    {
+      "id": "ball-9",
+      "prefab": "ball",
+      "at": {
+        "x": -20.56,
+        "y": 1.59,
+        "z": -6
+      }
+    },
+    {
+      "id": "ball-10",
+      "prefab": "ball",
+      "at": {
+        "x": -20.92,
+        "y": 2.21,
+        "z": -6
+      }
+    },
+    {
+      "id": "wrecker",
+      "prefab": "wrecking_ball",
+      "at": {
+        "x": 0,
+        "y": 9,
+        "z": -2
+      },
+      "overrides": {
+        "children": {
+          "ball": {
+            "extras": {
+              "body": {
+                "velocity": [
+                  9,
+                  0,
+                  0
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "seesaw",
+      "prefab": "seesaw_plank",
+      "at": {
+        "x": 8,
+        "y": 0.8,
+        "z": 8
+      }
+    },
+    {
+      "id": "heavy-crate",
+      "prefab": "crate",
+      "at": {
+        "x": 9.8,
+        "y": 1.5,
+        "z": 8
+      },
+      "params": {
+        "mass": 30
+      },
+      "overrides": {
+        "extras": {
+          "body": {
+            "shape": {
+              "type": "box",
+              "hx": 0.4,
+              "hy": 0.4,
+              "hz": 0.4
+            }
+          }
+        },
+        "components": {
+          "colour": {
+            "r": 0.8,
+            "g": 0.3,
+            "b": 0.3
+          }
+        }
+      }
+    },
+    {
+      "id": "doll",
+      "prefab": "ragdoll",
+      "at": {
+        "x": -14,
+        "y": 5,
+        "z": 0
+      }
+    },
+    {
+      "id": "swinger",
+      "prefab": "hanging_crate",
+      "at": {
+        "x": -6,
+        "y": 4,
+        "z": 8
+      }
+    },
+    {
+      "id": "door",
+      "prefab": "sliding_door",
+      "at": {
+        "x": 0,
+        "y": 0,
+        "z": 22
+      }
+    }
+  ]
+}

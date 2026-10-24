@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/arcade · Astreon Engine</title>
+<meta name="description" content="A small kit for a first game. Zero dependencies, and it never touches the page, so it runs inside the studio's game worker.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html" class="on">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">All packages</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html" class="on">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginearcade">@engine/arcade</h1>
+<p>A small kit for a first game. Zero dependencies, and it never touches the page, so it runs inside the studio's game worker.</p>
+<p>Everything is <strong>plain data</strong>: a hero, a coin and a wall are plain objects in a list inside your game's state. There are no classes and no hidden state, so hot reload, saving, copying and rewinding the game just work.</p>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">import</span> { newGame, loadMap, first, all, despawn, touches, walk, jump, gravity, moveAndCollide, clear, drawThings, follow, label } <span class="tk-k">from</span> <span class="tk-s">'@engine/arcade'</span>;
+
+<span class="tk-k">const</span> LEVEL = [
+  <span class="tk-s">'##########'</span>,
+  <span class="tk-s">'#........#'</span>,
+  <span class="tk-s">'#..o..o.@#'</span>,
+  <span class="tk-s">'##########'</span>,
+];
+
+<span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">create</span>() {
+  <span class="tk-k">const</span> game = <span class="tk-f">newGame</span>();
+  game.map = <span class="tk-f">loadMap</span>(game, LEVEL, {
+    <span class="tk-s">'#'</span>: { kind: <span class="tk-s">'wall'</span>, color: <span class="tk-s">'#3b4a6b'</span> },
+    o: { kind: <span class="tk-s">'coin'</span>, emoji: <span class="tk-s">'\u{1FA99}'</span> },
+    <span class="tk-s">'@'</span>: { kind: <span class="tk-s">'hero'</span>, w: <span class="tk-n">24</span>, h: <span class="tk-n">30</span> },
+  });
+  <span class="tk-k">return</span> game;
+}
+
+<span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">update</span>(game, keys, dt) {
+  <span class="tk-k">const</span> hero = <span class="tk-f">first</span>(game, <span class="tk-s">'hero'</span>);
+  <span class="tk-f">walk</span>(hero, keys);
+  <span class="tk-f">jump</span>(hero, keys);
+  <span class="tk-f">gravity</span>(hero, dt);
+  <span class="tk-f">moveAndCollide</span>(game, hero, dt);
+  <span class="tk-k">const</span> coin = <span class="tk-f">touches</span>(game, hero, <span class="tk-s">'coin'</span>);
+  <span class="tk-k">if</span> (coin) { <span class="tk-f">despawn</span>(game, coin); game.score++; }
+  <span class="tk-f">follow</span>(game, hero, game.map);
+}
+
+<span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">render</span>(game, g) {
+  <span class="tk-f">clear</span>(g);
+  <span class="tk-f">drawThings</span>(g, game);
+  <span class="tk-f">label</span>(g, <span class="tk-s">'Score '</span> + game.score, <span class="tk-n">12</span>, <span class="tk-n">24</span>);
+}</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><strong>Your own pictures and sounds:</strong> in the studio, import a PNG, JPG, GIF or WebP and give a thing <code>image: 'assets/hero.png'</code> (or call <code>drawImage(g, 'assets/hero.png', x, y)</code>; a strip of frames works with <code>{ frames: 4, frame: n }</code>). A sound file is used like any sound: <code>sounds({ boom: { file: 'assets/boom.wav' } })</code>, then <code>play('boom')</code>. A missing picture is drawn as a pink and black square.</p>
+<p><code>keys</code> is the set of keys held down. In the studio and in exported games, touch buttons and game controllers press the same codes (arrows, <code>Space</code>, <code>KeyX</code>, <code>Enter</code>), so <code>held(keys, 'left')</code> and the rest work with a keyboard, a phone and a controller without any change to your game.</p>
+<h2 id="what-is-in-it">What is in it<a class="anchor" href="#what-is-in-it" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><strong>Things</strong></td><td><code>newGame</code>, <code>spawn</code>, <code>all</code>, <code>first</code>, <code>despawn</code>, <code>touching</code>, <code>touches</code>, <code>overlaps</code>, <code>move</code></td></tr><tr><td><strong>Keys and movement</strong></td><td><code>held</code> (easy names: left, right, up, down, space, jump, action), <code>walk</code>, <code>steer</code> (seen from above), <code>jump</code>, <code>gravity</code>, <code>moveAndCollide</code> (stops at walls, cannot tunnel through thin ones)</td></tr><tr><td><strong>Levels</strong></td><td><code>loadMap</code>: rows of letters and a legend; clear messages for a wrong row or an unknown letter. <code>loadScene</code>: the things of a scene placed by dragging in the studio's Scene panel</td></tr><tr><td><strong>Timing</strong></td><td><code>timed('name', () =&gt; ...)</code> wraps a piece of work so the studio's Profiler shows what it costs in every frame (it only runs your function outside the studio)</td></tr><tr><td><strong>Music</strong></td><td><code>music({...})</code>, <code>playMusic('name')</code>, <code>stopMusic()</code>: songs made in the studio's Music panel loop without a click; a sheet of frames draws with <code>drawImage(..., { cols, rows, frame })</code></td></tr><tr><td><strong>3D</strong></td><td><code>camera3d</code>, <code>move3d</code> (turn and walk, blocks stop you), <code>jump3d</code>, <code>block</code> (can be turned with <code>yaw</code>), <code>ramp</code> and <code>stairs</code> (you walk up them; <code>move3d</code> also climbs low blocks, jumps onto high ones and falls off ledges), <code>groundAt</code>, <code>gem</code>, <code>mouseLook3d</code> and <code>mouseDelta</code> (the mouse, after a click; Esc lets go), <code>chase3d</code> (a guardian that walks towards you), <code>drawWorld3d</code> (sky, floor lines, then blocks and gems far to near with fog), <code>project3d</code>, <code>loadWorld3d</code> (a scene made in the studio's 3D panel as blocks, gems and a start place): a first-person world drawn flat-shaded on the same 2D canvas, all plain data (the studio's <strong>Gem hall (3D)</strong> template; see docs/guide/3d-games.md). Boxes only, no textures; for the GPU renderer use <code>@engine/render</code></td></tr><tr><td><strong>Drawing</strong></td><td><code>clear</code>, <code>drawThings</code> (boxes, circles, emoji; the camera applies), <code>label</code> (text that stays still), <code>follow</code> (the camera)</td></tr><tr><td><strong>Time and chance</strong></td><td><code>every</code> (do something every so many seconds), <code>random</code> and <code>randomBetween</code> (seeded, kept in the game state, so a game replays the same way)</td></tr></tbody></table></div>
+<h2 id="how-it-relates-to-the-rest-of-the-engine">How it relates to the rest of the engine<a class="anchor" href="#how-it-relates-to-the-rest-of-the-engine" aria-label="Link to this section">#</a></h2>
+<p>It is a separate, optional layer for first games and quick prototypes. It does not use the other packages, and a project can import it and any engine package in the same file. When a game outgrows it, the same ideas exist in the engine proper: <code>@engine/physics</code> for real collision and <code>@engine/core</code> for a world of entities and systems.</p>
+<h2 id="every-export">Every export<a class="anchor" href="#every-export" aria-label="Link to this section">#</a></h2>
+<p>The complete, generated list of this package's exports (every function, class and option) is on its <span class="src">API page</span>.</p><div class="pager"><a href="math.html"><small>Previous</small>math</a><a class="next" href="physics.html"><small>Next</small>physics</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#what-is-in-it">What is in it</a><a class="l2" href="#how-it-relates-to-the-rest-of-the-engine">How it relates to the rest of the engine</a><a class="l2" href="#every-export">Every export</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

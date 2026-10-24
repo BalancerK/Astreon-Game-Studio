@@ -1,0 +1,34 @@
+{
+  "name": "@engine/render",
+  "version": "0.1.0",
+  "description": "2D sprites, text (including scalable SDF text) and a 3D mesh renderer with glTF loading: WebGPU -> WebGL2 (-> Canvas2D for 2D)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "API.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "game-engine",
+    "javascript",
+    "webgpu",
+    "multiplayer",
+    "render"
+  ],
+  "dependencies": {
+    "@engine/math": "^0.1.0"
+  }
+}

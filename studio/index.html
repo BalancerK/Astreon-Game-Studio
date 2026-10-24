@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Astreon Studio</title>
+<link rel="stylesheet" href="app/ui/studio.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#12161f">
+</head>
+<body>
+<a class="skip-link" id="skip-link" href="#main">Skip to the panels</a>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true">▶</span><span>Astreon Studio</span></div>
+  <nav class="menubar" id="menubar"></nav>
+  <button class="menu-btn" id="menu-btn" type="button" aria-label="Menus" aria-haspopup="menu">☰</button>
+  <div class="workspaces" id="workspaces" role="group" aria-label="Workspaces"></div>
+  <span class="spacer"></span>
+  <button class="search-btn" id="search-btn" type="button" aria-label="Search everything"><span>Search</span><kbd id="search-kbd">Ctrl+K</kbd></button>
+</header>
+<main id="main"><div id="dock"></div></main>
+<footer class="status" id="status">
+  <button type="button" id="st-project" title="Projects"></button>
+  <span class="save" id="st-save"></span>
+  <span class="grow"></span>
+  <span id="st-game"></span>
+  <button type="button" id="st-guide" hidden></button>
+  <button type="button" id="st-folder" hidden></button>
+  <span id="st-cursor"></span>
+</footer>
+<script type="module" src="app/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Render self-test</title>
+<body>
+<script type="module">
+import { Atlas, Camera, SpriteBatch, Font, createRenderer, packTint, sortKey, WHITE } from '../src/index.js';
+
+const W = 200, H = 100;
+const CLEAR = [13 / 255, 13 / 255, 20 / 255, 1];
+const atlas = new Atlas({ size: 512 });
+const square = atlas.add('square', 16, 16, (ctx, x, y, w, h) => { ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w, h); });
+
+const font = new Font(atlas, { family: 'sans-serif', size: 24, weight: 'bold', preload: 'H' });
+
+function scene(batch) {
+  batch.clear();
+  batch.push(-50, 0, 40, 40, 0, square, packTint(255, 0, 0));              // red, screen (50,50)
+  batch.push(50, 0, 40, 40, Math.PI / 4, square, packTint(0, 0, 255));     // blue diamond, screen (150,50)
+  batch.push(0, -30, 40, 40, 0, square, packTint(0, 255, 0));              // green, screen (100,20): y is down
+  batch.push(0, 35, 40, 40, 0, square, packTint(255, 255, 255, 128));      // half-transparent white, screen (100,85)
+}
+
+function read(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d');
+  g.drawImage(renderer.canvas, 0, 0);
+  return (x, y) => [...g.getImageData(x, y, 1, 1).data.slice(0, 3)];
+}
+
+const near = (a, b, tol = 6) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
+
+/** Several atlas pages in one draw call, an atlas that grows after the first frame, and scalable (SDF) text. */
+async function extra(kind, out) {
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  const white = (g) => { g.fillStyle = '#fff'; };
+
+  // --- pages: 50x50 sprites in 64x64 pages, so every sprite lands on its own page ---
+  const A = new Atlas({ size: 64, maxPages: 4 });
+  const full = A.add('full', 50, 50, (g, x, y, w, h) => { white(g); g.fillRect(x, y, w, h); });
+  const left = A.add('left', 50, 50, (g, x, y, w, h) => { white(g); g.fillRect(x, y, w / 2, h); });
+  const r = await createRenderer({ atlas: A, prefer: [kind] });
+  document.body.append(r.canvas);
+  r.resize(240, 120, 1);
+  const cam = new Camera({ x: 120, y: 60, zoom: 1, viewW: 240, viewH: 120 });
+  const b = new SpriteBatch(8);
+  b.push(30, 60, 50, 50, 0, full, packTint(255, 0, 0));
+  b.push(90, 60, 50, 50, 0, left, packTint(0, 255, 0));
+  r.render({ camera: cam, batch: b, clear: CLEAR });
+  // the atlas grows after the first frame: the texture array must grow and keep the old pages
+  const circle = A.add('circle', 50, 50, (g, x, y, w) => { white(g); g.beginPath(); g.arc(x + w / 2, y + w / 2, w / 2, 0, 7); g.fill(); });
+  const ring = A.add('ring', 50, 50, (g, x, y, w) => { g.strokeStyle = '#fff'; g.lineWidth = 8; g.beginPath(); g.arc(x + w / 2, y + w / 2, w / 2 - 5, 0, 7); g.stroke(); });
+  b.push(150, 60, 50, 50, 0, circle, packTint(0, 0, 255));
+  b.push(210, 60, 50, 50, 0, ring, packTint(255, 255, 0));
+  r.render({ camera: cam, batch: b, clear: CLEAR });
+  const px = read(r);
+  const clear = [13, 13, 20];
+  const pageChecks = {
+    'pages: page 0 sprite': [px(30, 60), [255, 0, 0]],
+    'pages: page 1 sprite (left half filled)': [px(75, 60), [0, 255, 0]],
+    'pages: page 1 sprite (right half empty)': [px(105, 60), clear],
+    'pages: page 2 sprite added after the first frame': [px(150, 60), [0, 0, 255]],
+    'pages: page 2 corner empty (circle)': [px(128, 38), clear],
+    'pages: page 3 sprite (ring is hollow)': [px(210, 60), clear],
+    'pages: page 3 ring stroke': [px(210, 38), [255, 255, 0]],
+  };
+  for (const [name, [got, want]] of Object.entries(pageChecks)) add(name, near(got, want, 8), got, want);
+  r.destroy?.(); r.canvas.remove();
+
+  // --- scalable text: the same glyph at two sizes stays sharp when sized up; plain raster text blurs ---
+  const T = new Atlas({ size: 1024 });
+  const sdfFont = new Font(T, { family: 'sans-serif', weight: 'bold', size: 24, sdf: true, preload: 'I' });
+  const rasterFont = new Font(T, { family: 'sans-serif', weight: 'bold', size: 24, preload: 'I' });
+  const t = await createRenderer({ atlas: T, prefer: [kind] });
+  document.body.append(t.canvas);
+  t.resize(400, 300, 1);
+  const tcam = Camera.screen(400, 300);
+  const sb = new SpriteBatch(16), rb = new SpriteBatch(16);
+  sdfFont.draw(sb, 'I', 20, 10, { size: 240, tint: packTint(255, 255, 255) });                  // 10x the nominal size
+  rasterFont.draw(rb, 'I', 20, 10, { unit: 10, tint: packTint(255, 255, 255), snap: false });   // the raster font scaled up the same amount
+  const scan = async (batch) => {
+    t.render({ camera: tcam, batch, clear: [0, 0, 0, 1] });
+    const p = read(t);
+    // find the vertical bar of the I: scan a row through its middle
+    const y = 130;
+    const row = [];
+    for (let x = 0; x < 400; x++) row.push(p(x, y)[0]);
+    const inside = row.filter((v) => v > 235).length;
+    const soft = row.filter((v) => v > 20 && v < 235).length; // pixels that are neither solid nor empty: the width of the blur
+    return { inside, soft };
+  };
+  const sdfScan = await scan(sb);
+  const rasterScan = await scan(rb);
+  add('sdf text at 10x size: has a solid stem', sdfScan.inside >= 15, [sdfScan.inside], ['>= 15']);
+  const crisp = kind === 'canvas2d' ? 14 : 4; // the Canvas2D fallback can only scale the stored 48 px shape, so it is softer (but still beats scaled raster text)
+  add(`sdf text at 10x size: edges are crisp (at most ${crisp} soft pixels)`, sdfScan.soft <= crisp, [sdfScan.soft], [`<= ${crisp}`]);
+  add('control: scaled raster text is blurry', rasterScan.soft >= 8, [rasterScan.soft], ['>= 8']);
+  // and at a small size an sdf glyph is still drawn (not empty, not smeared)
+  const small = new SpriteBatch(4);
+  sdfFont.draw(small, 'I', 20, 10, { size: 24, tint: packTint(255, 255, 255) });
+  t.render({ camera: tcam, batch: small, clear: [0, 0, 0, 1] });
+  const pp = read(t);
+  let lit = 0;
+  for (let y = 12; y < 36; y++) for (let x = 10; x < 60; x++) if (pp(x, y)[0] > 128) lit++;
+  add('sdf text at its nominal size is drawn', lit > 20 && lit < 400, [lit], ['20..400']);
+  t.destroy?.(); t.canvas.remove();
+}
+
+async function check(kind) {
+  const out = { kind };
+  try {
+    const renderer = await createRenderer({ atlas, prefer: [kind] });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const batch = new SpriteBatch(8);
+    scene(batch);
+    const camera = new Camera({ x: 0, y: 0, zoom: 1, viewW: W, viewH: H });
+    renderer.render({ camera, batch, clear: CLEAR });
+    const px = read(renderer);
+    const clear = [13, 13, 20];
+    const expectations = {
+      'red square': [px(50, 50), [255, 0, 0]],
+      'blue diamond centre': [px(150, 50), [0, 0, 255]],
+      'diamond tip inside': [px(150, 28), [0, 0, 255]],
+      'unrotated corner is empty (rotation works)': [px(168, 32), clear],
+      'green at top (y down)': [px(100, 20), [0, 255, 0]],
+      'nothing green at bottom': [px(100, 60), clear],
+      'half-alpha white blends': [px(100, 85), [134, 134, 138]],
+      'background': [px(5, 95), clear],
+    };
+    out.checks = {};
+    for (const [name, [got, want]] of Object.entries(expectations)) out.checks[name] = { ok: near(got, want, name.includes('alpha') ? 8 : 6), got, want };
+    out.ok = Object.values(out.checks).every((c) => c.ok);
+    // second frame after moving the camera: world x=-50 should now be at screen centre
+    camera.x = -50;
+    renderer.render({ camera, batch, clear: CLEAR });
+    const p2 = read(renderer);
+    out.cameraMoved = near(p2(100, 50), [255, 0, 0]);
+    out.ok = out.ok && out.cameraMoved;
+    // sprite sorting: the red square has the higher key, so it must cover the blue one although it was pushed first
+    batch.clear();
+    batch.push(-20, 0, 40, 40, 0, square, packTint(255, 0, 0), sortKey(1));   // screen x 60..100
+    batch.push(10, 0, 40, 40, 0, square, packTint(0, 0, 255), sortKey(0));    // screen x 90..130, overlaps 90..100
+    camera.x = 0;
+    renderer.render({ camera, batch, clear: CLEAR });
+    const ps = read(renderer);
+    const sorted = {
+      'sorting: higher key covers lower where they overlap': [ps(95, 50), [255, 0, 0]],
+      'sorting: red outside the overlap': [ps(65, 50), [255, 0, 0]],
+      'sorting: blue outside the overlap': [ps(125, 50), [0, 0, 255]],
+    };
+    for (const [name, [got, want]] of Object.entries(sorted)) out.checks[name] = { ok: near(got, want), got, want };
+
+    // overlay pass with text: a second render with clear: null must keep the first pass and draw text in screen space
+    batch.clear();
+    batch.push(0, 0, 40, 40, 0, square, packTint(0, 255, 0));                 // green square at screen (100, 50)
+    renderer.render({ camera, batch, clear: CLEAR });
+    const hud = new SpriteBatch(16);
+    font.draw(hud, 'HHH', 4, 4, { tint: packTint(255, 0, 0) });
+    renderer.render({ camera: Camera.screen(W, H), batch: hud, clear: null });
+    const pt = read(renderer);
+    out.checks['overlay pass keeps what was drawn before'] = { ok: near(pt(100, 50), [0, 255, 0]), got: pt(100, 50), want: [0, 255, 0] };
+    const g2 = document.createElement('canvas'); g2.width = renderer.canvas.width; g2.height = renderer.canvas.height;
+    const gg = g2.getContext('2d'); gg.drawImage(renderer.canvas, 0, 0);
+    const region = gg.getImageData(0, 0, 70, 40).data;
+    let ink = 0, wrong = 0;
+    for (let i = 0; i < region.length; i += 4) {
+      if (region[i] > 150 && region[i + 1] < 90 && region[i + 2] < 90) ink++;
+      else if (region[i] > 80 && (region[i + 1] > 60 || region[i + 2] > 60)) wrong++; // anything not red-ish and not background
+    }
+    out.checks['text draws tinted glyph pixels'] = { ok: ink > 60, got: [ink], want: ['> 60'] };
+    out.checks['text pixels are only tint or background'] = { ok: wrong < 20, got: [wrong], want: ['< 20'] };
+    out.ok = Object.values(out.checks).every((c) => c.ok) && out.cameraMoved;
+    renderer.destroy?.();
+    await extra(kind, out);
+    out.ok = Object.values(out.checks).every((c) => c.ok) && out.cameraMoved;
+  } catch (e) {
+    out.unavailable = String(e.message ?? e);
+  }
+  return out;
+}
+
+const results = [];
+for (const kind of ['canvas2d', 'webgl2', 'webgpu']) results.push(await check(kind));
+// fallback chain: ask for webgpu first, accept whatever works
+let fallback;
+try { const r = await createRenderer({ atlas, prefer: ['webgpu', 'webgl2', 'canvas2d'] }); fallback = r.kind; r.destroy?.(); } catch (e) { fallback = `error: ${e.message}`; }
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, fallback, userAgent: navigator.userAgent, gpuApi: !!navigator.gpu }) });
+</script>

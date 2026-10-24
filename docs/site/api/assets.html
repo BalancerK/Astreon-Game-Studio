@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/assets · Astreon Engine</title>
+<meta name="description" content="Asset manager: one fetch per file, hashed-name manifest, use counting, retries, dependencies, hot reload.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html" class="on">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="engineassets">@engine/assets</h1>
+<p>Asset manager: one fetch per file, hashed-name manifest, use counting, retries, dependencies, hot reload.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/assets</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/assets.html">packages/assets</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-13-of-13-documented">Contents (13 of 13 documented)<a class="anchor" href="#contents-13-of-13-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-asseterror"><code>AssetError</code></a></td><td>class</td><td>An asset could not be fetched or decoded.</td></tr><tr><td><a href="#class-assethandle"><code>AssetHandle</code></a></td><td>class</td><td>A reference to an asset.</td></tr><tr><td><a href="#class-assetmanager"><code>AssetManager</code></a></td><td>class</td><td>Loads, caches and reloads game files.</td></tr><tr><td><a href="#audioloader"><code>audioLoader</code></a></td><td>function</td><td>Sounds as <code>AudioBuffer</code>s decoded by the given <code>AudioContext</code> (or <code>decode(bytes)</code>).</td></tr><tr><td><a href="#basicloaders"><code>basicLoaders</code></a></td><td>function</td><td>The types every game wants: json, text, binary.</td></tr><tr><td><a href="#binaryloader"><code>binaryLoader</code></a></td><td>constant</td><td>Loader for raw bytes (<code>.bin</code>, <code>.dat</code>): resolves to an <code>ArrayBuffer</code>.</td></tr><tr><td><a href="#gltfloader"><code>gltfLoader</code></a></td><td>function</td><td>glTF models: <code>parse(json, {buffers})</code> is your parser (the render package's <code>parseGltf</code>); external buffers are fetched through the manager, so they are cached, counted and hot reloaded with the model.</td></tr><tr><td><a href="#imageloader"><code>imageLoader</code></a></td><td>function</td><td>Images as <code>ImageBitmap</code> (or whatever <code>decode(bytes, mime)</code> returns).</td></tr><tr><td><a href="#inlinemanifest"><code>inlineManifest</code></a></td><td>function</td><td>The manifest a built page carries (<code>&lt;script id=&quot;asset-manifest&quot; type=&quot;application/json&quot;&gt;</code>): <code>{ manifest, base }</code> for <code>new AssetManager({ base, manifest })</code>.</td></tr><tr><td><a href="#jsonloader"><code>jsonLoader</code></a></td><td>constant</td><td>Loader for JSON files: resolves to the parsed value; a file that is not valid JSON is an <code>AssetError</code>.</td></tr><tr><td><a href="#textloader"><code>textLoader</code></a></td><td>constant</td><td>Loader for text files (<code>.txt</code>, <code>.glsl</code>, <code>.wgsl</code>, <code>.md</code>, <code>.csv</code>): resolves to a string.</td></tr><tr><td><a href="#watchmanifest"><code>watchManifest</code></a></td><td>function</td><td>Polls a manifest URL and reloads what changed.</td></tr><tr><td><a href="#filefetch"><code>fileFetch</code></a></td><td>function (Node)</td><td>A <code>fetch</code>-like function that serves files below <code>root</code>.</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="audioloader"><code>audioLoader</code><a class="anchor" href="#audioloader" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">audioLoader</span>({ context, decode } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Sounds as <code>AudioBuffer</code>s decoded by the given <code>AudioContext</code> (or <code>decode(bytes)</code>).</p>
+<p><sub>src/loaders.js:25</sub></p>
+<h3 id="basicloaders"><code>basicLoaders</code><a class="anchor" href="#basicloaders" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">basicLoaders</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The types every game wants: json, text, binary. Add image / audio / gltf with their loaders.</p>
+<p><sub>src/loaders.js:54</sub></p>
+<h3 id="gltfloader"><code>gltfLoader</code><a class="anchor" href="#gltfloader" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">gltfLoader</span>(parse)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>glTF models: <code>parse(json, {buffers})</code> is your parser (the render package's <code>parseGltf</code>); external buffers are fetched through the manager, so they are cached, counted and hot reloaded with the model. <code>.glb</code> files go to <code>parse</code> as bytes.</p>
+<p><sub>src/loaders.js:40</sub></p>
+<h3 id="imageloader"><code>imageLoader</code><a class="anchor" href="#imageloader" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">imageLoader</span>({ decode } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Images as <code>ImageBitmap</code> (or whatever <code>decode(bytes, mime)</code> returns). Frees bitmaps when collected.</p>
+<p><sub>src/loaders.js:11</sub></p>
+<h3 id="inlinemanifest"><code>inlineManifest</code><a class="anchor" href="#inlinemanifest" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">inlineManifest</span>(doc = globalThis.document)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The manifest a built page carries (<code>&lt;script id=&quot;asset-manifest&quot; type=&quot;application/json&quot;&gt;</code>): <code>{ manifest, base }</code> for <code>new AssetManager({ base, manifest })</code>. Without it (running from source) you get an empty manifest and the paths are used as they are.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>doc</code> (optional)</td><td><code>{getElementById(id: string): {textContent: string} | null}</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/hot.js:33</sub></p>
+<h3 id="watchmanifest"><code>watchManifest</code><a class="anchor" href="#watchmanifest" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">watchManifest</span>(manager, { url, every = <span class="tk-n">1000</span>, onReload, fetch: f = manager.fetch, setInterval: si = globalThis.setInterval, clearInterval: ci = globalThis.clearInterval } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Polls a manifest URL and reloads what changed. The build tool's dev server writes a new manifest when files change; so does a rebuild.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>manager</code></td><td><code>import('./manager.js').AssetManager</code></td><td></td></tr><tr><td><code>o</code></td><td><code>{url: string, every?: number, onReload?: (paths: string[]) =&gt; void, fetch?: typeof fetch, setInterval?: Function, clearInterval?: Function}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{stop(): void, check(): Promise&lt;string[]&gt;}</code></p>
+<p><sub>src/hot.js:9</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-asseterror"><code>class AssetError</code><a class="anchor" href="#class-asseterror" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> AssetError <span class="tk-k">extends</span> Error</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>An asset could not be fetched or decoded. <code>type</code> and <code>path</code> say which one; the message says why, and <code>cause</code> holds the original error.</p>
+<h4 id="asseterrorconstructor"><code>AssetError.constructor</code><a class="anchor" href="#asseterrorconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(type, path, message, cause)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/manager.js:9</sub></p>
+<h3 id="class-assethandle"><code>class AssetHandle</code><a class="anchor" href="#class-assethandle" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> AssetHandle</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A reference to an asset. It stays valid across hot reloads: read <code>.value</code> each time you need it (do not keep the value).</p>
+<h4 id="assethandleconstructor"><code>AssetHandle.constructor</code><a class="anchor" href="#assethandleconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(manager, type, path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="assethandleready"><code>AssetHandle.ready</code><a class="anchor" href="#assethandleready" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> ready</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/manager.js:17</sub></p>
+<h3 id="class-assetmanager"><code>class AssetManager</code><a class="anchor" href="#class-assetmanager" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> AssetManager</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Loads, caches and reloads game files. Ask for an asset by type and logical path (<code>load(&quot;image&quot;, &quot;tex/bricks.png&quot;)</code>); it finds the real (possibly content-hashed) URL in the manifest, fetches it once however many ask, decodes it with the loader for its type, counts who uses it, frees it with <code>collect()</code> when nobody does, and swaps in new versions when files change (<code>update(manifest)</code>).</p>
+<h4 id="assetmanagerconstructor"><code>AssetManager.constructor</code><a class="anchor" href="#assetmanagerconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ base = <span class="tk-s">''</span>, manifest = { assets: {} }, fetch: f = globalThis.fetch?.<span class="tk-f">bind</span>(globalThis), retries = <span class="tk-n">2</span>, sleep = (ms) =&gt; <span class="tk-k">new</span> <span class="tk-f">Promise</span>((r) =&gt; <span class="tk-f">setTimeout</span>(r, ms)) } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.base</code> (optional)</td><td><code>string</code></td><td>Prefix for every URL ('/assets/').</td></tr><tr><td><code>o.manifest</code> (optional)</td><td><code>{assets: Record&lt;string, {url?: string, hash?: string, bytes?: number}&gt;}</code></td><td>From the build step: logical path -&gt; hashed file.</td></tr><tr><td><code>o.fetch</code> (optional)</td><td><code>typeof fetch</code></td><td></td></tr><tr><td><code>o.retries</code> (optional)</td><td><code>number</code></td><td>Extra tries for network failures (2), with growing waits.</td></tr><tr><td><code>o.sleep</code> (optional)</td><td><code>(ms: number) =&gt; Promise&lt;void&gt;</code></td><td>Injected for tests.</td></tr></tbody></table></div>
+<h4 id="assetmanagerregister"><code>AssetManager.register</code><a class="anchor" href="#assetmanagerregister" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">register</span>(type, loader)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Teach the manager a type.</p>
+<h4 id="assetmanagerregisterall"><code>AssetManager.registerAll</code><a class="anchor" href="#assetmanagerregisterall" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">registerAll</span>(loaders)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Register many: <code>{ json, text, ... }</code>.</p>
+<h4 id="assetmanageron"><code>AssetManager.on</code><a class="anchor" href="#assetmanageron" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">on</span>(event, fn)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="assetmanagertypeof"><code>AssetManager.typeOf</code><a class="anchor" href="#assetmanagertypeof" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">typeOf</span>(path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Which type a file is, from its extension (null if no registered type claims it).</p>
+<h4 id="assetmanagerurlof"><code>AssetManager.urlOf</code><a class="anchor" href="#assetmanagerurlof" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">urlOf</span>(path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The URL a logical path is fetched from.</p>
+<h4 id="assetmanageracquire"><code>AssetManager.acquire</code><a class="anchor" href="#assetmanageracquire" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">acquire</span>(type, path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The handle for an asset, starting the load if it is new. It counts as one use: call <code>release</code> when you are done.</p>
+<h4 id="assetmanagerload"><code>AssetManager.load</code><a class="anchor" href="#assetmanagerload" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">load</span>(type, path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Load an asset and resolve with its value (it counts as one use).</p>
+<h4 id="assetmanagerloadall"><code>AssetManager.loadAll</code><a class="anchor" href="#assetmanagerloadall" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">loadAll</span>(list, { onProgress, failFast = <span class="tk-k">false</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Load many at once. <code>list</code> entries are <code>{type?, path}</code> or just a path. Progress is reported as each finishes.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>list</code></td><td><code>Array&lt;string | {type?: string, path: string}&gt;</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{onProgress?: (p: {loaded: number, total: number, path: string, failed: number}) =&gt; void, failFast?: boolean}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Promise&lt;AssetHandle[]&gt;</code> — the handles (all of them, or it throws the first failure with <code>failFast</code>; otherwise failures are listed in the error of <code>AggregateError</code>)</p>
+<h4 id="assetmanagerrelease"><code>AssetManager.release</code><a class="anchor" href="#assetmanagerrelease" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">release</span>(handle)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>One fewer user. At zero the asset stays cached until <code>collect()</code>.</p>
+<h4 id="assetmanagerget"><code>AssetManager.get</code><a class="anchor" href="#assetmanagerget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span>(type, path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The value of an asset that is already loaded (throws if it is not; use <code>load</code> first).</p>
+<h4 id="assetmanagerpeek"><code>AssetManager.peek</code><a class="anchor" href="#assetmanagerpeek" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">peek</span>(type, path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The handle if it exists, without using it.</p>
+<h4 id="assetmanagercollect"><code>AssetManager.collect</code><a class="anchor" href="#assetmanagercollect" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">collect</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Dispose every asset nobody uses (and the dependencies only they used).</p>
+<p><strong>Returns</strong> <code>number</code> — how many were freed</p>
+<h4 id="assetmanagerreload"><code>AssetManager.reload</code><a class="anchor" href="#assetmanagerreload" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">reload</span>(type, path)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Replace an asset's value from its file again. Anything holding the handle sees the new value; if the new file fails to load, the old value stays.</p>
+<p><strong>Returns</strong> <code>Promise&lt;boolean&gt;</code> — true if it was reloaded</p>
+<h4 id="assetmanagerupdate"><code>AssetManager.update</code><a class="anchor" href="#assetmanagerupdate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-f">update</span>(manifest)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Take a new manifest (from a rebuilt game or a dev server) and reload every loaded asset whose hash changed.</p>
+<p><strong>Returns</strong> <code>Promise&lt;string[]&gt;</code> — the logical paths that were reloaded</p>
+<p><sub>src/manager.js:57</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="binaryloader"><code>binaryLoader</code><a class="anchor" href="#binaryloader" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> binaryLoader</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Loader for raw bytes (<code>.bin</code>, <code>.dat</code>): resolves to an <code>ArrayBuffer</code>.</p>
+<p>Value: <code>{ extensions: ['bin', 'dat'], load: (ctx) =&gt; ctx.bytes() }</code></p>
+<p><sub>src/loaders.js:8</sub></p>
+<h3 id="jsonloader"><code>jsonLoader</code><a class="anchor" href="#jsonloader" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> jsonLoader</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Loader for JSON files: resolves to the parsed value; a file that is not valid JSON is an <code>AssetError</code>.</p>
+<p>Value: <code>{ extensions: ['json'], load: (ctx) =&gt; ctx.json() }</code></p>
+<p><sub>src/loaders.js:4</sub></p>
+<h3 id="textloader"><code>textLoader</code><a class="anchor" href="#textloader" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> textLoader</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Loader for text files (<code>.txt</code>, <code>.glsl</code>, <code>.wgsl</code>, <code>.md</code>, <code>.csv</code>): resolves to a string.</p>
+<p>Value: <code>{ extensions: ['txt', 'glsl', 'wgsl', 'md', 'csv'], load: (ctx) =&gt; ctx.text() }</code></p>
+<p><sub>src/loaders.js:6</sub></p>
+<h2 id="node-entry">Node entry<a class="anchor" href="#node-entry" aria-label="Link to this section">#</a></h2>
+<p>These come from <code>@engine/assets/src/node.js</code> and use Node's built-in modules, so they are for servers and tools, not browsers.</p>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">import</span> { fileFetch } <span class="tk-k">from</span> <span class="tk-s">'@engine/assets/src/node.js'</span>;</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h3 id="filefetch"><code>fileFetch</code><a class="anchor" href="#filefetch" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">fileFetch</span>(root)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A <code>fetch</code>-like function that serves files below <code>root</code>. Paths that climb out of it are refused.</p>
+<p><sub>src/node.js:6</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="loadcontext"><code>LoadContext</code><a class="anchor" href="#loadcontext" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>url</code></td><td><code>string</code></td><td>Where it is being fetched from.</td></tr><tr><td><code>path</code></td><td><code>string</code></td><td>The logical path.</td></tr><tr><td><code>bytes</code></td><td><code>() =&gt; Promise&lt;ArrayBuffer&gt;</code></td><td></td></tr><tr><td><code>text</code></td><td><code>() =&gt; Promise&lt;string&gt;</code></td><td></td></tr><tr><td><code>json</code></td><td><code>() =&gt; Promise&lt;any&gt;</code></td><td></td></tr><tr><td><code>load</code></td><td><code>(type: string, path: string) =&gt; Promise&lt;any&gt;</code></td><td>Load another asset this one needs (it is released with this one).</td></tr><tr><td><code>sibling</code></td><td><code>(relative: string) =&gt; string</code></td><td>The logical path of a file referred to relative to this one ('model.bin' next to 'models/tree.gltf').</td></tr><tr><td><code>signal</code></td><td><code>AbortSignal</code></td><td></td></tr></tbody></table></div>
+<h3 id="loader"><code>Loader</code><a class="anchor" href="#loader" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>load</code></td><td><code>(ctx: LoadContext) =&gt; Promise&lt;any&gt; | any</code></td><td></td></tr><tr><td><code>dispose</code> (optional)</td><td><code>(value: any) =&gt; void</code></td><td>Free GPU memory, close handles.</td></tr><tr><td><code>extensions</code> (optional)</td><td><code>string[]</code></td><td>File extensions (without dot) this type is guessed from.</td></tr></tbody></table></div><div class="pager"><a href="i18n.html"><small>Previous</small>i18n</a><a class="next" href="save.html"><small>Next</small>save</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-13-of-13-documented">Contents (13 of 13 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#audioloader">audioLoader</a><a class="l3" href="#basicloaders">basicLoaders</a><a class="l3" href="#gltfloader">gltfLoader</a><a class="l3" href="#imageloader">imageLoader</a><a class="l3" href="#inlinemanifest">inlineManifest</a><a class="l3" href="#watchmanifest">watchManifest</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-asseterror">class AssetError</a><a class="l3" href="#class-assethandle">class AssetHandle</a><a class="l3" href="#class-assetmanager">class AssetManager</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#binaryloader">binaryLoader</a><a class="l3" href="#jsonloader">jsonLoader</a><a class="l3" href="#textloader">textLoader</a><a class="l2" href="#node-entry">Node entry</a><a class="l3" href="#filefetch">fileFetch</a><a class="l2" href="#types">Types</a><a class="l3" href="#loadcontext">LoadContext</a><a class="l3" href="#loader">Loader</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

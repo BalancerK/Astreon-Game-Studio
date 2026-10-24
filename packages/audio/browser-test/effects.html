@@ -1,0 +1,103 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Audio effects self-test</title>
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { AudioEngine, lowpass, highpass, reverb, echo, compressor } from '../src/index.js';
+
+const RATE = 48000;
+const sine = (hz, seconds, amp = 0.5) => ({ sampleRate: RATE, data: Float32Array.from({ length: Math.round(RATE * seconds) }, (_, i) => amp * Math.sin(2 * Math.PI * hz * i / RATE)) });
+const click = () => { const d = new Float32Array(2400); d[0] = 1; return { sampleRate: RATE, data: d }; };
+const rms = (data, from, to) => { let e = 0; const a = Math.round(from * RATE), b = Math.round(to * RATE); for (let i = a; i < b; i++) e += data[i] * data[i]; return Math.sqrt(e / (b - a)); };
+const db = (x) => 20 * Math.log10(Math.max(x, 1e-9));
+
+/** Run a scene on an offline context and give back the left channel. `setup(engine, at)` builds it; `at(seconds, fn)` runs something at a point in the render. */
+async function render(seconds, setup) {
+  const ctx = new OfflineAudioContext(2, Math.round(RATE * seconds), RATE);
+  const engine = new AudioEngine({ context: ctx, unlock: false, pauseWhenHidden: false, skipWhenSuspended: false, compressor: false });
+  const timers = [];
+  const at = (t, fn) => timers.push([t, fn]);
+  setup(engine, at);
+  const started = ctx.startRendering();
+  void started;
+  return { ctx, timers, engine, started };
+}
+
+// An offline context can only be paused before it starts rendering, so each pause is scheduled first and the render started after.
+async function run(seconds, setup) {
+  const ctx = new OfflineAudioContext(2, Math.round(RATE * seconds), RATE);
+  const engine = new AudioEngine({ context: ctx, unlock: false, pauseWhenHidden: false, skipWhenSuspended: false, compressor: false });
+  const timers = [];
+  const at = (t, fn) => timers.push([t, fn]);
+  setup(engine, at);
+  const sorted = timers.filter((x) => x[0] > 0).sort((a, b) => a[0] - b[0]);
+  for (const [t, fn] of timers) if (!(t > 0)) fn();
+  const pending = sorted.map(([t, fn]) => ctx.suspend(t).then(() => { fn(); ctx.resume(); }));
+  const buffer = await ctx.startRendering();
+  await Promise.all(pending);
+  return buffer.getChannelData(0);
+}
+void render;
+
+const out = { checks: {} };
+const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+try {
+  // 1. filters
+  const tone = async (hz, effect) => rms(await run(0.6, (e) => { if (effect) e.addEffect('sfx', effect); e.play(e.createSound(sine(hz, 0.6))); }), 0.2, 0.5);
+  const plain4k = await tone(4000), plain100 = await tone(100);
+  const lp4k = await tone(4000, lowpass(500)), lp100 = await tone(100, lowpass(500));
+  add('lowpass 500 Hz: a 4 kHz tone falls by more than 30 dB', db(plain4k) - db(lp4k) > 30, db(plain4k) - db(lp4k), '> 30 dB');
+  add('lowpass 500 Hz: a 100 Hz tone passes within 1 dB', Math.abs(db(plain100) - db(lp100)) < 1, db(plain100) - db(lp100), '< 1 dB');
+  const hp100 = await tone(100, highpass(2000)), hp4k = await tone(4000, highpass(2000));
+  add('highpass 2 kHz: a 100 Hz tone falls by more than 30 dB, 4 kHz passes', db(plain100) - db(hp100) > 30 && Math.abs(db(plain4k) - db(hp4k)) < 1.5, [db(plain100) - db(hp100), db(plain4k) - db(hp4k)], '> 30 dB, < 1.5 dB');
+
+  // 2. a filter glides and can be bypassed
+  const glide = await run(1.2, (e, at) => { const f = e.addEffect('sfx', lowpass(15000)); e.play(e.createSound(sine(4000, 1.2))); at(0.4, () => f.set({ frequency: 300 }, 0.1)); at(0.9, () => { f.enabled = false; }); });
+  add('a filter closed at 0.4 s dulls the tone, and bypassing it at 0.9 s brings it back', db(rms(glide, 0.1, 0.35)) - db(rms(glide, 0.6, 0.85)) > 25 && Math.abs(db(rms(glide, 0.1, 0.35)) - db(rms(glide, 1.0, 1.15))) < 1,
+    [db(rms(glide, 0.1, 0.35)), db(rms(glide, 0.6, 0.85)), db(rms(glide, 1.0, 1.15))], 'loud, much quieter, loud again');
+
+  // 3. reverb: a click has a tail only with the reverb
+  const dry = await run(2.5, (e) => { e.play(e.createSound(click())); });
+  const wet = await run(2.5, (e) => { e.addEffect('sfx', reverb({ seconds: 1.5, wet: 0.6 })); e.play(e.createSound(click())); });
+  const tail1 = rms(wet, 0.3, 0.5), tail2 = rms(wet, 1.2, 1.4);
+  add('reverb: a click leaves a tail where the dry click leaves silence', rms(dry, 0.3, 0.5) < 1e-6 && tail1 > 1e-4, [rms(dry, 0.3, 0.5), tail1], 'dry silent, wet audible');
+  add('reverb: the tail fades (later is much quieter than earlier)', db(tail1) - db(tail2) > 15, db(tail1) - db(tail2), '> 15 dB');
+  add('reverb: the tail is gone by the end of its length (60 dB down)', db(tail1) - db(rms(wet, 2.2, 2.5)) > 40, db(tail1) - db(rms(wet, 2.2, 2.5)), '> 40 dB');
+
+  // 4. echo: repeats arrive at multiples of the time, each quieter
+  const ech = await run(1.5, (e) => { e.addEffect('sfx', echo({ time: 0.3, feedback: 0.5, wet: 0.8 })); e.play(e.createSound(click())); });
+  const peak = (from, to) => { let m = 0; for (let i = Math.round(from * RATE); i < Math.round(to * RATE); i++) m = Math.max(m, Math.abs(ech[i])); return m; };
+  add('echo: repeats at 0.3 s and 0.6 s, each quieter, and silence between', peak(0.29, 0.33) > 0.1 && peak(0.59, 0.63) > 0.03 && peak(0.29, 0.33) > peak(0.59, 0.63) && peak(0.1, 0.25) < 0.01,
+    [peak(0.29, 0.33), peak(0.59, 0.63), peak(0.1, 0.25)], 'echoes');
+
+  // 5. ducking: music dips while a voice plays and recovers after (the voice is nearly silent so the music alone is measured)
+  const duck = await run(4, (e, at) => {
+    e.addDuck({ target: 'music', trigger: 'voice', amount: 0.25, attack: 0.05, release: 0.4, hold: 0.1 });
+    e.play(e.createSound(sine(200, 4)), { bus: 'music' });
+    at(1, () => { e.play(e.createSound(sine(3000, 1, 0.0005)), { bus: 'voice' }); });
+  });
+  const before = rms(duck, 0.5, 0.9), during = rms(duck, 1.3, 1.9), after = rms(duck, 3.2, 3.8);
+  add('ducking: music falls to a quarter (-12 dB) while the voice plays', Math.abs(db(during) - db(before) + 12) < 1.5, db(during) - db(before), '-12 dB +/- 1.5');
+  add('ducking: music is back to full after the voice and the release', Math.abs(db(after) - db(before)) < 0.5, db(after) - db(before), '0 dB +/- 0.5');
+
+  // 6. occlusion
+  const heard = async (occ) => rms(await run(0.6, (e) => { e.play(e.createSound(sine(3000, 0.6)), occ === undefined ? {} : { occlusion: occ }); }), 0.2, 0.5);
+  const clear = await heard(0), wall = await heard(1), half = await heard(0.5);
+  add('occlusion: a sound behind a thick wall is more than 25 dB quieter, half a wall in between', db(clear) - db(wall) > 25 && db(clear) - db(half) > 5 && db(half) > db(wall), [db(clear) - db(wall), db(clear) - db(half)], '> 25, > 5');
+  const later = await run(1.2, (e, at) => { const v = e.play(e.createSound(sine(3000, 1.2))); at(0.5, () => v.setOcclusion(1)); });
+  add('occlusion: a wall that appears later (setOcclusion) dulls the voice from then on', db(rms(later, 0.1, 0.4)) - db(rms(later, 0.8, 1.1)) > 25, db(rms(later, 0.1, 0.4)) - db(rms(later, 0.8, 1.1)), '> 25 dB');
+
+  // 7. effects on the master bus affect everything, and a compressor evens things out
+  const master = await run(0.6, (e) => { e.addEffect('master', lowpass(500)); e.play(e.createSound(sine(4000, 0.6)), { bus: 'music' }); });
+  add('an effect on the master bus affects every bus', db(plain4k) - db(rms(master, 0.2, 0.5)) > 30, db(plain4k) - db(rms(master, 0.2, 0.5)), '> 30 dB');
+  const level = async (amp, squash) => rms(await run(0.8, (e) => { if (squash) e.addEffect('sfx', compressor({ threshold: -40, ratio: 10 })); e.play(e.createSound(sine(500, 0.8, amp))); }), 0.4, 0.7);
+  const gapPlain = db(await level(0.9, false)) - db(await level(0.05, false)), gapSquashed = db(await level(0.9, true)) - db(await level(0.05, true));
+  add('a compressor narrows the gap between loud and quiet sounds (it was 25 dB)', gapSquashed < gapPlain - 8, [gapPlain, gapSquashed], 'at least 8 dB narrower');
+  out.ok = Object.values(out.checks).every((c) => c.ok);
+} catch (e) {
+  out.error = String(e.stack ?? e);
+}
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results: [out], userAgent: navigator.userAgent }) });
+</script>

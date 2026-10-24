@@ -1,0 +1,18 @@
+{
+  "description": "A multiplayer card game, complete: rules as pure functions, a server with guest accounts, matchmaking, private tables with join codes, ratings and a leaderboard, bots that fill empty seats, and the browser client.",
+  "engine": [
+    "build",
+    "matchmaking",
+    "persist",
+    "render",
+    "server",
+    "transport",
+    "turns"
+  ],
+  "scripts": {
+    "dev": "node server/main.js",
+    "start": "node server/main.js --data data",
+    "build": "engine-build build",
+    "start:built": "node server/main.js --root dist --data data"
+  }
+}

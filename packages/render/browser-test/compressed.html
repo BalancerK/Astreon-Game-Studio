@@ -1,0 +1,99 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Compressed textures self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { createRenderer3D, Camera3D, DrawList3D, createLighting, createMesh, TextureSet, parseKtx2 } from '../src/index.js';
+
+const W = 320, H = 240, SIZE = 16, CLEAR = [0.1, 0.1, 0.1, 1];
+const worst = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+const quad = createMesh([-1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, -1, 0, 0, 0, 1, -1, -1, 0, 0, 0, 1], [0, 3, 2, 0, 2, 1], 'quad', [0, 0, 1, 0, 1, 1, 0, 1]);
+
+// sixteen blocks of 4 x 4 pixels, each its own colour (kept to what 5-6-5 bits can say, so the compressed and plain pictures are the same picture)
+const c565 = (bx, by) => { const r = 3 + bx * 9, g = 5 + by * 14, b = 28 - bx * 3 - by * 4; return { r, g, b }; };
+const rgb8 = ({ r, g, b }) => [(r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2)];
+const bc1Block = (c) => { const v = (c.r << 11) | (c.g << 5) | c.b; return [v & 255, v >> 8, v & 255, v >> 8, 0, 0, 0, 0]; };
+const plainPicture = () => {
+  const data = new Uint8Array(SIZE * SIZE * 4);
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) data.set([...rgb8(c565(x >> 2, y >> 2)), 255], (y * SIZE + x) * 4);
+  return { width: SIZE, height: SIZE, data };
+};
+// a KTX2 file with all its levels (above level 0 the blocks just repeat the corner colour: the test looks at level 0)
+function ktx2(vkFormat, blockBytes, makeBlock) {
+  const levels = [];
+  for (let s = SIZE; s >= 1; s >>= 1) { const n = Math.ceil(s / 4); const l = []; for (let by = 0; by < n; by++) for (let bx = 0; bx < n; bx++) l.push(...makeBlock(s === SIZE ? bx : 0, s === SIZE ? by : 0)); levels.push(new Uint8Array(l)); }
+  const headEnd = 80 + levels.length * 24; let at = headEnd; const offsets = [];
+  for (let i = levels.length - 1; i >= 0; i--) { offsets[i] = at; at += levels[i].length; while (at % 8) at++; }
+  const out = new Uint8Array(at), v = new DataView(out.buffer);
+  out.set([0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a]);
+  [vkFormat, 1, SIZE, SIZE, 0, 0, 1, levels.length, 0].forEach((n, i) => v.setUint32(12 + i * 4, n, true));
+  levels.forEach((l, i) => { v.setBigUint64(80 + i * 24, BigInt(offsets[i]), true); v.setBigUint64(88 + i * 24, BigInt(l.length), true); v.setBigUint64(96 + i * 24, BigInt(l.length), true); out.set(l, offsets[i]); });
+  return out;
+}
+const FORMATS = {
+  bc1: ktx2(133, 8, (bx, by) => bc1Block(c565(bx, by))),
+  bc3: ktx2(137, 16, (bx, by) => [255, 255, 0, 0, 0, 0, 0, 0, ...bc1Block(c565(bx, by))]),
+};
+
+function read(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(renderer.canvas, 0, 0);
+  const img = g.getImageData(0, 0, c.width, c.height);
+  return (x, y) => [...img.data.slice((y * c.width + x) * 4, (y * c.width + x) * 4 + 3)];
+}
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer3D({ prefer: [kind], antialias: false });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const cam = new Camera3D({ x: 0, y: 0, z: 8, fovY: 0.7, viewW: W, viewH: H });
+    const L = { ...createLighting(), fogDensity: 0, pointLights: [] };
+    const list = new DrawList3D();
+    const sample = (set) => {
+      renderer.setTextures(set);
+      list.clear(); list.setMaterial(0, 'uv'); list.add(quad, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+      cam.update(); renderer.render({ camera: cam, list, clear: CLEAR, lighting: L });
+      const px = read(renderer), out = [];
+      for (let by = 0; by < 4; by++) for (let bx = 0; bx < 4; bx++) { const p = cam.worldToScreen(-1 + (bx + 0.5) / 2, 1 - (by + 0.5) / 2, 0); out.push(px(Math.round(p.x), Math.round(p.y))); }
+      return out;
+    };
+    const plain = new TextureSet({ size: SIZE, maxLayers: 2 });
+    plain.add(plainPicture(), 'plain');
+    const reference = sample(plain);
+    add('the plain picture shows sixteen different colours', new Set(reference.map((p) => p.join())).size === 16, reference.length, 16);
+    for (const [name, file] of Object.entries(FORMATS)) {
+      const set = new TextureSet({ size: SIZE, maxLayers: 2, format: name });
+      set.addKtx2(await parseKtx2(file), name);
+      try {
+        const got = sample(set);
+        const err = Math.max(...got.map((p, i) => worst(p, reference[i])));
+        add(`${name}: the compressed picture draws the same sixteen colours as the plain one`, err <= 3, [err, got[5], reference[5]], 'within 3/255');
+      } catch (e) {
+        const clear = /cannot read .* textures/.test(e.message);
+        add(`${name}: if this card cannot read it, the message says so (${e.message.slice(0, 80)})`, clear, e.message, 'a clear message');
+        out.skipped = [...(out.skipped ?? []), name];
+      }
+    }
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) {
+    out.unavailable = String(e.message ?? e);
+    out.stack = String(e.stack ?? '');
+  }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

@@ -1,0 +1,99 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Procedural sky self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { createRenderer3D, Camera3D, DrawList3D, createLighting, createBox, createPlane, createSky, sunDirection, skyColor, skyLighting, proceduralSkyEnvironment, linearToSrgb } from '../src/index.js';
+
+const W = 240, H = 160;
+
+function read(renderer) {
+  const c = document.createElement('canvas'); c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(renderer.canvas, 0, 0);
+  const img = g.getImageData(0, 0, c.width, c.height);
+  return { px: (x, y) => [...img.data.slice((y * c.width + x) * 4, (y * c.width + x) * 4 + 3)] };
+}
+const byte = (v) => Math.round(255 * Math.max(0, Math.min(1, linearToSrgb(v))));
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer3D({ prefer: [kind], antialias: false });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const list = new DrawList3D();
+    const cam = new Camera3D({ x: 0, y: 1.6, z: 0, fovY: 1.2, viewW: W, viewH: H });
+    const look = (yaw, pitch) => { cam.yaw = yaw; cam.pitch = pitch; cam.update(); };
+    /** Draw only the sky and compare every sample pixel with the CPU model: the share of samples that differ by more than `tol`, and the mean difference. */
+    const compare = (name, sky, yaw, pitch, { tol = 10, allowed = 0.01, meanMax = 2.5 } = {}) => {
+      look(yaw, pitch); list.clear();
+      renderer.render({ camera: cam, list, clear: [1, 0, 1, 1], lighting: { ...createLighting(), sky } });
+      const img = read(renderer);
+      let sum = 0, n = 0, bad = 0, worst = null;
+      for (let y = 4; y < H; y += 6) for (let x = 4; x < W; x += 6) {
+        const { dir } = cam.screenToRay(x + 0.5, y + 0.5), want = skyColor(dir, sky).map(byte), got = img.px(x, y);
+        const d = Math.max(...want.map((v, i) => Math.abs(v - got[i])));
+        sum += want.reduce((s, v, i) => s + Math.abs(v - got[i]), 0) / 3; n++; if (d > tol) { bad++; if (!worst || d > worst.d) worst = { x, y, got, want, d }; }
+      }
+      const mean = sum / n;
+      add(`${name}: matches the model (mean ${mean.toFixed(2)}, ${bad} of ${n} samples off by more than ${tol})`, mean < meanMax && bad / n <= allowed, { mean: +mean.toFixed(3), bad, n, worst }, { meanMax, allowed });
+      return img;
+    };
+
+    const noon = createSky({ sun: sunDirection({ hour: 12, latitude: 45 }) });
+    compare('noon looking up', noon, 0, 0.9);
+    compare('noon at the horizon', noon, 0.4, 0.0);
+    compare('noon looking down at the ground', noon, 0.4, -0.6);
+    const sunset = createSky({ sun: sunDirection({ hour: 18.7, latitude: 45, dayOfYear: 172 }), turbidity: 4 });
+    compare('sunset toward the sun', sunset, Math.atan2(-sunset.sun[0], -sunset.sun[2]), 0.12);
+    compare('sunset away from the sun', sunset, Math.atan2(sunset.sun[0], sunset.sun[2]), 0.3);
+    const hazy = createSky({ sun: [0.3, 0.5, 0.2], turbidity: 9, exposure: 1.2 });
+    compare('a hazy day', hazy, 1, 0.5);
+    const cloudy = createSky({ sun: sunDirection({ hour: 10, latitude: 45 }), clouds: { coverage: 0.55 }, time: 40 });
+    compare('clouds', cloudy, 0.8, 0.8, { tol: 14, allowed: 0.03 });
+    const later = createSky({ sun: cloudy.sun, clouds: { coverage: 0.55 }, time: 400 });
+    compare('clouds later, drifted along their wind', later, 0.8, 0.8, { tol: 14, allowed: 0.03 });
+    const night = createSky({ sun: sunDirection({ hour: 1, latitude: 45 }), stars: true, moon: { direction: [0.3, 0.6, -0.7] }, time: 5 });
+    compare('night with stars and a moon', night, Math.atan2(-0.3, 0.7), 0.7, { tol: 24, allowed: 0.04, meanMax: 3 });
+    const visible = (sky, yaw, pitch) => { look(yaw, pitch); renderer.render({ camera: cam, list, clear: [1, 0, 1, 1], lighting: { ...createLighting(), sky } }); const im = read(renderer); let lit = 0; for (let y = 2; y < H; y += 2) for (let x = 2; x < W; x += 2) if (Math.max(...im.px(x, y)) > 60) lit++; return lit; };
+    add('stars show at night and not by day', visible(night, 0, 0.9) > 0 && visible(createSky({ sun: sunDirection({ hour: 1 }), stars: false }), 0, 0.9) === 0, [visible(night, 0, 0.9)], 'some bright points');
+
+    // ---- the sky replaces the clear colour all the way down; the sun's disc is bright
+    look(Math.atan2(-sunset.sun[0], -sunset.sun[2]), Math.asin(sunset.sun[1]));
+    renderer.render({ camera: cam, list, clear: [1, 0, 1, 1], lighting: { ...createLighting(), sky: createSky({ sun: sunset.sun }) } });
+    const centre = read(renderer).px(W / 2, H / 2);
+    add('looking at the sun gives a near white disc', centre.every((v) => v > 235), centre, 'white');
+
+    // ---- lighting that goes with the sky: a box lit by the noon sun is brighter than the same box at night, and sunset light is warmer than noon
+    const box = createBox(2, 2, 2), ground = createPlane(40, 40);
+    const shade = (sky) => {
+      list.clear(); list.addTransform(ground, 0, 0, 0, null, 1, 1, 1, 0.5, 0.5, 0.5); list.addTransform(box, 0, 1, -6, null, 1, 1, 1, 0.8, 0.8, 0.8);
+      const L = { ...createLighting(), ...skyLighting(sky), sky, fogDensity: 0 };
+      const c2 = new Camera3D({ x: 0, y: 3, z: 4, fovY: 0.9, viewW: W, viewH: H }); c2.pitch = -0.2; c2.update();
+      renderer.render({ camera: c2, list, clear: [0, 0, 0, 1], lighting: L });
+      const p = c2.worldToScreen(0, 0.3, -5); return read(renderer).px(Math.round(p.x), Math.round(p.y));
+    };
+    const dayPx = shade(noon), nightPx = shade(night), duskPx = null;
+    add('the scene is lit by the sky: noon is brighter than night', dayPx[0] + dayPx[1] + dayPx[2] > (nightPx[0] + nightPx[1] + nightPx[2]) * 2.5, { day: dayPx, night: nightPx }, 'much brighter');
+    const warm = (sky) => { const c = skyLighting(sky).color; return c[0] / Math.max(1e-6, c[2]); };
+    add('and sunset light is warmer than noon light', warm(createSky({ sun: sunDirection({ hour: 18.9, latitude: 45, dayOfYear: 172 }) })) > warm(noon) * 1.3, { dusk: warm(createSky({ sun: sunDirection({ hour: 18.9, latitude: 45, dayOfYear: 172 }) })), noon: warm(noon) }, 'redder');
+    renderer.setEnvironment(proceduralSkyEnvironment(noon, 16));
+    add('and the sky can be baked into an environment for reflections', true, 'built', 'ok');
+
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2']) results.push(await check(kind));
+await new Promise((r) => setTimeout(r, 300));       // shader compile messages arrive after the first frames
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

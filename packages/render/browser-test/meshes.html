@@ -1,0 +1,140 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Mesh self-test</title>
+<body style="background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { Atlas, Camera, SpriteBatch, MeshBatch2D, createRenderer, packTint, Filter } from '../src/index.js';
+
+const W = 160, H = 100;
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const atlas = new Atlas({ size: 256 });
+    const solid = atlas.add('solid', 8, 8, (g, x, y, w, h) => { g.fillStyle = '#fff'; g.fillRect(x, y, w, h); });
+    const quads = atlas.add('quads', 32, 32, (g, x, y) => {
+      g.fillStyle = '#ff0000'; g.fillRect(x, y, 16, 16); g.fillStyle = '#00ff00'; g.fillRect(x + 16, y, 16, 16);
+      g.fillStyle = '#0000ff'; g.fillRect(x + 16, y + 16, 16, 16); g.fillStyle = '#ffff00'; g.fillRect(x, y + 16, 16, 16);
+    });
+    const renderer = await createRenderer({ atlas, prefer: [kind], transparent: true });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    const px = (img, x, y) => Array.from(img.data.slice((y * img.w + x) * 4, (y * img.w + x) * 4 + 4));
+    const read = () => { const c = document.createElement('canvas'); c.width = renderer.canvas.width; c.height = renderer.canvas.height; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(renderer.canvas, 0, 0); return { data: g.getImageData(0, 0, c.width, c.height).data, w: c.width }; };
+    const near = (a, b, t = 12) => a.every((v, i) => Math.abs(v - b[i]) <= t);
+    const CLEAR = [0, 0, 0, 1];
+    const empty = new SpriteBatch(4);
+    const noTint = kind === 'canvas2d';              // Canvas2D draws meshes with the alpha of their tint but not its colour
+
+    for (const dpr of [1, 2]) {
+      renderer.resize(W, H, dpr);
+      const cam = Camera.screen(W, H), U = (v) => v * dpr, tag = `dpr ${dpr}`;
+
+      // ---- a textured quad squeezed into a parallelogram: each quadrant of the picture lands where it should
+      {
+        const m = new MeshBatch2D(8, 12);
+        m.pushQuad(quads, [30, 20, 90, 20, 100, 70, 40, 70]);        // top left, top right, bottom right, bottom left: slanted to the right
+        renderer.render({ camera: cam, batch: empty, meshes: m, clear: CLEAR });
+        const img = read();
+        const tl = px(img, U(50), U(32)), tr = px(img, U(80), U(32)), br = px(img, U(88), U(58)), bl = px(img, U(52), U(58)), outside = px(img, U(20), U(50));
+        add(`a textured quad keeps its quadrants in place (${tag})`, near(tl, [255, 0, 0, 255]) && near(tr, [0, 255, 0, 255]) && near(br, [0, 0, 255, 255]) && near(bl, [255, 255, 0, 255]), { tl, tr, br, bl }, 'red green blue yellow');
+        add(`and nothing is drawn outside its corners (${tag})`, near(outside, [0, 0, 0, 255]) && near(px(img, U(95), U(30)), [0, 0, 0, 255]), [outside, px(img, U(95), U(30))], 'clear');
+      }
+
+      // ---- a single triangle covers half of its quad only
+      {
+        const m = new MeshBatch2D();
+        m.push([20, 20, 100, 20, 20, 80], [solid.u0, solid.v0, solid.u1, solid.v0, solid.u0, solid.v1], [0, 1, 2], solid.page, packTint(255, 128, 0));
+        renderer.render({ camera: cam, batch: empty, meshes: m, clear: CLEAR });
+        const img = read();
+        add(`a triangle is a triangle (${tag})`, near(px(img, U(40), U(40)), noTint ? [255, 255, 255, 255] : [255, 128, 0, 255]) && near(px(img, U(90), U(70)), [0, 0, 0, 255]), [px(img, U(40), U(40)), px(img, U(90), U(70))], 'inside coloured, outside clear');
+      }
+
+      // ---- order: meshes are drawn over the sprites of the same call, and a tint's alpha blends
+      {
+        const sprites = new SpriteBatch(4); sprites.push(60, 50, 80, 60, 0, solid, packTint(0, 0, 255));
+        const m = new MeshBatch2D(); m.pushQuad(solid, [40, 30, 80, 30, 80, 70, 40, 70], packTint(255, 0, 0, 128));
+        renderer.render({ camera: cam, batch: sprites, meshes: m, clear: CLEAR });
+        const img = read(), over = px(img, U(70), U(40)), under = px(img, U(85), U(50));
+        add(`meshes draw over sprites and blend by their alpha (${tag})`, near(over, noTint ? [127, 127, 255, 255] : [128, 0, 127, 255], 14) && near(under, [0, 0, 255, 255]), [over, under], 'blended over, blue beside');
+      }
+
+      // ---- the tint colours the picture (not on Canvas2D)
+      if (!noTint) {
+        const m = new MeshBatch2D(); m.pushQuad(quads, [30, 20, 70, 20, 70, 60, 30, 60], packTint(255, 128, 128));
+        renderer.render({ camera: cam, batch: empty, meshes: m, clear: CLEAR });
+        const img = read();
+        add(`a tint multiplies the picture (${tag})`, near(px(img, U(40), U(30)), [255, 0, 0, 255]) && near(px(img, U(60), U(30)), [0, 128, 0, 255]), [px(img, U(40), U(30)), px(img, U(60), U(30))], 'red, half green');
+      }
+
+      // ---- additive: light is added to what is behind
+      {
+        const sprites = new SpriteBatch(4); sprites.push(60, 50, 60, 40, 0, solid, packTint(100, 50, 0));
+        const m = new MeshBatch2D(); m.pushQuad(solid, [50, 40, 110, 40, 110, 60, 50, 60], packTint(50, 100, 0), true);
+        renderer.render({ camera: cam, batch: sprites, meshes: m, clear: CLEAR });
+        const img = read(), both = px(img, U(70), U(45)), only = px(img, U(40), U(50)), glowOnly = px(img, U(100), U(45));
+        if (!noTint) add(`additive meshes add their colour to what is behind (${tag})`, near(both, [150, 150, 0, 255], 14) && near(only, [100, 50, 0, 255]) && near(glowOnly, [50, 100, 0, 255], 14), { both, only, glowOnly }, '150,150,0 / 100,50,0 / 50,100,0');
+        else add(`additive meshes brighten what is behind (${tag})`, both[0] > only[0] + 50 && near(only, [100, 50, 0, 255]), { both, only }, 'brighter');
+      }
+
+      // ---- the camera moves and scales meshes like sprites
+      {
+        const c2 = Camera.screen(W, H); c2.x += 20; c2.zoom = 2;
+        const m = new MeshBatch2D(); m.pushQuad(solid, [80, 40, 100, 40, 100, 60, 80, 60], packTint(0, 255, 0));
+        renderer.render({ camera: c2, batch: empty, meshes: m, clear: CLEAR });
+        const img = read();
+        // world (80..100, 40..60) with the camera at x = 100, zoom 2: screen x = (80 - 100) * 2 + 80 = 40 to 80, y = (40 - 50) * 2 + 50 = 30 to 70
+        add(`the camera moves and scales meshes (${tag})`, near(px(img, U(70), U(40)), noTint ? [255, 255, 255, 255] : [0, 255, 0, 255]) && near(px(img, U(30), U(50)), [0, 0, 0, 255]) && near(px(img, U(90), U(50)), [0, 0, 0, 255]), [px(img, U(70), U(40)), px(img, U(30), U(50)), px(img, U(90), U(50))], 'drawn, clear, clear');
+      }
+
+      // ---- a filter covers sprites and meshes together; layers keep the order
+      {
+        const sprites = new SpriteBatch(4); sprites.push(30, 50, 30, 30, 0, solid, packTint(0, 0, 255));
+        const m = new MeshBatch2D(); m.pushQuad(solid, [70, 35, 100, 35, 100, 65, 70, 65], packTint(255, 0, 0));
+        renderer.render({ camera: cam, batch: sprites, meshes: m, clear: CLEAR, filters: [Filter.grayscale()] });
+        const img = read(), a = px(img, U(30), U(50)), b = px(img, U(92), U(42));
+        add(`filters cover meshes too (${tag})`, Math.abs(a[0] - a[2]) < 6 && Math.abs(b[0] - b[1]) < 6 && b[0] > 20, [a, b], 'both gray');
+        renderer.renderLayers({ camera: cam, clear: CLEAR, layers: [{ batch: empty, meshes: m }, { batch: sprites }] });
+        const after = read();
+        add(`layers can hold meshes (${tag})`, near(px(after, U(92), U(42)), noTint ? [255, 255, 255, 255] : [255, 0, 0, 255]) && near(px(after, U(30), U(50)), [0, 0, 255, 255]), null, 'mesh, then sprite');
+      }
+
+      // ---- a lot of triangles, and the batch growing past its first size
+      {
+        const m = new MeshBatch2D(4, 6);
+        for (let i = 0; i < 400; i++) { const x = (i % 20) * 7, y = Math.floor(i / 20) * 4; m.pushQuad(solid, [x, y, x + 6, y, x + 6, y + 3, x, y + 3], packTint(0, 255, 255)); }
+        renderer.render({ camera: cam, batch: empty, meshes: m, clear: CLEAR });
+        const img = read();
+        add(`many small meshes (${tag})`, m.vertexCount === 1600 && m.indexCount === 2400 && (noTint ? px(img, U(4), U(1))[0] > 150 && px(img, U(134), U(77))[0] > 150 : near(px(img, U(4), U(1)), [0, 255, 255, 255]) && near(px(img, U(134), U(77)), [0, 255, 255, 255])), { v: m.vertexCount, i: m.indexCount, a: px(img, U(4), U(1)), b: px(img, U(134), U(77)) }, 'all drawn');
+      }
+    }
+    // ---- pixel art: a 2 x 2 picture blown up 20 times is four hard blocks with nearest sampling, and blended at the joins with linear
+    {
+      const pa = new Atlas({ size: 64 });
+      const px4 = pa.add('px4', 2, 2, (g, x, y) => { g.fillStyle = '#ff0000'; g.fillRect(x, y, 1, 1); g.fillStyle = '#00ff00'; g.fillRect(x + 1, y, 1, 1); g.fillStyle = '#0000ff'; g.fillRect(x, y + 1, 1, 1); g.fillStyle = '#ffffff'; g.fillRect(x + 1, y + 1, 1, 1); });
+      const sharp = async (filter) => {
+        const r = await createRenderer({ atlas: pa, prefer: [kind], filter, transparent: true }); document.body.append(r.canvas); r.resize(W, H, 1);
+        const b = new SpriteBatch(4); b.push(80, 50, 40, 40, 0, px4); r.render({ camera: Camera.screen(W, H), batch: b, clear: [0, 0, 0, 1] });
+        const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(r.canvas, 0, 0);
+        const at = (x, y) => Array.from(g.getImageData(x, y, 1, 1).data); const out2 = { seam: at(80, 40), left: at(70, 40), right: at(90, 40) }; r.destroy?.(); return out2;
+      };
+      const hard = await sharp('nearest'), soft = await sharp('linear');
+      add('nearest sampling keeps hard edges between the pixels of a blown-up picture', near(hard.seam, [0, 255, 0, 255], 4) && near(hard.left, [255, 0, 0, 255], 4) && near(hard.right, [0, 255, 0, 255], 4), hard, 'pure colours');
+      add('and linear sampling blends them', !near(soft.seam, [255, 0, 0, 255], 40) && !near(soft.seam, [0, 255, 0, 255], 40), soft, 'a mix at the seam');
+    }
+
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2', 'canvas2d']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

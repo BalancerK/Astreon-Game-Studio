@@ -1,0 +1,106 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Water self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import {
+  createRenderer3D, Camera3D, DrawList3D, createLighting, createBox, Heightmap, Terrain, createWaterStyle, createWaterMesh, waterHeightAt, createSky, sunDirection, skyLighting,
+} from '../src/index.js';
+
+const W = 240, H = 160;
+const IDENTITY = Float32Array.of(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+const images = {};
+
+function read(renderer) {
+  const c = document.createElement('canvas'); c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(renderer.canvas, 0, 0);
+  const img = g.getImageData(0, 0, c.width, c.height);
+  return { data: img.data, px: (x, y) => [...img.data.slice((y * c.width + x) * 4, (y * c.width + x) * 4 + 3)] };
+}
+const diff = (a, b, step = 3) => { let s = 0, n = 0; for (let i = 0; i < a.data.length; i += 4 * step) { s += (Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2])) / 3; n++; } return s / n; };
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer3D({ prefer: [kind], antialias: false, water: true });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    // a beach: the ground slopes from 2 m above the water at x = 0 to 6 m below it at x = 64; water over all of it
+    const ground = (x) => 2 - x * 0.125;
+    const map = Heightmap.fromFunction(65, (x) => ground(x), { cell: 1 }), terrain = new Terrain(map, { chunkCells: 16, lods: 2 });
+    const sea = createWaterMesh({ x0: 0, z0: 0, x1: 64, z1: 64, level: 0, cell: 1, ground: (x) => ground(x) });
+    const box = createBox(2, 2, 2);
+    const cam = new Camera3D({ x: 6, y: 10, z: 32, fovY: 1.0, viewW: W, viewH: H }); cam.yaw = -Math.PI / 2; cam.pitch = -0.5; cam.update();
+    const style = createWaterStyle({ shallow: [0.1, 0.55, 0.5], deep: [0.0, 0.1, 0.3], clarity: 6, opacity: 0.95 });
+    const calm = createWaterStyle({ shallow: [0.1, 0.55, 0.5], deep: [0.0, 0.1, 0.3], clarity: 6, opacity: 0.95, waves: [{ amplitude: 0 }], ripple: 0 });
+    const L = (extra = {}) => ({ ...createLighting(), direction: [0.3, 0.8, 0.2], color: [1, 0.95, 0.85, 1], ambientSky: [0.5, 0.6, 0.8], ambientGround: [0.2, 0.2, 0.2], fogDensity: 0, water: [style, calm], ...extra });
+    const list = new DrawList3D();
+    const frame = (time, lighting = L(), styleIndex = 0, camera = cam) => {
+      list.clear(); list.setCamera(camera);
+      list.setMaterial(null); terrain.addToDrawList(list, camera, { r: 0.6, g: 0.5, b: 0.35 });
+      list.addTransform(box, 30, ground(30) + 1.2, 28, null, 1, 1, 1, 1, 0.1, 0.1);     // a red box lying on the sea floor in shallow-ish water (depth 0.75 m at x = 22...)
+      list.setWater(styleIndex, time); list.add(sea, IDENTITY, 1, 1, 1, 0.4); list.setMaterial(null);
+      renderer.render({ camera, list, clear: [0.4, 0.55, 0.8, 1], lighting });
+      return read(renderer);
+    };
+    const at = (img, wx, wy, wz, camera = cam) => { const s = camera.worldToScreen(wx, wy, wz); return img.px(Math.round(s.x), Math.round(s.y)); };
+
+    const a = frame(0), b = frame(2.5);
+    const deep = at(a, 50, 0, 32), shallow = at(a, 20, 0, 32), land = at(a, 14, 0.25, 32);
+    add('deep water is dark blue, not the clear colour', deep[2] > deep[0] && deep[0] < 100 && deep.join() !== '102,140,204', deep, 'dark blue');
+    add('shallow water is lighter and greener than deep water', shallow[1] > deep[1] + 15 && shallow[0] + shallow[1] + shallow[2] > deep[0] + deep[1] + deep[2], { shallow, deep }, 'lighter');
+    add('the land above the water is the ground colour', land[0] > land[2] && land[0] > 80, land, 'brown');
+    add('the waves move with time', diff(a, b) > 0.5, +diff(a, b).toFixed(3), 'the picture changes');
+    const calmA = frame(0, L(), 1), calmB = frame(3, L(), 1);
+    const cA = at(calmA, 50, 0, 32), cB = at(calmB, 50, 0, 32);
+    add('calm water with no waves or ripples does not move out in the deep', cA.every((v, i) => Math.abs(v - cB[i]) <= 2), { cA, cB }, 'unchanged');
+
+    // ---- foam at the shore: bright, whitish pixels along the line where the ground meets the water (x = 16)
+    let foam = 0, samples = 0;
+    for (let z = 4; z < 60; z += 4) for (let x = 16.2; x < 21; x += 0.6) { const s = cam.worldToScreen(x, 0, z), p = a.px(Math.round(s.x), Math.round(s.y)); samples++; if (p[0] > 150 && p[1] > 150 && p[2] > 150) foam++; }
+    add('froth shows along the shore', foam >= 6, { foam, samples }, 'bright pixels in the band along the waterline');
+
+    // ---- the red box on the sea floor is seen through the shallows
+    const boxPx = at(a, 30, ground(30) + 2.3, 28);
+    add('things under the water are seen through it (the red box on the floor, deep enough to be tinted)', boxPx[0] > boxPx[2], boxPx, 'reddish');
+
+    // ---- Fresnel: looking along the water it reflects the sky; looking down it shows its depth
+    const low = new Camera3D({ x: 6, y: 1.5, z: 32, fovY: 1.0, viewW: W, viewH: H }); low.yaw = -Math.PI / 2; low.pitch = -0.04; low.update();
+    const flat = frame(0, L(), 1, low), steep = a;
+    const far = at(flat, 60, 0, 32, low), near = at(steep, 50, 0, 32);
+    add('at a low angle water mirrors the sky (pale), from above it shows its depth (dark)', far[0] + far[1] + far[2] > near[0] + near[1] + near[2] + 90, { glancing: far, down: near }, 'paler at a low angle');
+
+    // ---- the sky is what it reflects
+    const sunset = createSky({ sun: sunDirection({ hour: 18.4, latitude: 45, dayOfYear: 172 }), turbidity: 5 });
+    const withSky = frame(0, L({ ...skyLighting(sunset), sky: sunset }), 1, low);
+    const plainSky = frame(0, L(), 1, low);
+    add('a procedural sky changes what the water reflects', diff(withSky, plainSky) > 3, +diff(withSky, plainSky).toFixed(2), 'a different picture');
+
+    // ---- the same picture on both backends
+    images[kind] = frame(1.7);
+    if (images.webgpu && images.webgl2) {
+      const d = diff(images.webgpu, images.webgl2, 1);
+      add('WebGPU and WebGL2 draw the same water', d < 2.5, +d.toFixed(3), 'mean difference below 2.5 of 255');
+    }
+
+    // ---- the CPU waves, for floating things
+    const w = waterHeightAt(10, 20, 1.3, style, 10), flatW = waterHeightAt(10, 20, 1.3, style, 0);
+    add('the wave height for a boat is within the wave amplitudes and dies away at the shore', Math.abs(w.height) <= style.waves.reduce((s2, x) => s2 + x.amplitude, 0) + 1e-9 && flatW.height === 0, { w: w.height, shore: flatW.height }, 'bounded, zero at depth 0');
+
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) { out.unavailable = String(e.message ?? e); out.stack = String(e.stack ?? ''); }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2']) results.push(await check(kind));
+await new Promise((r) => setTimeout(r, 300));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

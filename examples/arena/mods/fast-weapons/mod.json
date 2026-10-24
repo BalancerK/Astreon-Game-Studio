@@ -1,0 +1,11 @@
+{
+  "id": "fast-weapons",
+  "version": "1.0.0",
+  "name": "Fast weapons",
+  "description": "Faster fire rate, a little less damage per shot, quicker movement. Pure data: no code runs anywhere.",
+  "tier": "data",
+  "rules": {
+    "playerSpeed": 480,
+    "weapon": { "cooldownTicks": 5, "damage": 15 }
+  }
+}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/core · Astreon Engine</title>
+<meta name="description" content="The foundation: fixed-timestep loop, typed-array ECS, plugin system. Runs identically in Node and browsers; no DOM, no timers, no network.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html" class="on">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">All packages</a><h4>Foundation</h4><a href="core.html" class="on">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="enginecore">@engine/core</h1>
+<p>The foundation: fixed-timestep loop, typed-array ECS, plugin system. Runs identically in Node and browsers; no DOM, no timers, no network.</p>
+<p><strong>May import:</strong> nothing. <strong>Never import:</strong> any other engine package.</p>
+<h2 id="public-api-srcindexjs">Public API (<code>src/index.js</code>)<a class="anchor" href="#public-api-srcindexjs" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Export</th><th>Purpose</th></tr></thead><tbody><tr><td><code>FixedLoop</code></td><td><code>advance(elapsedSeconds)</code> runs fixed ticks, passes interpolation <code>alpha</code> to <code>render</code>. Caps catch-up at 0.25 s.</td></tr><tr><td><code>World</code>, <code>defineComponent</code></td><td>Struct-of-arrays components. <code>world.data(Comp).x[id &amp; INDEX_MASK]</code> in hot loops; <code>world.query(out, [A, B])</code> fills a <code>Uint32Array</code> without allocating.</td></tr><tr><td><code>entityIndex</code>, <code>entityGeneration</code>, <code>INDEX_MASK</code></td><td>Entity ids are 20-bit slot + 12-bit generation, so stale ids are never mistaken for recycled entities.</td></tr><tr><td><code>App</code>, <code>PluginApp</code>, <code>definePlugin</code></td><td>Everything is a plugin. Components, systems, resources and events are namespaced with the plugin id.</td></tr><tr><td><code>Scheduler</code></td><td>Orders systems by <code>before</code>/<code>after</code>; constraints on absent systems are ignored (headless-friendly); cycles produce a readable error.</td></tr><tr><td><code>EventBus</code></td><td>Plugins talk through events and public components, not each other's internals.</td></tr></tbody></table></div>
+<h2 id="example">Example<a class="anchor" href="#example" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">import</span> { App, definePlugin } <span class="tk-k">from</span> <span class="tk-s">'@engine/core'</span>;
+
+<span class="tk-k">const</span> movement = <span class="tk-f">definePlugin</span>({
+  id: <span class="tk-s">'movement'</span>, version: <span class="tk-s">'1.0.0'</span>,
+  <span class="tk-f">setup</span>(p) {
+    <span class="tk-k">const</span> Pos = p.<span class="tk-f">defineComponent</span>(<span class="tk-s">'pos'</span>, { x: <span class="tk-s">'f32'</span>, y: <span class="tk-s">'f32'</span> }); <span class="tk-c">// &quot;movement:pos&quot;</span>
+    p.<span class="tk-f">addSystem</span>(<span class="tk-s">'step'</span>, (dt) =&gt; { <span class="tk-c">/* iterate p.world.data(Pos) */</span> });
+  },
+});
+
+<span class="tk-k">new</span> <span class="tk-f">App</span>().<span class="tk-f">use</span>(movement).<span class="tk-f">update</span>(<span class="tk-n">1</span> / <span class="tk-n">60</span>, <span class="tk-n">0</span>);</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h2 id="rules-for-shared-client-server-systems">Rules for shared (client + server) systems<a class="anchor" href="#rules-for-shared-client-server-systems" aria-label="Link to this section">#</a></h2>
+<p>Use only <code>+ - * /</code> and <code>sqrt</code> (exactly specified; also <code>floor</code>, <code>round</code>, <code>abs</code>, <code>fround</code>); never <code>Math.sin/cos/tan/pow/exp/log/hypot/...</code>, <code>**</code>, <code>Date.now</code>, <code>Math.random</code>. Prediction depends on it: <code>node tools/determinism.js</code> shows Node, Chrome and Firefox disagree on those functions (even sin/cos/tan), while everything restricted to the safe set is bit-identical. <code>tools/check-shared-math.js</code> enforces the rule in <code>npm test</code> (opt out render-only lines with a <code>determinism-ok: reason</code> comment).</p>
+<h2 id="every-export">Every export<a class="anchor" href="#every-export" aria-label="Link to this section">#</a></h2>
+<p>The complete, generated list of this package's exports (every function, class and option) is on its <span class="src">API page</span>.</p><div class="pager"><a href="index.html"><small>Previous</small>All packages</a><a class="next" href="math.html"><small>Next</small>math</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#public-api-srcindexjs">Public API (src/index.js)</a><a class="l2" href="#example">Example</a><a class="l2" href="#rules-for-shared-client-server-systems">Rules for shared (client + server) systems</a><a class="l2" href="#every-export">Every export</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/protocol · Astreon Engine</title>
+<meta name="description" content="The wire format: binary reader/writer, quantizing codecs, replicated-state schema, delta snapshots with acks, handshake and input messages.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html" class="on">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">All packages</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html" class="on">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="engineprotocol">@engine/protocol</h1>
+<p>The wire format: binary reader/writer, quantizing codecs, replicated-state schema, delta snapshots with acks, handshake and input messages.</p>
+<p><strong>May import:</strong> nothing. It talks to the world only through its documented shape (<code>world.stores</code>).</p>
+<h2 id="concepts">Concepts<a class="anchor" href="#concepts" aria-label="Link to this section">#</a></h2>
+<ul><li><strong><code>NetSchema</code></strong>: the agreed list of replicated components and fields. Both sides build the same one; its <code>hash</code> is checked in the handshake.</li><li><strong>Codecs</strong> (<code>u8</code>...<code>i32</code>, <code>f32</code>, <code>f64</code>, <code>q(min, max, bits)</code>): values are held as exact quantized integers, so change detection never jitters.</li><li><strong><code>Snapshot</code></strong>: replicated state at one tick, rows sorted by entity slot.</li><li><strong><code>SnapshotCodec</code></strong>: <code>encode(writer, current, baselineOrNull)</code> / <code>decode(reader, getBaseline, out)</code>. Sends only changed entities and fields against an acked baseline; falls back to a full snapshot when 75%+ of entities changed. <code>decode</code> throws <code>MissingBaselineError</code> when the baseline is gone (reply with ack tick 0 to get a full snapshot).</li><li><strong><code>SnapshotHistory</code></strong>: ring of recent snapshots. <code>acquire()</code>, fill, <code>commit()</code>. Half-written snapshots can never become baselines.</li><li><strong>Messages</strong>: <code>HELLO</code>, <code>WELCOME</code> (includes the plugin list), <code>REJECT</code>, <code>INPUT</code> (newest snapshot ack + up to 16 redundant inputs with sub-tick offsets), <code>SNAPSHOT</code>.</li></ul>
+<h2 id="safety">Safety<a class="anchor" href="#safety" aria-label="Link to this section">#</a></h2>
+<p>The reader is bounds-checked and decoders only ever throw <code>ProtocolError</code> on malformed data (fuzz-tested). Always catch it at the network boundary.</p>
+<h2 id="not-here-yet">Not here yet<a class="anchor" href="#not-here-yet" aria-label="Link to this section">#</a></h2>
+<p>Applying a decoded snapshot to a client <code>World</code> (needs <code>createWithId</code> in core), bandwidth budgets, interest filtering.</p>
+<p>Benchmark: <code>node packages/protocol/bench/snapshot.js [entities]</code></p>
+<h2 id="every-export">Every export<a class="anchor" href="#every-export" aria-label="Link to this section">#</a></h2>
+<p>The complete, generated list of this package's exports (every function, class and option) is on its <span class="src">API page</span>.</p><div class="pager"><a href="mods.html"><small>Previous</small>mods</a><a class="next" href="transport.html"><small>Next</small>transport</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#concepts">Concepts</a><a class="l2" href="#safety">Safety</a><a class="l2" href="#not-here-yet">Not here yet</a><a class="l2" href="#every-export">Every export</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

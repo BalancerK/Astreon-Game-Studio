@@ -1,0 +1,10 @@
+{
+  "id": "night-sky",
+  "version": "1.0.0",
+  "name": "Night sky",
+  "description": "Presentation only: a dark sky, thicker fog and a title. Clients apply it after verifying its hash.",
+  "tier": "data",
+  "client": {
+    "theme": { "sky": [10, 12, 36], "fog": 0.012, "title": "ARENA 3D: NIGHT" }
+  }
+}

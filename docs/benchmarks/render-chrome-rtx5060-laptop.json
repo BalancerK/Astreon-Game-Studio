@@ -1,0 +1,483 @@
+{
+  "env": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "cores": 16,
+    "dpr": 1,
+    "canvas": [
+      1280,
+      720
+    ],
+    "webgpu": {
+      "vendor": "nvidia",
+      "architecture": "blackwell",
+      "device": "",
+      "description": "",
+      "isFallback": false
+    },
+    "webgl2": {
+      "vendor": "Google Inc. (NVIDIA)",
+      "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D59) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    }
+  },
+  "width": 1280,
+  "height": 720,
+  "results": [
+    {
+      "kind": "webgl2",
+      "scenario": "small",
+      "n": 1000,
+      "frames": 150,
+      "submit": {
+        "median": 0,
+        "p95": 0.09999999403953552
+      },
+      "total": {
+        "median": 0.19999998807907104,
+        "p95": 0.30000001192092896
+      },
+      "pipelinedMs": 0.04200000007947286,
+      "pipelinedSpread": [
+        0.03600000003973643,
+        0.04400000015894572
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "scenario": "small",
+      "n": 10000,
+      "frames": 150,
+      "submit": {
+        "median": 0,
+        "p95": 0.10000002384185791
+      },
+      "total": {
+        "median": 0.3999999761581421,
+        "p95": 0.5
+      },
+      "pipelinedMs": 0.28133333325386045,
+      "raf": {
+        "fps": 143.99806389157794,
+        "worstGap": 7.5,
+        "p99Gap": 7.100000000005821
+      },
+      "pipelinedSpread": [
+        0.2633333333333333,
+        0.3026666667064031
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "scenario": "small",
+      "n": 50000,
+      "frames": 150,
+      "submit": {
+        "median": 0.09999999403953552,
+        "p95": 0.20000001788139343
+      },
+      "total": {
+        "median": 1.0999999940395355,
+        "p95": 2.399999976158142
+      },
+      "pipelinedMs": 1.2206666666269301,
+      "raf": {
+        "fps": 144.0071194530962,
+        "worstGap": 7.19999999999709,
+        "p99Gap": 7.100000000000364
+      },
+      "pipelinedSpread": [
+        0.9266666666666666,
+        1.2286666665474575
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "scenario": "small",
+      "n": 100000,
+      "frames": 150,
+      "submit": {
+        "median": 0.29999998211860657,
+        "p95": 0.4000000059604645
+      },
+      "total": {
+        "median": 2,
+        "p95": 2.600000023841858
+      },
+      "pipelinedMs": 1.5746666665871938,
+      "pipelinedSpread": [
+        1.547333333492279,
+        2.18066666662693
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "scenario": "small",
+      "n": 200000,
+      "frames": 150,
+      "submit": {
+        "median": 0.5,
+        "p95": 0.699999988079071
+      },
+      "total": {
+        "median": 3.600000023841858,
+        "p95": 4.200000017881393
+      },
+      "pipelinedMs": 3.4239999999602637,
+      "pipelinedSpread": [
+        3.3160000000397365,
+        4.227333333293597
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "scenario": "large (overdraw)",
+      "n": 500,
+      "frames": 150,
+      "submit": {
+        "median": 0,
+        "p95": 0.09999999403953552
+      },
+      "total": {
+        "median": 0.5,
+        "p95": 0.699999988079071
+      },
+      "pipelinedMs": 0.2713333332538605,
+      "pipelinedSpread": [
+        0.2713333332538605,
+        0.2719999998807907
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "scenario": "large (overdraw)",
+      "n": 2000,
+      "frames": 150,
+      "submit": {
+        "median": 0,
+        "p95": 0.09999999403953552
+      },
+      "total": {
+        "median": 1.399999976158142,
+        "p95": 1.5999999940395355
+      },
+      "pipelinedMs": 1.1106666666269303,
+      "raf": {
+        "fps": 144.00129439365764,
+        "worstGap": 7.200000000000728,
+        "p99Gap": 7.100000000002183
+      },
+      "pipelinedSpread": [
+        1.0980000001192094,
+        1.1126666667064031
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "scenario": "large (overdraw)",
+      "n": 8000,
+      "frames": 150,
+      "submit": {
+        "median": 0,
+        "p95": 0.10000002384185791
+      },
+      "total": {
+        "median": 4.5,
+        "p95": 5.200000017881393
+      },
+      "pipelinedMs": 4.383333333333334,
+      "pipelinedSpread": [
+        4.371333333253861,
+        4.43933333337307
+      ]
+    },
+    {
+      "kind": "webgl2",
+      "scenario": "small, sorted each frame",
+      "n": 50000,
+      "frames": 150,
+      "submit": {
+        "median": 3.2999999821186066,
+        "p95": 4
+      },
+      "total": {
+        "median": 4.699999988079071,
+        "p95": 6
+      },
+      "pipelinedMs": 4.351999999880791,
+      "pipelinedSpread": [
+        3.957333333293597,
+        4.55
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "scenario": "small",
+      "n": 1000,
+      "frames": 150,
+      "submit": {
+        "median": 0.09999999403953552,
+        "p95": 0.19999998807907104
+      },
+      "total": {
+        "median": 2.9000000059604645,
+        "p95": 4.5
+      },
+      "pipelinedMs": 0.11200000007947286,
+      "pipelinedSpread": [
+        0.11066666662693024,
+        0.12200000007947286
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "scenario": "small",
+      "n": 10000,
+      "frames": 150,
+      "submit": {
+        "median": 0.19999998807907104,
+        "p95": 0.30000001192092896
+      },
+      "total": {
+        "median": 3.0999999940395355,
+        "p95": 4.4000000059604645
+      },
+      "pipelinedMs": 0.2319999998807907,
+      "raf": {
+        "fps": 144.00129439365747,
+        "worstGap": 7.399999999994179,
+        "p99Gap": 7.100000000000364
+      },
+      "pipelinedSpread": [
+        0.22200000007947285,
+        0.35066666662693025
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "scenario": "small",
+      "n": 50000,
+      "frames": 150,
+      "submit": {
+        "median": 0.7000000178813934,
+        "p95": 0.9000000059604645
+      },
+      "total": {
+        "median": 3.7999999821186066,
+        "p95": 5.399999976158142
+      },
+      "pipelinedMs": 0.5260000000397365,
+      "raf": {
+        "fps": 144.00129439365742,
+        "worstGap": 7.200000000000728,
+        "p99Gap": 7.100000000000364
+      },
+      "pipelinedSpread": [
+        0.4986666667461395,
+        0.8186666665474573
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "scenario": "small",
+      "n": 100000,
+      "frames": 150,
+      "submit": {
+        "median": 1.300000011920929,
+        "p95": 1.600000023841858
+      },
+      "total": {
+        "median": 5,
+        "p95": 7
+      },
+      "pipelinedMs": 1.0419999998807907,
+      "pipelinedSpread": [
+        0.9879999999205271,
+        1.0560000000397365
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "scenario": "small",
+      "n": 200000,
+      "frames": 150,
+      "submit": {
+        "median": 0.9000000059604645,
+        "p95": 1.100000023841858
+      },
+      "total": {
+        "median": 7,
+        "p95": 8.199999988079071
+      },
+      "pipelinedMs": 5.23133333325386,
+      "pipelinedSpread": [
+        5.211333333253861,
+        5.345333333412806
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "scenario": "large (overdraw)",
+      "n": 500,
+      "frames": 150,
+      "submit": {
+        "median": 0.09999999403953552,
+        "p95": 0.19999998807907104
+      },
+      "total": {
+        "median": 3,
+        "p95": 4.300000011920929
+      },
+      "pipelinedMs": 0.2953333334128062,
+      "pipelinedSpread": [
+        0.2906666668256124,
+        0.3053333334128062
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "scenario": "large (overdraw)",
+      "n": 2000,
+      "frames": 150,
+      "submit": {
+        "median": 0.09999999403953552,
+        "p95": 0.20000001788139343
+      },
+      "total": {
+        "median": 3.4000000059604645,
+        "p95": 4.700000017881393
+      },
+      "pipelinedMs": 1.1373333332935969,
+      "raf": {
+        "fps": 144.0045432419276,
+        "worstGap": 7.400000000001455,
+        "p99Gap": 7.100000000002183
+      },
+      "pipelinedSpread": [
+        1.1213333332538604,
+        1.14
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "scenario": "large (overdraw)",
+      "n": 8000,
+      "frames": 150,
+      "submit": {
+        "median": 0.19999998807907104,
+        "p95": 0.30000001192092896
+      },
+      "total": {
+        "median": 6.9000000059604645,
+        "p95": 8.200000017881393
+      },
+      "pipelinedMs": 4.367999999920527,
+      "pipelinedSpread": [
+        4.36066666662693,
+        4.371333333452543
+      ]
+    },
+    {
+      "kind": "webgpu",
+      "scenario": "small, sorted each frame",
+      "n": 50000,
+      "frames": 150,
+      "submit": {
+        "median": 3.7999999821186066,
+        "p95": 4.4000000059604645
+      },
+      "total": {
+        "median": 7.5999999940395355,
+        "p95": 8.700000017881393
+      },
+      "pipelinedMs": 3.682666666706403,
+      "pipelinedSpread": [
+        3.51,
+        3.874666666587194
+      ]
+    },
+    {
+      "kind": "canvas2d",
+      "scenario": "small",
+      "n": 1000,
+      "frames": 107,
+      "submit": {
+        "median": 2.800000011920929,
+        "p95": 3.5999999940395355
+      },
+      "total": {
+        "median": 20.200000017881393,
+        "p95": 187.59999999403954
+      },
+      "pipelinedMs": 186.78750000024834,
+      "pipelinedSpread": [
+        11.326000000039736,
+        187.60833333432674
+      ]
+    },
+    {
+      "kind": "canvas2d",
+      "scenario": "small",
+      "n": 10000,
+      "frames": 3,
+      "submit": {
+        "median": 3745.0999999940395,
+        "p95": 3966.699999988079
+      },
+      "total": {
+        "median": 4228.4000000059605,
+        "p95": 4891.200000017881
+      },
+      "pipelinedMs": 4082.6666666666665,
+      "raf": {
+        "fps": null,
+        "worstGap": 0,
+        "p99Gap": null
+      },
+      "pipelinedSpread": [
+        4024.566666662693,
+        7172.6333333353205
+      ]
+    },
+    {
+      "kind": "canvas2d",
+      "scenario": "large (overdraw)",
+      "n": 500,
+      "frames": 12,
+      "submit": {
+        "median": 1.0999999940395355,
+        "p95": 4.700000017881393
+      },
+      "total": {
+        "median": 265.5,
+        "p95": 278.90000000596046
+      },
+      "pipelinedMs": 266.8333333333333,
+      "pipelinedSpread": [
+        3.39933333337307,
+        269.26666666732893
+      ]
+    }
+  ],
+  "cpu": [
+    {
+      "n": 10000,
+      "fillMs": 0.699999988079071,
+      "sortMs": 0.5
+    },
+    {
+      "n": 50000,
+      "fillMs": 2.800000011920929,
+      "sortMs": 2.5
+    },
+    {
+      "n": 200000,
+      "fillMs": 11.099999994039536,
+      "sortMs": 15.699999988079071
+    }
+  ],
+  "init": {
+    "webgl2": 37.599999994039536,
+    "webgpu": 132.69999998807907,
+    "canvas2d": 70.19999998807907
+  },
+  "runs": 3
+}

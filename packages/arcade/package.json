@@ -1,0 +1,31 @@
+{
+  "name": "@engine/arcade",
+  "version": "0.1.0",
+  "description": "A small kit for a first game (the studio's pathway starts here): things as plain objects, easy key names, walking, jumping and walls, levels drawn with letters, boxes and emoji, a camera",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "API.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "game-engine",
+    "javascript",
+    "webgpu",
+    "multiplayer",
+    "arcade"
+  ]
+}

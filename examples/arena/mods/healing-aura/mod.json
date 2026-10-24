@@ -1,0 +1,9 @@
+{
+  "id": "healing-aura",
+  "version": "1.0.0",
+  "name": "Healing aura",
+  "description": "Slowly heals every wounded player. A script mod: runs in a confined process and can only return commands.",
+  "tier": "script",
+  "entry": "main.js",
+  "limits": { "tickEvery": 30, "memoryMb": 32 }
+}

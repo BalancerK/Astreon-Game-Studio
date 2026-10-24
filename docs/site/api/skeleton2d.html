@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/skeleton2d · Astreon Engine</title>
+<meta name="description" content="2D skeletal animation: bones, skins, weighted meshes with deformation, IK, keyframes with curves and events, crossfading tracks, drawn through the renderer's mesh batch.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html" class="on">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a></nav><main><article><h1 id="engineskeleton2d">@engine/skeleton2d</h1>
+<p>2D skeletal animation: bones, skins, weighted meshes with deformation, IK, keyframes with curves and events, crossfading tracks, drawn through the renderer's mesh batch.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/skeleton2d</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/skeleton2d.html">packages/skeleton2d</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-29-of-29-documented">Contents (29 of 29 documented)<a class="anchor" href="#contents-29-of-29-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-animation"><code>Animation</code></a></td><td>class</td><td>One animation: its name, its length in seconds, and its timelines.</td></tr><tr><td><a href="#class-animationstate"><code>AnimationState</code></a></td><td>class</td><td>The tracks of one skeleton's animations: what plays, what waits, what is crossfading.</td></tr><tr><td><a href="#class-attachmenttimeline"><code>AttachmentTimeline</code></a></td><td>class</td><td>Switches which attachment a slot shows (or hides it with <code>null</code>).</td></tr><tr><td><a href="#blend"><code>BLEND</code></a></td><td>constant</td><td>Which way keys are applied.</td></tr><tr><td><a href="#class-bone"><code>Bone</code></a></td><td>class</td><td>A bone at run time: its pose now (<code>x</code>, <code>y</code>, <code>rotation</code>, <code>scaleX</code>, <code>scaleY</code>, <code>shearX</code>, <code>shearY</code> are relative to its parent) and where that puts it in the world (<code>worldX</code>, <code>worldY</code>, and <code>a b c d</code>, the matrix of its axes).</td></tr><tr><td><a href="#class-colortimeline"><code>ColorTimeline</code></a></td><td>class</td><td>Changes a slot's colour: keys of [r, g, b, a] in 0..1 (absolute).</td></tr><tr><td><a href="#class-deformtimeline"><code>DeformTimeline</code></a></td><td>class</td><td>Pushes a mesh's points around: keys of one offset for every point (two numbers per point, or for a weighted mesh two per bone influence), added to the setup positions.</td></tr><tr><td><a href="#class-drawordertimeline"><code>DrawOrderTimeline</code></a></td><td>class</td><td>Reorders the slots for drawing: keys of a full order (slot indexes back to front), or <code>null</code> for the setup order.</td></tr><tr><td><a href="#class-eventtimeline"><code>EventTimeline</code></a></td><td>class</td><td>Marks moments for the game to react to (a footstep, a sword hit): keys of an event.</td></tr><tr><td><a href="#inherit"><code>INHERIT</code></a></td><td>constant</td><td>How a bone takes on its parent's movement.</td></tr><tr><td><a href="#class-ikconstraint"><code>IkConstraint</code></a></td><td>class</td><td>The pose of a two-bone or one-bone IK constraint right now.</td></tr><tr><td><a href="#class-iktimeline"><code>IkTimeline</code></a></td><td>class</td><td>Changes an IK constraint: keys of its mix (0 off, 1 fully on) and bend direction (1 or -1).</td></tr><tr><td><a href="#class-rotatetimeline"><code>RotateTimeline</code></a></td><td>class</td><td>Turns a bone: keys of one angle (degrees, relative to the setup rotation).</td></tr><tr><td><a href="#class-skeleton"><code>Skeleton</code></a></td><td>class</td><td>The runtime copy of a skeleton: poses, slot colours and shown attachments, constraints.</td></tr><tr><td><a href="#class-skeletondata"><code>SkeletonData</code></a></td><td>class</td><td>The designed skeleton: bones, slots, constraints, skins, events and animations.</td></tr><tr><td><a href="#class-skin"><code>Skin</code></a></td><td>class</td><td>The pictures of one outfit: attachments by slot and name.</td></tr><tr><td><a href="#class-slot"><code>Slot</code></a></td><td>class</td><td>A place on a bone where a picture hangs: its colour now, which attachment it shows, and how that attachment is deformed.</td></tr><tr><td><a href="#class-trackentry"><code>TrackEntry</code></a></td><td>class</td><td>One animation playing (or waiting) on a track.</td></tr><tr><td><a href="#class-vec2timeline"><code>Vec2Timeline</code></a></td><td>class</td><td>Moves, resizes or shears a bone: keys of an (x, y) pair.</td></tr><tr><td><a href="#angledelta"><code>angleDelta</code></a></td><td>function</td><td>Shortest turn from angle <code>a</code> to angle <code>b</code>, in degrees (between -180 and 180).</td></tr><tr><td><a href="#attachmentworldvertices"><code>attachmentWorldVertices</code></a></td><td>function</td><td>Where an attachment's points are in the world right now.</td></tr><tr><td><a href="#curvefraction"><code>curveFraction</code></a></td><td>function</td><td>How far along the way from one key to the next a value is, once the curve is applied.</td></tr><tr><td><a href="#drawskeleton"><code>drawSkeleton</code></a></td><td>function</td><td>Put what a skeleton shows into a mesh batch, back to front, ready for <code>renderer.render({ camera, batch, meshes })</code>.</td></tr><tr><td><a href="#frameindex"><code>frameIndex</code></a></td><td>function</td><td>The index of the last key at or before <code>t</code>, or -1 before the first.</td></tr><tr><td><a href="#hittest"><code>hitTest</code></a></td><td>function</td><td>What is at a point: the first bounding box (from the front) that contains it, or, with <code>any: true</code>, the first region or mesh too.</td></tr><tr><td><a href="#parseskeleton"><code>parseSkeleton</code></a></td><td>function</td><td>Read a skeleton from the JSON format described at the top of this file.</td></tr><tr><td><a href="#parseskeletoncolor"><code>parseSkeletonColor</code></a></td><td>function</td><td>A colour as [r, g, b, a] in 0..1 from &quot;rrggbb&quot;, &quot;rrggbbaa&quot; (with or without a #) or an array.</td></tr><tr><td><a href="#pointinpolygon"><code>pointInPolygon</code></a></td><td>function</td><td>Is the point inside the polygon of x, y pairs?</td></tr><tr><td><a href="#skeletonbounds"><code>skeletonBounds</code></a></td><td>function</td><td>The box that holds everything the skeleton is showing (regions and meshes; bounding boxes do not count).</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="angledelta"><code>angleDelta</code><a class="anchor" href="#angledelta" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">angleDelta</span>(a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Shortest turn from angle <code>a</code> to angle <code>b</code>, in degrees (between -180 and 180).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>a</code></td><td><code>number</code></td><td></td></tr><tr><td><code>b</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/skeleton.js:12</sub></p>
+<h3 id="attachmentworldvertices"><code>attachmentWorldVertices</code><a class="anchor" href="#attachmentworldvertices" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">attachmentWorldVertices</span>(skeleton, slot, att, out, outAt = <span class="tk-n">0</span>, size)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Where an attachment's points are in the world right now. A region gives its four corners (top left, top right, bottom right, bottom left); a mesh or bounding box gives its points, moved by its bones and by any deformation.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>skeleton</code></td><td><code>import('./skeleton.js').Skeleton</code></td><td></td></tr><tr><td><code>slot</code></td><td><code>import('./skeleton.js').Slot</code></td><td></td></tr><tr><td><code>att</code></td><td><code>import('./skeleton.js').Attachment</code></td><td></td></tr><tr><td><code>out</code></td><td><code>Float32Array | number[]</code></td><td>x, y for each point</td></tr><tr><td><code>outAt</code> (optional)</td><td><code>number</code></td><td>Where in <code>out</code> to start writing.</td></tr><tr><td><code>size</code> (optional)</td><td><code>{width: number, height: number}</code></td><td>For a region with no size of its own: the size of its sprite.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — How many points were written.</p>
+<p><sub>src/geometry.js:10</sub></p>
+<h3 id="curvefraction"><code>curveFraction</code><a class="anchor" href="#curvefraction" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">curveFraction</span>(curve, f)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How far along the way from one key to the next a value is, once the curve is applied. <code>curve</code> is <code>null</code> for a straight line, <code>'stepped'</code> to hold the first value until the next key, or <code>[cx1, cy1, cx2, cy2]</code> for a Bezier ease (control points in a 0..1 box of time and value, like CSS <code>cubic-bezier</code>).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>curve</code></td><td><code>null | 'stepped' | number[]</code></td><td></td></tr><tr><td><code>f</code></td><td><code>number</code></td><td>0..1, the time fraction</td></tr></tbody></table></div>
+<p><sub>src/animation.js:27</sub></p>
+<h3 id="drawskeleton"><code>drawSkeleton</code><a class="anchor" href="#drawskeleton" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">drawSkeleton</span>(skeleton, meshes, atlas, { tint = [<span class="tk-n">1</span>, <span class="tk-n">1</span>, <span class="tk-n">1</span>, <span class="tk-n">1</span>] } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Put what a skeleton shows into a mesh batch, back to front, ready for <code>renderer.render({ camera, batch, meshes })</code>. Regions become two triangles, meshes keep their own triangles, bounding boxes are skipped. The colour of a point is the skeleton's colour times the slot's times the attachment's times <code>tint</code>; slots set to <code>additive</code> add their light instead of covering.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>skeleton</code></td><td><code>import('./skeleton.js').Skeleton</code></td><td>Its world transforms must be up to date (<code>updateWorldTransform()</code>).</td></tr><tr><td><code>meshes</code></td><td><code>import('../../render/src/meshbatch.js').MeshBatch2D</code></td><td></td></tr><tr><td><code>atlas</code></td><td><code>import('../../render/src/atlas.js').Atlas</code></td><td>Where the attachments' sprites live.</td></tr><tr><td><code>o</code> (optional)</td><td><code>{tint?: number[]}</code></td><td><code>tint</code>: an extra [r, g, b, a] in 0..1.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — How many triangles were added.</p>
+<p><sub>src/draw.js:31</sub></p>
+<h3 id="frameindex"><code>frameIndex</code><a class="anchor" href="#frameindex" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">frameIndex</span>(times, t)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The index of the last key at or before <code>t</code>, or -1 before the first.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>times</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>t</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/animation.js:14</sub></p>
+<h3 id="hittest"><code>hitTest</code><a class="anchor" href="#hittest" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">hitTest</span>(skeleton, x, y, { any = <span class="tk-k">false</span>, atlas } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What is at a point: the first bounding box (from the front) that contains it, or, with <code>any: true</code>, the first region or mesh too.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>skeleton</code></td><td><code>import('./skeleton.js').Skeleton</code></td><td></td></tr><tr><td><code>x</code></td><td><code>number</code></td><td></td></tr><tr><td><code>y</code></td><td><code>number</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{any?: boolean, atlas?: import('../../render/src/atlas.js').Atlas}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{slot: import('./skeleton.js').Slot, attachment: import('./skeleton.js').Attachment} \| null</code></p>
+<p><sub>src/geometry.js:76</sub></p>
+<h3 id="parseskeleton"><code>parseSkeleton</code><a class="anchor" href="#parseskeleton" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">parseSkeleton</span>(source)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Read a skeleton from the JSON format described at the top of this file.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>source</code></td><td><code>string | object</code></td><td>The JSON text or the parsed object.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>SkeletonData</code></p>
+<p><sub>src/loader.js:109</sub></p>
+<h3 id="parseskeletoncolor"><code>parseSkeletonColor</code><a class="anchor" href="#parseskeletoncolor" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">parseSkeletonColor</span>(c, fallback = [<span class="tk-n">1</span>, <span class="tk-n">1</span>, <span class="tk-n">1</span>, <span class="tk-n">1</span>])</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A colour as [r, g, b, a] in 0..1 from &quot;rrggbb&quot;, &quot;rrggbbaa&quot; (with or without a #) or an array.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>c</code></td><td><code>string | number[] | undefined</code></td><td></td></tr><tr><td><code>fallback</code> (optional)</td><td><code>number[]</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/loader.js:38</sub></p>
+<h3 id="pointinpolygon"><code>pointInPolygon</code><a class="anchor" href="#pointinpolygon" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">pointInPolygon</span>(poly, n, x, y)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Is the point inside the polygon of x, y pairs?</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>poly</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>n</code></td><td><code>number</code></td><td>Points.</td></tr><tr><td><code>x</code></td><td><code>number</code></td><td></td></tr><tr><td><code>y</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/geometry.js:62</sub></p>
+<h3 id="skeletonbounds"><code>skeletonBounds</code><a class="anchor" href="#skeletonbounds" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">skeletonBounds</span>(skeleton, { atlas } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The box that holds everything the skeleton is showing (regions and meshes; bounding boxes do not count).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>skeleton</code></td><td><code>import('./skeleton.js').Skeleton</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{atlas?: import('../../render/src/atlas.js').Atlas}</code></td><td>The atlas gives regions without a size their sprite's size.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{x0: number, y0: number, x1: number, y1: number} \| null</code> — <code>null</code> if nothing is shown.</p>
+<p><sub>src/geometry.js:46</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-animation"><code>class Animation</code><a class="anchor" href="#class-animation" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Animation</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>One animation: its name, its length in seconds, and its timelines.</p>
+<h4 id="animationconstructor"><code>Animation.constructor</code><a class="anchor" href="#animationconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(name, timelines, duration)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr><tr><td><code>timelines</code></td><td><code>Timeline[]</code></td><td></td></tr><tr><td><code>duration</code> (optional)</td><td><code>number</code></td><td>Defaults to the time of the last key.</td></tr></tbody></table></div>
+<h4 id="animationapply"><code>Animation.apply</code><a class="anchor" href="#animationapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>(skeleton, time, alpha = <span class="tk-n">1</span>, blend = BLEND.replace, loop = <span class="tk-k">false</span>, only = <span class="tk-k">null</span>, except = <span class="tk-k">false</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Pose a skeleton as this animation has it at <code>time</code>.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>skeleton</code></td><td><code>import('./skeleton.js').Skeleton</code></td><td></td></tr><tr><td><code>time</code></td><td><code>number</code></td><td>Seconds; with <code>loop</code>, wrapped to the length.</td></tr><tr><td><code>alpha</code> (optional)</td><td><code>number</code></td><td>How strongly (0..1).</td></tr><tr><td><code>blend</code> (optional)</td><td><code>'replace' | 'add'</code></td><td></td></tr><tr><td><code>loop</code> (optional)</td><td><code>boolean</code></td><td></td></tr><tr><td><code>only</code> (optional)</td><td><code>Set&lt;string&gt; | null</code></td><td>When given, only timelines whose key is in (or, with <code>except</code>, not in) the set are applied.</td></tr><tr><td><code>except</code> (optional)</td><td><code>boolean</code></td><td></td></tr></tbody></table></div>
+<h4 id="animationcollectevents"><code>Animation.collectEvents</code><a class="anchor" href="#animationcollectevents" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">collectEvents</span>(lastTime, time, loop, out = [])</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The events that happen in (<code>lastTime</code>, <code>time</code>], in order; with <code>loop</code>, every pass through the animation counts, across the wrap from the end back to the start. A first call with <code>lastTime</code> below zero includes events at time 0.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>lastTime</code></td><td><code>number</code></td><td></td></tr><tr><td><code>time</code></td><td><code>number</code></td><td></td></tr><tr><td><code>loop</code></td><td><code>boolean</code></td><td></td></tr><tr><td><code>out</code> (optional)</td><td><code>object[]</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/animation.js:165</sub></p>
+<h3 id="class-animationstate"><code>class AnimationState</code><a class="anchor" href="#class-animationstate" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> AnimationState</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The tracks of one skeleton's animations: what plays, what waits, what is crossfading. One state poses any <code>Skeleton</code> made from the same data.</p>
+<h4 id="animationstateconstructor"><code>AnimationState.constructor</code><a class="anchor" href="#animationstateconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(data, { defaultMix = <span class="tk-n">0</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>import('./loader.js').SkeletonData</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{defaultMix?: number}</code></td><td><code>defaultMix</code>: crossfade seconds when nothing more specific is set.</td></tr></tbody></table></div>
+<h4 id="animationstateon"><code>AnimationState.on</code><a class="anchor" href="#animationstateon" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">on</span>(type, fn)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Subscribe: <code>'start'</code>, <code>'end'</code> (left the track), <code>'interrupt'</code> (replaced by another), <code>'complete'</code> (a pass through finished), <code>'event'</code>. The callback gets <code>(entry, event?)</code>. Returns a function that unsubscribes.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>type</code></td><td><code>string</code></td><td></td></tr><tr><td><code>fn</code></td><td><code>(entry: TrackEntry, event?: object) =&gt; void</code></td><td></td></tr></tbody></table></div>
+<h4 id="animationstatesetmix"><code>AnimationState.setMix</code><a class="anchor" href="#animationstatesetmix" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setMix</span>(<span class="tk-k">from</span>, to, seconds)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Crossfade time (seconds) between two named animations, replacing the default.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>from</code></td><td><code>string</code></td><td></td></tr><tr><td><code>to</code></td><td><code>string</code></td><td></td></tr><tr><td><code>seconds</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="animationstategetmix"><code>AnimationState.getMix</code><a class="anchor" href="#animationstategetmix" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">getMix</span>(<span class="tk-k">from</span>, to)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="animationstatesetanimation"><code>AnimationState.setAnimation</code><a class="anchor" href="#animationstatesetanimation" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setAnimation</span>(track, animation, { loop = <span class="tk-k">false</span>, mix, alpha = <span class="tk-n">1</span>, blend = BLEND.replace, timeScale = <span class="tk-n">1</span>, trackEnd = Infinity } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Play an animation on a track now, crossfading from what was there.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>track</code></td><td><code>number</code></td><td></td></tr><tr><td><code>animation</code></td><td><code>string | Animation</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{loop?: boolean, mix?: number, alpha?: number, blend?: 'replace' | 'add', timeScale?: number, trackEnd?: number}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>TrackEntry</code></p>
+<h4 id="animationstateaddanimation"><code>AnimationState.addAnimation</code><a class="anchor" href="#animationstateaddanimation" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addAnimation</span>(track, animation, { loop = <span class="tk-k">false</span>, delay = <span class="tk-n">0</span>, mix, alpha = <span class="tk-n">1</span>, blend = BLEND.replace, timeScale = <span class="tk-n">1</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Queue an animation after the one playing (and after anything already queued). It starts <code>delay</code> seconds after the one before finishes, less the crossfade, so they overlap.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>track</code></td><td><code>number</code></td><td></td></tr><tr><td><code>animation</code></td><td><code>string | Animation</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{loop?: boolean, delay?: number, mix?: number, alpha?: number, blend?: 'replace' | 'add', timeScale?: number}</code></td><td></td></tr></tbody></table></div>
+<h4 id="animationstatesetemptyanimation"><code>AnimationState.setEmptyAnimation</code><a class="anchor" href="#animationstatesetemptyanimation" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setEmptyAnimation</span>(track, mix = <span class="tk-n">0.2</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Fade a track out to nothing over <code>mix</code> seconds, then clear it.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>track</code></td><td><code>number</code></td><td></td></tr><tr><td><code>mix</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="animationstatecleartrack"><code>AnimationState.clearTrack</code><a class="anchor" href="#animationstatecleartrack" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">clearTrack</span>(track)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Stop a track at once, leaving the pose to whatever else is playing.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>track</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="animationstatecleartracks"><code>AnimationState.clearTracks</code><a class="anchor" href="#animationstatecleartracks" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">clearTracks</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="animationstategetcurrent"><code>AnimationState.getCurrent</code><a class="anchor" href="#animationstategetcurrent" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">getCurrent</span>(track)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What is playing on a track, if anything.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>track</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="animationstateupdate"><code>AnimationState.update</code><a class="anchor" href="#animationstateupdate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">update</span>(dt)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Move time forward: advance the animations and crossfades, start queued ones, call the listeners. Returns the events that fired.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>dt</code></td><td><code>number</code></td><td>Seconds.</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>object[]</code></p>
+<h4 id="animationstateapply"><code>AnimationState.apply</code><a class="anchor" href="#animationstateapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>(skeleton)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Pose a skeleton from the tracks: it is set to its setup pose, then each track in order is applied on top. Call <code>skeleton.updateWorldTransform()</code> afterwards.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>skeleton</code></td><td><code>import('./skeleton.js').Skeleton</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/state.js:44</sub></p>
+<h3 id="class-attachmenttimeline"><code>class AttachmentTimeline</code><a class="anchor" href="#class-attachmenttimeline" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> AttachmentTimeline <span class="tk-k">extends</span> Timeline</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Switches which attachment a slot shows (or hides it with <code>null</code>). A switch needs at least half the animation's weight, so a fade does not flicker.</p>
+<h4 id="attachmenttimelineconstructor"><code>AttachmentTimeline.constructor</code><a class="anchor" href="#attachmenttimelineconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(slot, times, names)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>slot</code></td><td><code>number</code></td><td></td></tr><tr><td><code>times</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>names</code></td><td><code>(string | null)[]</code></td><td></td></tr></tbody></table></div>
+<h4 id="attachmenttimelineapply"><code>AttachmentTimeline.apply</code><a class="anchor" href="#attachmenttimelineapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>(skeleton, time, alpha)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/animation.js:100</sub></p>
+<h3 id="class-bone"><code>class Bone</code><a class="anchor" href="#class-bone" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Bone</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A bone at run time: its pose now (<code>x</code>, <code>y</code>, <code>rotation</code>, <code>scaleX</code>, <code>scaleY</code>, <code>shearX</code>, <code>shearY</code> are relative to its parent) and where that puts it in the world (<code>worldX</code>, <code>worldY</code>, and <code>a b c d</code>, the matrix of its axes).</p>
+<h4 id="boneconstructor"><code>Bone.constructor</code><a class="anchor" href="#boneconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(data, skeleton, parent)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>BoneData</code></td><td></td></tr><tr><td><code>skeleton</code></td><td><code>Skeleton</code></td><td></td></tr><tr><td><code>parent</code></td><td><code>Bone | null</code></td><td></td></tr></tbody></table></div>
+<h4 id="bonesettosetuppose"><code>Bone.setToSetupPose</code><a class="anchor" href="#bonesettosetuppose" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setToSetupPose</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Put this bone back to the pose it was designed in.</p>
+<h4 id="boneupdateworld"><code>Bone.updateWorld</code><a class="anchor" href="#boneupdateworld" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">updateWorld</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Work out where this bone is in the world from its pose and its parent's (the parent must be up to date).</p>
+<h4 id="boneworldrotation"><code>Bone.worldRotation</code><a class="anchor" href="#boneworldrotation" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> worldRotation</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The direction of the bone's x axis in the world, in degrees.</p>
+<h4 id="bonetip"><code>Bone.tip</code><a class="anchor" href="#bonetip" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tip</span>(out = { x: <span class="tk-n">0</span>, y: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The world position of the far end of the bone (its origin plus its length along its x axis).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>out</code> (optional)</td><td><code>{x: number, y: number}</code></td><td></td></tr></tbody></table></div>
+<h4 id="boneworldtolocal"><code>Bone.worldToLocal</code><a class="anchor" href="#boneworldtolocal" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">worldToLocal</span>(wx, wy, out = { x: <span class="tk-n">0</span>, y: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A point in the world to the same point as this bone sees it (relative to its origin and axes).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>wx</code></td><td><code>number</code></td><td></td></tr><tr><td><code>wy</code></td><td><code>number</code></td><td></td></tr><tr><td><code>out</code> (optional)</td><td><code>{x: number, y: number}</code></td><td></td></tr></tbody></table></div>
+<h4 id="bonelocaltoworld"><code>Bone.localToWorld</code><a class="anchor" href="#bonelocaltoworld" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">localToWorld</span>(lx, ly, out = { x: <span class="tk-n">0</span>, y: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A point in this bone's space to the world.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>lx</code></td><td><code>number</code></td><td></td></tr><tr><td><code>ly</code></td><td><code>number</code></td><td></td></tr><tr><td><code>out</code> (optional)</td><td><code>{x: number, y: number}</code></td><td></td></tr></tbody></table></div>
+<h4 id="bonelocalrotationfor"><code>Bone.localRotationFor</code><a class="anchor" href="#bonelocalrotationfor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">localRotationFor</span>(worldDegrees)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The local <code>rotation</code> that makes this bone's x axis point along <code>worldDegrees</code>, given where its parent is now.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>worldDegrees</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/skeleton.js:31</sub></p>
+<h3 id="class-colortimeline"><code>class ColorTimeline</code><a class="anchor" href="#class-colortimeline" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> ColorTimeline <span class="tk-k">extends</span> Timeline</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Changes a slot's colour: keys of [r, g, b, a] in 0..1 (absolute).</p>
+<h4 id="colortimelineconstructor"><code>ColorTimeline.constructor</code><a class="anchor" href="#colortimelineconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(slot, times, values, curves)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>slot</code></td><td><code>number</code></td><td>Slot index</td></tr><tr><td><code>times</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>values</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td>r, g, b, a for each key</td></tr><tr><td><code>curves</code> (optional)</td><td><code>(null | 'stepped' | number[])[]</code></td><td></td></tr></tbody></table></div>
+<h4 id="colortimelineapply"><code>ColorTimeline.apply</code><a class="anchor" href="#colortimelineapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>(skeleton, time, alpha, blend)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/animation.js:89</sub></p>
+<h3 id="class-deformtimeline"><code>class DeformTimeline</code><a class="anchor" href="#class-deformtimeline" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> DeformTimeline <span class="tk-k">extends</span> Timeline</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Pushes a mesh's points around: keys of one offset for every point (two numbers per point, or for a weighted mesh two per bone influence), added to the setup positions.</p>
+<h4 id="deformtimelineconstructor"><code>DeformTimeline.constructor</code><a class="anchor" href="#deformtimelineconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(slot, attachment, times, frames, curves)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>slot</code></td><td><code>number</code></td><td></td></tr><tr><td><code>attachment</code></td><td><code>object</code></td><td>The mesh this deforms</td></tr><tr><td><code>times</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>frames</code></td><td><code>Float32Array[]</code></td><td>One offset array per key</td></tr><tr><td><code>curves</code> (optional)</td><td><code>(null | 'stepped' | number[])[]</code></td><td></td></tr></tbody></table></div>
+<h4 id="deformtimelineapply"><code>DeformTimeline.apply</code><a class="anchor" href="#deformtimelineapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>(skeleton, time, alpha, blend)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/animation.js:113</sub></p>
+<h3 id="class-drawordertimeline"><code>class DrawOrderTimeline</code><a class="anchor" href="#class-drawordertimeline" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> DrawOrderTimeline <span class="tk-k">extends</span> Timeline</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Reorders the slots for drawing: keys of a full order (slot indexes back to front), or <code>null</code> for the setup order.</p>
+<h4 id="drawordertimelineconstructor"><code>DrawOrderTimeline.constructor</code><a class="anchor" href="#drawordertimelineconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(times, orders)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>times</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>orders</code></td><td><code>(number[] | null)[]</code></td><td></td></tr></tbody></table></div>
+<h4 id="drawordertimelineapply"><code>DrawOrderTimeline.apply</code><a class="anchor" href="#drawordertimelineapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>(skeleton, time, alpha)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/animation.js:132</sub></p>
+<h3 id="class-eventtimeline"><code>class EventTimeline</code><a class="anchor" href="#class-eventtimeline" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> EventTimeline <span class="tk-k">extends</span> Timeline</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Marks moments for the game to react to (a footstep, a sword hit): keys of an event. Not applied to the pose; <code>Animation.collectEvents</code> finds the ones that passed.</p>
+<h4 id="eventtimelineconstructor"><code>EventTimeline.constructor</code><a class="anchor" href="#eventtimelineconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(times, events)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>times</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>events</code></td><td><code>{name: string, int: number, float: number, string: string}[]</code></td><td></td></tr></tbody></table></div>
+<h4 id="eventtimelineapply"><code>EventTimeline.apply</code><a class="anchor" href="#eventtimelineapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/animation.js:158</sub></p>
+<h3 id="class-ikconstraint"><code>class IkConstraint</code><a class="anchor" href="#class-ikconstraint" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> IkConstraint</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The pose of a two-bone or one-bone IK constraint right now.</p>
+<h4 id="ikconstraintconstructor"><code>IkConstraint.constructor</code><a class="anchor" href="#ikconstraintconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(data, skeleton)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>object</code></td><td></td></tr><tr><td><code>skeleton</code></td><td><code>Skeleton</code></td><td></td></tr></tbody></table></div>
+<h4 id="ikconstraintsettosetuppose"><code>IkConstraint.setToSetupPose</code><a class="anchor" href="#ikconstraintsettosetuppose" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setToSetupPose</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="ikconstraintapply"><code>IkConstraint.apply</code><a class="anchor" href="#ikconstraintapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Turn the bones so the end of the chain reaches the target (as far as it can). Call after the bones' world transforms are up to date; the chain is brought up to date again.</p>
+<p><sub>src/skeleton.js:124</sub></p>
+<h3 id="class-iktimeline"><code>class IkTimeline</code><a class="anchor" href="#class-iktimeline" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> IkTimeline <span class="tk-k">extends</span> Timeline</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Changes an IK constraint: keys of its mix (0 off, 1 fully on) and bend direction (1 or -1).</p>
+<h4 id="iktimelineconstructor"><code>IkTimeline.constructor</code><a class="anchor" href="#iktimelineconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(ik, times, mixes, bends, curves)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>ik</code></td><td><code>number</code></td><td></td></tr><tr><td><code>times</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>mixes</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>bends</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>curves</code> (optional)</td><td><code>(null | 'stepped' | number[])[]</code></td><td></td></tr></tbody></table></div>
+<h4 id="iktimelineapply"><code>IkTimeline.apply</code><a class="anchor" href="#iktimelineapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>(skeleton, time, alpha)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/animation.js:145</sub></p>
+<h3 id="class-rotatetimeline"><code>class RotateTimeline</code><a class="anchor" href="#class-rotatetimeline" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> RotateTimeline <span class="tk-k">extends</span> Timeline</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Turns a bone: keys of one angle (degrees, relative to the setup rotation).</p>
+<h4 id="rotatetimelineconstructor"><code>RotateTimeline.constructor</code><a class="anchor" href="#rotatetimelineconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(bone, times, values, curves)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bone</code></td><td><code>number</code></td><td>Bone index</td></tr><tr><td><code>times</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>values</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>curves</code> (optional)</td><td><code>(null | 'stepped' | number[])[]</code></td><td></td></tr></tbody></table></div>
+<h4 id="rotatetimelineapply"><code>RotateTimeline.apply</code><a class="anchor" href="#rotatetimelineapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>(skeleton, time, alpha, blend)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/animation.js:60</sub></p>
+<h3 id="class-skeleton"><code>class Skeleton</code><a class="anchor" href="#class-skeleton" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Skeleton</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The runtime copy of a skeleton: poses, slot colours and shown attachments, constraints. Animations change its bones' and slots' fields; <code>updateWorldTransform()</code> then works out where everything is.</p>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> skeleton = <span class="tk-k">new</span> <span class="tk-f">Skeleton</span>(data);
+skeleton.x = <span class="tk-n">200</span>; skeleton.y = <span class="tk-n">300</span>;                <span class="tk-c">// where its root bone stands</span>
+state.<span class="tk-f">update</span>(dt); state.<span class="tk-f">apply</span>(skeleton);            <span class="tk-c">// an AnimationState poses it</span>
+skeleton.<span class="tk-f">updateWorldTransform</span>();
+<span class="tk-f">drawSkeleton</span>(skeleton, meshes, atlas);</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="skeletonconstructor"><code>Skeleton.constructor</code><a class="anchor" href="#skeletonconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(data)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>import('./loader.js').SkeletonData</code></td><td></td></tr></tbody></table></div>
+<h4 id="skeletonfindbone"><code>Skeleton.findBone</code><a class="anchor" href="#skeletonfindbone" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">findBone</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="skeletonfindslot"><code>Skeleton.findSlot</code><a class="anchor" href="#skeletonfindslot" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">findSlot</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="skeletonfindik"><code>Skeleton.findIk</code><a class="anchor" href="#skeletonfindik" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">findIk</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="skeletonsettosetuppose"><code>Skeleton.setToSetupPose</code><a class="anchor" href="#skeletonsettosetuppose" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setToSetupPose</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Everything back to how it was designed: bones, slot colours and attachments, draw order, constraint settings.</p>
+<h4 id="skeletonsetskin"><code>Skeleton.setSkin</code><a class="anchor" href="#skeletonsetskin" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setSkin</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Show a skin (a different set of pictures for the same bones: another outfit). Slots keep their attachment names, so a name the new skin has is shown from the new skin.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string | null</code></td><td><code>null</code> goes back to the default skin.</td></tr></tbody></table></div>
+<h4 id="skeletonattachmentof"><code>Skeleton.attachmentOf</code><a class="anchor" href="#skeletonattachmentof" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">attachmentOf</span>(slot)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The attachment a slot is showing now (from the current skin, else the default), or null.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>slot</code></td><td><code>Slot</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Attachment \| null</code></p>
+<h4 id="skeletonsetattachment"><code>Skeleton.setAttachment</code><a class="anchor" href="#skeletonsetattachment" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setAttachment</span>(slotName, name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Make a slot show the attachment called <code>name</code> (or none).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>slotName</code></td><td><code>string</code></td><td></td></tr><tr><td><code>name</code></td><td><code>string | null</code></td><td></td></tr></tbody></table></div>
+<h4 id="skeletonupdateworldtransform"><code>Skeleton.updateWorldTransform</code><a class="anchor" href="#skeletonupdateworldtransform" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">updateWorldTransform</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Work out where every bone is in the world (and apply the IK constraints). Call after posing and after moving the skeleton.</p>
+<h4 id="skeletonboneworld"><code>Skeleton.boneWorld</code><a class="anchor" href="#skeletonboneworld" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">boneWorld</span>(boneName)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Where a bone's tip or origin is: handy for attaching a sword, a particle emitter or a camera.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>boneName</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{x: number, y: number, rotation: number}</code></p>
+<p><sub>src/skeleton.js:180</sub></p>
+<h3 id="class-skeletondata"><code>class SkeletonData</code><a class="anchor" href="#class-skeletondata" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> SkeletonData</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The designed skeleton: bones, slots, constraints, skins, events and animations. Shared by every <code>Skeleton</code> made from it.</p>
+<h4 id="skeletondataconstructor"><code>SkeletonData.constructor</code><a class="anchor" href="#skeletondataconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(name = <span class="tk-s">''</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="skeletondatafindbone"><code>SkeletonData.findBone</code><a class="anchor" href="#skeletondatafindbone" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">findBone</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="skeletondatafindslot"><code>SkeletonData.findSlot</code><a class="anchor" href="#skeletondatafindslot" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">findSlot</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h4 id="skeletondataanimation"><code>SkeletonData.animation</code><a class="anchor" href="#skeletondataanimation" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">animation</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Animation</code></p>
+<p><sub>src/loader.js:58</sub></p>
+<h3 id="class-skin"><code>class Skin</code><a class="anchor" href="#class-skin" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Skin</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The pictures of one outfit: attachments by slot and name.</p>
+<h4 id="skinconstructor"><code>Skin.constructor</code><a class="anchor" href="#skinconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<h4 id="skinset"><code>Skin.set</code><a class="anchor" href="#skinset" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">set</span>(slot, name, attachment)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>slot</code></td><td><code>number</code></td><td></td></tr><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr><tr><td><code>attachment</code></td><td><code>import('./skeleton.js').Attachment</code></td><td></td></tr></tbody></table></div>
+<h4 id="skinget"><code>Skin.get</code><a class="anchor" href="#skinget" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span>(slot, name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>slot</code></td><td><code>number</code></td><td></td></tr><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/loader.js:48</sub></p>
+<h3 id="class-slot"><code>class Slot</code><a class="anchor" href="#class-slot" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Slot</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A place on a bone where a picture hangs: its colour now, which attachment it shows, and how that attachment is deformed.</p>
+<h4 id="slotconstructor"><code>Slot.constructor</code><a class="anchor" href="#slotconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(data, bone)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>SlotData</code></td><td></td></tr><tr><td><code>bone</code></td><td><code>Bone</code></td><td></td></tr></tbody></table></div>
+<h4 id="slotsettosetuppose"><code>Slot.setToSetupPose</code><a class="anchor" href="#slotsettosetuppose" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">setToSetupPose</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/skeleton.js:111</sub></p>
+<h3 id="class-trackentry"><code>class TrackEntry</code><a class="anchor" href="#class-trackentry" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> TrackEntry</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>One animation playing (or waiting) on a track. Change <code>timeScale</code>, <code>alpha</code>, <code>blend</code> or <code>time</code> to steer it.</p>
+<h4 id="trackentryconstructor"><code>TrackEntry.constructor</code><a class="anchor" href="#trackentryconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(animation, track, loop)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>animation</code></td><td><code>Animation</code></td><td></td></tr><tr><td><code>track</code></td><td><code>number</code></td><td></td></tr><tr><td><code>loop</code></td><td><code>boolean</code></td><td></td></tr></tbody></table></div>
+<h4 id="trackentryfinished"><code>TrackEntry.finished</code><a class="anchor" href="#trackentryfinished" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> finished</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Is this the animation that has finished playing (non-looping and at its end)?</p>
+<p><sub>src/state.js:23</sub></p>
+<h3 id="class-vec2timeline"><code>class Vec2Timeline</code><a class="anchor" href="#class-vec2timeline" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Vec2Timeline <span class="tk-k">extends</span> Timeline</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Moves, resizes or shears a bone: keys of an (x, y) pair. <code>kind</code> is <code>'translate'</code> (relative to the setup position), <code>'scale'</code> (a multiplier of the setup scale) or <code>'shear'</code> (degrees, relative).</p>
+<h4 id="vec2timelineconstructor"><code>Vec2Timeline.constructor</code><a class="anchor" href="#vec2timelineconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(kind, bone, times, values, curves)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>kind</code></td><td><code>'translate' | 'scale' | 'shear'</code></td><td></td></tr><tr><td><code>bone</code></td><td><code>number</code></td><td></td></tr><tr><td><code>times</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td></td></tr><tr><td><code>values</code></td><td><code>ArrayLike&lt;number&gt;</code></td><td>x, y for each key</td></tr><tr><td><code>curves</code> (optional)</td><td><code>(null | 'stepped' | number[])[]</code></td><td></td></tr></tbody></table></div>
+<h4 id="vec2timelineapply"><code>Vec2Timeline.apply</code><a class="anchor" href="#vec2timelineapply" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">apply</span>(skeleton, time, alpha, blend)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p><sub>src/animation.js:73</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="blend"><code>BLEND</code><a class="anchor" href="#blend" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> BLEND</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Which way keys are applied. <code>replace</code> moves the pose toward the animation (with <code>alpha</code> 1, to it); <code>add</code> adds the animation's change from the setup pose on top of the pose.</p>
+<p>Value: <code>Object.freeze({ replace: 'replace', add: 'add' })</code></p>
+<p><sub>src/animation.js:11</sub></p>
+<h3 id="inherit"><code>INHERIT</code><a class="anchor" href="#inherit" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> INHERIT</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How a bone takes on its parent's movement. <code>normal</code> follows all of it; <code>onlyTranslation</code> follows only where the parent is; <code>noRotationOrReflection</code> ignores the parent's turning; <code>noScale</code> ignores its size; <code>noScaleOrReflection</code> ignores its size and mirroring.</p>
+<p>Value: <code>Object.freeze({ normal: 0, onlyTranslation: 1, noRotationOrReflection: 2, noScal</code></p>
+<p><sub>src/skeleton.js:9</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="attachment"><code>Attachment</code><a class="anchor" href="#attachment" aria-label="Link to this section">#</a></h3>
+<p>A picture hung on a slot. <code>region</code>: one sprite from the atlas. <code>mesh</code>: a sprite cut into triangles whose points follow bones and can be pushed around by deform animations. <code>boundingbox</code>: an invisible outline for hit tests.</p>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>type</code></td><td><code>'region' | 'mesh' | 'boundingbox'</code></td><td></td></tr><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr><tr><td><code>path</code></td><td><code>string</code></td><td>The atlas sprite name</td></tr><tr><td><code>color</code></td><td><code>number[]</code></td><td></td></tr></tbody></table></div>
+<h3 id="bonedata"><code>BoneData</code><a class="anchor" href="#bonedata" aria-label="Link to this section">#</a></h3>
+<p>One bone of the skeleton as designed (its pose at rest: the &quot;setup pose&quot;).</p>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>index</code></td><td><code>number</code></td><td></td></tr><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr><tr><td><code>parent</code></td><td><code>BoneData | null</code></td><td></td></tr><tr><td><code>length</code></td><td><code>number</code></td><td>Length along its own x axis (for drawing and for IK)</td></tr><tr><td><code>x</code></td><td><code>number</code></td><td></td></tr><tr><td><code>y</code></td><td><code>number</code></td><td></td></tr><tr><td><code>rotation</code></td><td><code>number</code></td><td></td></tr><tr><td><code>scaleX</code></td><td><code>number</code></td><td></td></tr><tr><td><code>scaleY</code></td><td><code>number</code></td><td></td></tr><tr><td><code>shearX</code></td><td><code>number</code></td><td></td></tr><tr><td><code>shearY</code></td><td><code>number</code></td><td></td></tr><tr><td><code>inherit</code></td><td><code>number</code></td><td>One of <code>INHERIT</code>.</td></tr></tbody></table></div>
+<h3 id="slotdata"><code>SlotData</code><a class="anchor" href="#slotdata" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>index</code></td><td><code>number</code></td><td></td></tr><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr><tr><td><code>bone</code></td><td><code>BoneData</code></td><td></td></tr><tr><td><code>color</code></td><td><code>number[]</code></td><td>Setup colour [r, g, b, a] in 0..1</td></tr><tr><td><code>attachment</code></td><td><code>string | null</code></td><td>The attachment shown at rest</td></tr><tr><td><code>blend</code></td><td><code>'normal' | 'additive'</code></td><td></td></tr></tbody></table></div><div class="pager"><a href="render.html"><small>Previous</small>render</a><a class="next" href="particles.html"><small>Next</small>particles</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-29-of-29-documented">Contents (29 of 29 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#angledelta">angleDelta</a><a class="l3" href="#attachmentworldvertices">attachmentWorldVertices</a><a class="l3" href="#curvefraction">curveFraction</a><a class="l3" href="#drawskeleton">drawSkeleton</a><a class="l3" href="#frameindex">frameIndex</a><a class="l3" href="#hittest">hitTest</a><a class="l3" href="#parseskeleton">parseSkeleton</a><a class="l3" href="#parseskeletoncolor">parseSkeletonColor</a><a class="l3" href="#pointinpolygon">pointInPolygon</a><a class="l3" href="#skeletonbounds">skeletonBounds</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-animation">class Animation</a><a class="l3" href="#class-animationstate">class AnimationState</a><a class="l3" href="#class-attachmenttimeline">class AttachmentTimeline</a><a class="l3" href="#class-bone">class Bone</a><a class="l3" href="#class-colortimeline">class ColorTimeline</a><a class="l3" href="#class-deformtimeline">class DeformTimeline</a><a class="l3" href="#class-drawordertimeline">class DrawOrderTimeline</a><a class="l3" href="#class-eventtimeline">class EventTimeline</a><a class="l3" href="#class-ikconstraint">class IkConstraint</a><a class="l3" href="#class-iktimeline">class IkTimeline</a><a class="l3" href="#class-rotatetimeline">class RotateTimeline</a><a class="l3" href="#class-skeleton">class Skeleton</a><a class="l3" href="#class-skeletondata">class SkeletonData</a><a class="l3" href="#class-skin">class Skin</a><a class="l3" href="#class-slot">class Slot</a><a class="l3" href="#class-trackentry">class TrackEntry</a><a class="l3" href="#class-vec2timeline">class Vec2Timeline</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#blend">BLEND</a><a class="l3" href="#inherit">INHERIT</a><a class="l2" href="#types">Types</a><a class="l3" href="#attachment">Attachment</a><a class="l3" href="#bonedata">BoneData</a><a class="l3" href="#slotdata">SlotData</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

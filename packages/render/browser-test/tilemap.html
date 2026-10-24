@@ -1,0 +1,96 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Tile map self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { Atlas, Camera, SpriteBatch, createRenderer, TileMap, TileSet, drawTileMap, FLIP_H, FLIP_V, FLIP_D } from '../src/index.js';
+
+const W = 256, H = 96, CELL = 16, ZOOM = 2;
+const CLEAR = [0, 0, 0, 1];
+const COLOURS = { '-1,-1': [255, 0, 0], '1,-1': [0, 255, 0], '-1,1': [0, 0, 255], '1,1': [255, 255, 0] };   // by source corner
+const atlas = new Atlas({ size: 128 });
+// four tiles of 8 x 8: tile 0 has a different colour in each quarter; tile 1 and 2 are solid (animation frames); tile 3 is solid white
+const sheet = atlas.add('sheet', 32, 8, (g, x, y) => {
+  g.fillStyle = '#f00'; g.fillRect(x, y, 4, 4); g.fillStyle = '#0f0'; g.fillRect(x + 4, y, 4, 4);
+  g.fillStyle = '#00f'; g.fillRect(x, y + 4, 4, 4); g.fillStyle = '#ff0'; g.fillRect(x + 4, y + 4, 4, 4);
+  g.fillStyle = '#0ff'; g.fillRect(x + 8, y, 8, 8); g.fillStyle = '#f0f'; g.fillRect(x + 16, y, 8, 8); g.fillStyle = '#fff'; g.fillRect(x + 24, y, 8, 8);
+});
+
+function read(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d');
+  g.drawImage(renderer.canvas, 0, 0);
+  return (x, y) => [...g.getImageData(x, y, 1, 1).data.slice(0, 3)];
+}
+const near = (a, b, tol = 8) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
+
+async function check(kind) {
+  const out = { kind, checks: {} };
+  const add = (name, ok, got, want) => { out.checks[name] = { ok, got, want }; };
+  try {
+    const renderer = await createRenderer({ atlas, prefer: [kind] });
+    if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+    document.body.append(renderer.canvas);
+    renderer.resize(W, H, 1);
+    const map = new TileMap({ tileW: CELL });
+    const tiles = map.addTileset(TileSet.fromSheet(sheet, { tileW: 8, tileH: 8, drawW: CELL, drawH: CELL }));
+    tiles.animate(1, [{ id: 1, ms: 100 }, { id: 2, ms: 100 }]);
+    const layer = map.addLayer({ name: 'flips' });
+    // eight flip combinations on the picture with four colours, in a row at y 0; row 1: an animated tile; and a faraway region to show the map can be huge
+    const flagsOf = (f) => ((f & 4 ? FLIP_H : 0) | (f & 2 ? FLIP_V : 0) | (f & 1 ? FLIP_D : 0)) >>> 0;
+    for (let f = 0; f < 8; f++) layer.set(f, 0, (1 | flagsOf(f)) >>> 0);
+    layer.set(0, 1, 2);                                      // gid 2 is tile 1, the animated one
+    layer.fill(-1000, -1000, 2000, 1000, 4);                // 1.8 million tiles far away, which must cost nothing
+    const camera = new Camera({ x: 64, y: 16, zoom: ZOOM, viewW: W, viewH: H });
+    const batch = new SpriteBatch(256);
+    const frame = (time) => { batch.clear(); const t0 = performance.now(); const n = drawTileMap(batch, map, camera, { time }); out.drawMs = performance.now() - t0; renderer.render({ camera, batch, clear: CLEAR }); return n; };
+    const n = frame(0);
+    const px = read(renderer);
+    const screenOf = (wx, wy) => [Math.round((wx - 64) * ZOOM + W / 2), Math.round((wy - 16) * ZOOM + H / 2)];
+    let bad = 0, first = '';
+    for (let f = 0; f < 8; f++) {
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        let d = [sx, sy];                                    // where Tiled puts this source corner
+        if (f & 1) d = [d[1], d[0]];
+        if (f & 4) d = [-d[0], d[1]];
+        if (f & 2) d = [d[0], -d[1]];
+        const [x, y] = screenOf(f * CELL + 8 + d[0] * 4, 8 + d[1] * 4);
+        const got = px(x, y), want = COLOURS[`${sx},${sy}`];
+        if (!near(got, want)) { bad++; first += `; flags ${f}, corner ${sx},${sy}: got ${got} want ${want}`; }
+      }
+    }
+    add('all eight flip combinations show each quarter of the picture where Tiled puts it (32 pixels)', bad === 0, first || 'ok', 'ok');
+    const [ax, ay] = screenOf(8, CELL + 8);
+    add('an animated tile shows its first frame, then its second', near(px(ax, ay), [0, 255, 255]), px(ax, ay), [0, 255, 255]);
+    frame(0.15);
+    add('...and the second frame a moment later', near(read(renderer)(ax, ay), [255, 0, 255]), read(renderer)(ax, ay), [255, 0, 255]);
+    const [wx, wy] = screenOf(8 + CELL * 5, -8);
+    add('a tile of the huge layer in view is drawn (white)', near(read(renderer)(wx, wy), [255, 255, 255]), read(renderer)(wx, wy), [255, 255, 255]);
+    add('only the tiles in view were added to the batch, out of 1.8 million', n < 600, n, '< 600');
+    add('drawing the huge map took well under a frame (cached chunks)', out.drawMs < 8, out.drawMs, '< 8 ms');
+    // a changed tile shows at once
+    layer.set(0, 1, 4);
+    frame(0);
+    add('changing a tile changes the picture', near(read(renderer)(ax, ay), [255, 255, 255]), read(renderer)(ax, ay), [255, 255, 255]);
+    frame(0);
+    out.samples = [];
+    const img = read(renderer);
+    for (let y = 1; y < H; y += 6) for (let x = 1; x < W; x += 6) out.samples.push(...img(x, y));
+    out.lastError = renderer.lastError ?? '';
+    out.ok = Object.values(out.checks).every((c) => c.ok) && !out.lastError;
+    renderer.destroy?.();
+  } catch (e) {
+    out.unavailable = String(e.message ?? e);
+    out.stack = String(e.stack ?? '');
+  }
+  return out;
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2', 'canvas2d']) results.push(await check(kind));
+await fetch('/report', { method: 'POST', body: JSON.stringify({ results, userAgent: navigator.userAgent }) });
+</script>

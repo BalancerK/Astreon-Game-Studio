@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>studio probe</title></head>
+<body>
+<iframe id="f" src="/studio/index.html" style="width:1280px;height:800px;border:0"></iframe>
+<script type="module">
+const f = document.getElementById('f');
+const steps = [];
+const errors = [];
+const ok = (name, pass, detail = '') => steps.push({ name, ok: !!pass, detail: String(detail).slice(0, 200) });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const until = async (fn, ms = 15000) => { const end = Date.now() + ms; while (Date.now() < end) { try { if (await fn()) return true; } catch {} await sleep(100); } return false; };
+const report = (extra = {}) => fetch('/report', { method: 'POST', body: JSON.stringify({ userAgent: navigator.userAgent, steps, errors, ...extra }) });
+f.addEventListener('load', () => { try { f.contentWindow.addEventListener('error', (e) => errors.push(String(e.message))); f.contentWindow.addEventListener('unhandledrejection', (e) => errors.push(`rejection: ${e.reason?.message ?? e.reason}`)); } catch {} });
+try {
+  ok('the studio boots', await until(() => f.contentWindow.studio, 25000));
+  const w = f.contentWindow;
+  const s = w.studio;
+  await s.createProject({ name: 'FF probe', template: 'hero' });
+  ok('the game runs in a worker and draws frames', await until(() => s.runner.status === 'running' && s.runner.frames > 15, 25000), `${s.runner.status} ${s.runner.frames}`);
+  const main = s.project.readText('src/main.js');
+  s.project.write('src/main.js', main.replace('const SPEED = 160', 'const SPEED = 320'));
+  ok('an edit is applied to the running game (hot reload)', await until(() => s.runner.status === 'running' && s.diagnostics.size === 0 && /SPEED = 320/.test(s.project.readText('src/main.js')), 8000));
+  await sleep(1200);
+  s.project.write('src/main.js', main + '\nconst = ;\n');
+  ok('a syntax error is reported with the game still running', await until(() => s.diagnostics.size > 0, 8000));
+  s.project.write('src/main.js', main);
+  ok('fixing it clears the error', await until(() => s.diagnostics.size === 0 && s.runner.status === 'running', 8000));
+  s.runner.key?.('ArrowRight', true); await sleep(700); s.runner.key?.('ArrowRight', false);
+  ok('keys reach the game', (s.runner.summary?.x ?? 0) > 40, JSON.stringify(s.runner.summary));
+  s.dock.show('rules');
+  ok('the Rules panel opens', await until(() => w.document.querySelector('.rules .empty'), 4000));
+  s.dock.show('plugins');
+  ok('the Plugins panel opens', await until(() => w.document.querySelector('.plugins'), 4000));
+  s.dock.show('sprites'); ok('the sprite painter opens', await until(() => w.document.querySelector('.art'), 4000));
+  s.setWorkspace('debug'); s.dock.show('time');
+  ok('the Time Machine sees the game', await until(() => s.runner.timeline && s.runner.timeline.tick > 10, 8000));
+  const r = await s.ship?.measure?.().catch((e) => ({ error: e.message }));
+  ok('Ship can measure the game', !!r && !r.error, JSON.stringify(r ?? {}).slice(0, 120));
+  s.setWorkspace('scene'); s.dock.show('scene3d');
+  ok('the 3D editor starts', await until(() => f.contentDocument.querySelector('.scene3d-frame')?.contentWindow?.__editor, 20000), w.document.querySelector('.scene3d')?.textContent.slice(0, 160));
+  ok('IndexedDB project store is used', await until(async () => (await s.store.list()).length >= 1, 3000));
+  await report({ done: true });
+} catch (e) {
+  ok('probe ran to the end', false, e?.stack ?? e);
+  await report({ done: false });
+}
+</script></body></html>

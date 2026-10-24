@@ -1,0 +1,5 @@
+{
+  "description": "Top-down 2D: move, collect coins, dodge hazards. Fixed timestep, keyboard and gamepad input, a saved best score, tests for the rules.",
+  "engine": ["core", "render", "input", "save", "build"],
+  "scripts": {}
+}
