@@ -8,3 +8,4 @@ export {
 export { canSee, canHear, Memory } from './perception.js';
 export { NavMesh } from './navmesh.js';
 export { Crowd } from './crowd.js';
+export { NavVolume } from './navvolume.js';

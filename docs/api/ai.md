@@ -8,7 +8,7 @@ npm install @engine/ai
 
 Version 0.1.0. The package's own README ([packages/ai](../../packages/ai/README.md)) explains how the pieces fit together; this page lists every export.
 
-## Contents (49 of 49 documented)
+## Contents (50 of 50 documented)
 
 | Name | Kind | Summary |
 |---|---|---|
@@ -24,6 +24,7 @@ Version 0.1.0. The package's own README ([packages/ai](../../packages/ai/README.
 | [`Memory`](#class-memory) | class | What an agent remembers about things it has noticed: where it last saw each, how long ago, and how sure it is. |
 | [`NavGrid`](#class-navgrid) | class | A grid of the walkable floor in a level, built once from its collision triangles: a height per cell, several floors per column (stairs, bridges), cells too close to walls removed for the agent's radius, and links for drops and small gaps. |
 | [`NavMesh`](#class-navmesh) | class | The walkable surface of a level as a mesh of triangles. |
+| [`NavVolume`](#class-navvolume) | class | A three-dimensional navigation volume for one size of agent: add the solid boxes, then ask for paths between points (see the notes at the top of this file). |
 | [`Node`](#class-node) | class | Base class. |
 | [`Parallel`](#class-parallel) | class | Runs all children every tick. |
 | [`PathFollower`](#class-pathfollower) | class | Walks an agent along a path (the points from `findPath`): head for the next point, move on when close, slow down at the end. |
@@ -927,6 +928,132 @@ Whether a straight walk between two points is free of walls (the path can be sho
 
 <sub>src/navmesh.js:75</sub>
 
+### `class NavVolume`
+
+```js
+class NavVolume
+```
+
+A three-dimensional navigation volume for one size of agent: add the solid boxes, then ask for paths between points (see the notes at the top of this file).
+
+#### `NavVolume.constructor`
+
+```js
+constructor({ min, max, cell = 4, radius = 1, height = 5 })
+```
+
+| Name | Type | Description |
+|---|---|---|
+| `o` | `object` |  |
+| `o.min` | `number[]` | The low corner of the space. |
+| `o.max` | `number[]` | The high corner. |
+| `o.cell` (optional) | `number` | The size of a cube, in metres (4). |
+| `o.radius` (optional) | `number` | The agent's half width. |
+| `o.height` (optional) | `number` | The agent's height. The agent's feet are what the cubes hold, so the lowest layer is the floor. |
+
+#### `NavVolume.cellAt`
+
+```js
+cellAt(x, y, z)
+```
+
+The cube number of a point, or -1 outside the space.
+
+| Name | Type | Description |
+|---|---|---|
+| `x` | `number` |  |
+| `y` | `number` |  |
+| `z` | `number` |  |
+
+#### `NavVolume.centerOf`
+
+```js
+centerOf(cell)
+```
+
+Where the agent's feet are for a cube.
+
+| Name | Type | Description |
+|---|---|---|
+| `cell` | `number` |  |
+
+**Returns** `number[]`
+
+#### `NavVolume.addBox`
+
+```js
+addBox(b)
+```
+
+Mark the cubes a box blocks (where the agent's body would touch it).
+
+| Name | Type | Description |
+|---|---|---|
+| `b` | `Box` |  |
+
+#### `NavVolume.addBoxes`
+
+```js
+addBoxes(boxes)
+```
+
+| Name | Type | Description |
+|---|---|---|
+| `boxes` | `Box[]` |  |
+
+#### `NavVolume.free`
+
+```js
+free(x, y, z)
+```
+
+Is the agent allowed to be with its feet here?
+
+| Name | Type | Description |
+|---|---|---|
+| `x` | `number` |  |
+| `y` | `number` |  |
+| `z` | `number` |  |
+
+#### `NavVolume.nearestFree`
+
+```js
+nearestFree(x, y, z, rings = 4)
+```
+
+The nearest free point to somewhere (a spot inside a wall, say), looking outward a few cubes. Returns null if none is near.
+
+#### `NavVolume.lineClear`
+
+```js
+lineClear(a, b)
+```
+
+Is the straight line between two points clear (every step along it is a free place)?
+
+| Name | Type | Description |
+|---|---|---|
+| `a` | `number[]` |  |
+| `b` | `number[]` |  |
+
+#### `NavVolume.findPath`
+
+```js
+findPath(from, to, { maxNodes = 40000, smooth = true } = {})
+```
+
+Find a path. The start and the goal are moved to the nearest free place if they are inside something.
+
+| Name | Type | Description |
+|---|---|---|
+| `from` | `number[]` |  |
+| `to` | `number[]` |  |
+| `o` (optional) | `{maxNodes?: number, smooth?: boolean}` |  |
+
+**Returns** `{status: 'found' \| 'partial' \| 'none', path: number[][], cost: number}` — `partial` means the goal cannot be reached; the path ends as near to it as the search got.
+
+<sub>src/navvolume.js:56</sub>
+
 ### `class Node`
 
 ```js
@@ -1342,6 +1469,21 @@ Value: `{`
 <sub>src/bt.js:241</sub>
 
 ## Types
+
+### `Box`
+
+A solid, with the smaller number first on each axis.
+
+Type: `object`
+
+| Name | Type | Description |
+|---|---|---|
+| `x0` | `number` |  |
+| `x1` | `number` |  |
+| `y0` | `number` |  |
+| `y1` | `number` |  |
+| `z0` | `number` |  |
+| `z1` | `number` |  |
 
 ### `CrowdAgent`
 

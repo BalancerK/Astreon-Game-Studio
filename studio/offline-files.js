@@ -1,12 +1,13 @@
 // Made by tools/studio-offline.js: the files the studio keeps for offline use, and a version made from their contents.
 self.STUDIO_OFFLINE = {
- "version": "7c126874a395",
+ "version": "4935142bd772",
  "files": [
   "packages/ai/src/bt.js",
   "packages/ai/src/crowd.js",
   "packages/ai/src/index.js",
   "packages/ai/src/navgrid.js",
   "packages/ai/src/navmesh.js",
+  "packages/ai/src/navvolume.js",
   "packages/ai/src/path.js",
   "packages/ai/src/perception.js",
   "packages/ai/src/steering.js",
