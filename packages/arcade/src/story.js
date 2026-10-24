@@ -29,6 +29,7 @@
 //   for (const c of takeStoryCommands(game)) if (c.name === 'open-door') ...        // what the story asked the game to do
 //
 // The state of the story is plain data in the game (`game.story`), so saving, rewinding and recordings work.
+import { stripMarkup, layoutMarkup, drawMarkup } from './markup.js';
 import { t as word, hasWord } from './text.js';
 import { getSetting } from './settings.js';
 import { screen } from './screen.js';
@@ -448,26 +449,13 @@ export function stepStory(game, keys, mouse, dt = 1 / 60) {
     return;
   }
   if (!state.line) return;
-  const total = state.line.text.length;
+  const total = stripMarkup(state.line.text).length;
   if (st.shown < total) {
     st.shown = Math.min(total, st.shown + dt * SPEED);
     if (pressed('Enter') || pressed('Space') || mouse?.clicked) st.shown = total;
     return;
   }
   if (pressed('Enter') || pressed('Space') || mouse?.clicked) advanceStory(game);
-}
-
-function wrap(g, text, width) {
-  const lines = [];
-  for (const para of String(text).split('\n')) {
-    let line = '';
-    for (const w of para.split(/\s+/)) {
-      const next = line ? `${line} ${w}` : w;
-      if (line && g.measureText(next).width > width) { lines.push(line); line = w; } else line = next;
-    }
-    lines.push(line);
-  }
-  return lines;
 }
 
 /** Draw the dialogue box at the bottom of the screen (the speaker, the words as they are typed, and the choices), as big as the player's text size says. */
@@ -483,8 +471,9 @@ export function drawStory(g, game, { size = screen() } = {}) {
   g.textAlign = 'left';
   const pad = 12;
   const width = size.width - 24;
-  const textLines = state.line ? wrap(g, state.line.text.slice(0, Math.floor(st.shown)), width - pad * 2) : [];
-  const full = state.line ? wrap(g, state.line.text, width - pad * 2) : [];
+  const font = `${px}px system-ui, sans-serif`;
+  const full = state.line ? layoutMarkup(g, state.line.text, width - pad * 2, font) : [];
+  const textLines = full;
   const options = state.choices ?? [];
   const rows = Math.max(full.length, textLines.length) + options.length;
   const height = pad * 2 + (state.line?.speaker ? px + 4 : 0) + rows * (px + 4);
@@ -497,8 +486,10 @@ export function drawStory(g, game, { size = screen() } = {}) {
   let y = top + pad;
   if (state.line?.speaker) { g.fillStyle = contrast ? '#ffd23c' : '#ffd23c'; g.fillText(state.line.speaker, 12 + pad, y); y += px + 4; }
   g.fillStyle = '#ffffff';
-  for (const line of textLines) { g.fillText(line, 12 + pad, y); y += px + 4; }
-  if (state.line && st.shown >= state.line.text.length) { g.fillStyle = '#8b8bff'; g.textAlign = 'right'; g.fillText('▼', 12 + width - pad, top + height - pad - px); g.textAlign = 'left'; }
+  drawMarkup(g, full, 12 + pad, y, px + 4, { font, color: '#ffffff', shown: st.shown });
+  y += full.length * (px + 4);
+  g.font = font;
+  if (state.line && st.shown >= stripMarkup(state.line.text).length) { g.fillStyle = '#8b8bff'; g.textAlign = 'right'; g.fillText('▼', 12 + width - pad, top + height - pad - px); g.textAlign = 'left'; }
   options.forEach((o, i) => {
     g.fillStyle = i === st.focus ? '#ffd23c' : '#ffffff';
     g.fillText(`${i === st.focus ? '▶' : ' '} ${i + 1}. ${o.text}`, 12 + pad, y);

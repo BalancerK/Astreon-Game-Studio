@@ -8,7 +8,7 @@ npm install @engine/arcade
 
 Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade/README.md)) explains how the pieces fit together; this page lists every export.
 
-## Contents (219 of 219 documented)
+## Contents (223 of 223 documented)
 
 | Name | Kind | Summary |
 |---|---|---|
@@ -72,6 +72,7 @@ Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade
 | [`drawImage`](#drawimage) | function | Draw a picture file. |
 | [`drawLayers`](#drawlayers) | function | Draw the layers. |
 | [`drawLights`](#drawlights) | function | Draw the lights and screen effects. |
+| [`drawMarkup`](#drawmarkup) | function | Draw lines made by `layoutMarkup`, showing only the first `shown` letters (all of them when left out). |
 | [`drawSequence`](#drawsequence) | function | Draw what a sequence puts over the picture: the fade to black and the black bars at the top and bottom. |
 | [`drawSettingsMenu`](#drawsettingsmenu) | function | Draw the menu over the game. |
 | [`drawSprite`](#drawsprite) | function | Draw one frame of a sprite, crisp (no smoothing), stretched to a size. |
@@ -121,6 +122,7 @@ Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade
 | [`language`](#language) | function | The language now chosen ('' before `text()` is called). |
 | [`languages`](#languages) | function | The language codes in a table, the first one being the one every other falls back to. |
 | [`layerProblems`](#layerproblems) | function | Say what is wrong with a set of layers, as short sentences (an empty list when it is fine). |
+| [`layoutMarkup`](#layoutmarkup) | function | Break marked-up words into lines that fit a width, as runs of letters that share a look. |
 | [`layoutUi`](#layoutui) | function | Every widget of a screen with the box it covers: `[{ widget, x, y, w, h }]`, in drawing order (the last is on top). |
 | [`lightProblems`](#lightproblems) | function | Say what is wrong with a lights file, as short sentences (an empty list when it is fine). |
 | [`loadMap`](#loadmap) | function | Fill the game with things from a picture made of letters. |
@@ -145,6 +147,7 @@ Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade
 | [`newKey`](#newkey) | function | The key that was pressed since the last time this was asked (for "press the key you want"), or null. |
 | [`openSettingsMenu`](#opensettingsmenu) | function | Open the menu. |
 | [`overlaps`](#overlaps) | function | Every thing of a kind that overlaps this one. |
+| [`parseMarkup`](#parsemarkup) | function | Read marked-up words into one entry per visible letter. |
 | [`parseStory`](#parsestory) | function | Read a story into instructions for each node, with everything wrong with it. |
 | [`patrol`](#patrol) | function | Walk back and forth along the ground: an enemy that turns round at a wall and at the end of a ledge. |
 | [`placeOf`](#placeof) | function | Where a widget is on a screen of this size: the corner, edge or middle it is pinned to, then pushed in by x and y. |
@@ -215,6 +218,7 @@ Version 0.1.0. The package's own README ([packages/arcade](../../packages/arcade
 | [`storyState`](#storystate) | function | What the story is saying now: `{ line: {speaker, text, id} \| null, choices: [{text, id, index}] \| null, ended, node }`. |
 | [`storyVar`](#storyvar) | function | The story's own numbers and flags (`trust`, `hasKey`): read one from the game. |
 | [`stream`](#stream) | function | Keep an effect going: call it every tick and it makes `rate` particles a second (the part of a particle that does not fit in this tick is kept for the next, so the rate is right at any frame rate). |
+| [`stripMarkup`](#stripmarkup) | function | The words with the tags taken out. |
 | [`t`](#t) | function | The words for a key in the chosen language. |
 | [`takeSequenceCommands`](#takesequencecommands) | function | What the sequence has asked the game to do (`command` events), once: the list is emptied. |
 | [`takeStoryCommands`](#takestorycommands) | function | What the story has asked the game to do (`<<do open-door>>`), once: the list is emptied. |
@@ -252,7 +256,7 @@ function advanceStory(game)
 
 Go on from a line (nothing happens while a choice is waiting).
 
-<sub>src/story.js:390</sub>
+<sub>src/story.js:391</sub>
 
 ### `all`
 
@@ -494,7 +498,7 @@ function chooseStory(game, index)
 
 Pick one of the choices on offer (by its place in the list shown).
 
-<sub>src/story.js:397</sub>
+<sub>src/story.js:398</sub>
 
 ### `cleanBehavior`
 
@@ -922,6 +926,29 @@ Draw the lights and screen effects. Call it after `drawThings` (and before the t
 
 <sub>src/lights.js:161</sub>
 
+### `drawMarkup`
+
+```js
+function drawMarkup(g, lines, x, y, lineHeight, { font, color = '#ffffff', shown = Infinity })
+```
+
+Draw lines made by `layoutMarkup`, showing only the first `shown` letters (all of them when left out).
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `g` | `CanvasRenderingContext2D` |  |
+| `lines` | `ReturnType<typeof layoutMarkup>` |  |
+| `x` | `number` | left edge |
+| `y` | `number` | top of the first line |
+| `lineHeight` | `number` |  |
+| `look` | `{font: string, color?: string, shown?: number}` |  |
+
+**Returns** `number` — how many letters were drawn
+
+<sub>src/markup.js:98</sub>
+
 ### `drawSequence`
 
 ```js
@@ -981,7 +1008,7 @@ function drawStory(g, game, { size = screen() } = {})
 
 Draw the dialogue box at the bottom of the screen (the speaker, the words as they are typed, and the choices), as big as the player's text size says.
 
-<sub>src/story.js:474</sub>
+<sub>src/story.js:462</sub>
 
 ### `drawThings`
 
@@ -1659,6 +1686,27 @@ Say what is wrong with a set of layers, as short sentences (an empty list when i
 
 <sub>src/camera.js:194</sub>
 
+### `layoutMarkup`
+
+```js
+function layoutMarkup(g, source, width, font)
+```
+
+Break marked-up words into lines that fit a width, as runs of letters that share a look.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `g` | `CanvasRenderingContext2D` |  |
+| `source` | `string` | the words, with tags |
+| `width` | `number` | the most a line may be, in pixels |
+| `font` | `string` | the plain font, like "16px system-ui" (bold and italic are put in front of it) |
+
+**Returns** `Array<Array<{text: string, color: string \| null, bold: boolean, italic: boolean}>>` — lines of runs
+
+<sub>src/markup.js:53</sub>
+
 ### `layoutUi`
 
 ```js
@@ -2097,6 +2145,24 @@ Every thing of a kind that overlaps this one.
 
 <sub>src/things.js:103</sub>
 
+### `parseMarkup`
+
+```js
+function parseMarkup(source)
+```
+
+Read marked-up words into one entry per visible letter.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `source` | `string` | the words with tags in them |
+
+**Returns** `Array<{c: string, color: string \| null, bold: boolean, italic: boolean}>`
+
+<sub>src/markup.js:15</sub>
+
 ### `parseStory`
 
 ```js
@@ -2113,7 +2179,7 @@ Read a story into instructions for each node, with everything wrong with it.
 
 **Returns** `{nodes: Object<string, {code: object[], ids: string[]}>, order: string[], problems: {line: number, node: string, kind: string, message: string}[], edges: {from: string, to: string, label: string}[], sets: string[], reads: string[]}`
 
-<sub>src/story.js:131</sub>
+<sub>src/story.js:132</sub>
 
 ### `patrol`
 
@@ -2646,7 +2712,7 @@ function setStoryVar(game, name, value)
 
 Set one of the story's numbers or flags from the game (the story can then ask about it with `<<if hasKey>>`).
 
-<sub>src/story.js:410</sub>
+<sub>src/story.js:411</sub>
 
 ### `settings`
 
@@ -2935,7 +3001,7 @@ Begin a story at a node.
 | `node` (optional) | `string` |  |
 | `vars` (optional) | `Object<string, number \| string \| boolean>` | starting values (a number the game knows, such as `coins`) |
 
-<sub>src/story.js:372</sub>
+<sub>src/story.js:373</sub>
 
 ### `steer`
 
@@ -3083,7 +3149,7 @@ Handle one tick: Enter, Space or a click finishes the line being typed, then goe
 | `mouse` (optional) | `{clicked?: boolean}` |  |
 | `dt` (optional) | `number` |  |
 
-<sub>src/story.js:435</sub>
+<sub>src/story.js:436</sub>
 
 ### `stopMusic`
 
@@ -3103,7 +3169,7 @@ function story(text)
 
 Read a story and keep it for `startStory`. Returns what is wrong with it (an empty list when it is fine).
 
-<sub>src/story.js:319</sub>
+<sub>src/story.js:320</sub>
 
 ### `storyActive`
 
@@ -3113,7 +3179,7 @@ function storyActive(game)
 
 Is a story going?
 
-<sub>src/story.js:422</sub>
+<sub>src/story.js:423</sub>
 
 ### `storyProblems`
 
@@ -3124,7 +3190,7 @@ function storyProblems(parsed, start = 'start')
 Look a parsed story over: what could not be read, nodes nothing leads to, variables that are asked about but never set (probably a typo), nodes with nothing in them, and a
 node that only sends you to itself.
 
-<sub>src/story.js:294</sub>
+<sub>src/story.js:295</sub>
 
 ### `storyState`
 
@@ -3134,7 +3200,7 @@ function storyState(game)
 
 What the story is saying now: `{ line: {speaker, text, id} | null, choices: [{text, id, index}] | null, ended, node }`. The words are translated and filled in.
 
-<sub>src/story.js:378</sub>
+<sub>src/story.js:379</sub>
 
 ### `storyVar`
 
@@ -3144,7 +3210,7 @@ function storyVar(game, name)
 
 The story's own numbers and flags (`trust`, `hasKey`): read one from the game.
 
-<sub>src/story.js:407</sub>
+<sub>src/story.js:408</sub>
 
 ### `stream`
 
@@ -3169,6 +3235,24 @@ rate is right at any frame rate). Give each flame its own `key` when there are s
 **Returns** `number` — how many particles were made this tick
 
 <sub>src/particles.js:102</sub>
+
+### `stripMarkup`
+
+```js
+function stripMarkup(source)
+```
+
+The words with the tags taken out.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `source` | `string` |  |
+
+**Returns** `string`
+
+<sub>src/markup.js:43</sub>
 
 ### `t`
 
@@ -3205,7 +3289,7 @@ function takeStoryCommands(game)
 
 What the story has asked the game to do (`<<do open-door>>`), once: the list is emptied.
 
-<sub>src/story.js:415</sub>
+<sub>src/story.js:416</sub>
 
 ### `test`
 

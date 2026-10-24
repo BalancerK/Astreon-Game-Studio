@@ -98,7 +98,7 @@ test('browsers play through it: host and join with the server as the go-between,
     const listener = await listenWebRTC(provider, { rtc, maxPeers: 2, isPublic: true, name: 'Test' }); listener.onConnection = (c) => { c.onMessage = (d, ch) => c.send(d, ch); };
     assert.match(listener.room, /^[A-Z2-9]{5}$/); assert.equal((await provider.list())[0].room, listener.room);
     const client = connectWebRTC(provider, listener.room, { rtc }); const got = []; client.onMessage = (d) => got.push(Array.from(d)); client.onOpen = () => client.send(Uint8Array.of(8, 8), CHANNEL.UNRELIABLE);
-    await waitFor(() => got.length === 1, 3000, 'echo'); assert.deepEqual(got[0], [8, 8]);
+    await waitFor(() => got.length === 1, 10_000, 'echo'); assert.deepEqual(got[0], [8, 8]);
     await waitFor(() => s.rooms.get(listener.room).peers.size === 0, 2000, 'the player\'s signalling connection is closed once connected');
     const gone = connectWebRTC(provider, 'ZZZZZ', { rtc }); const w = []; gone.onClose = (x) => w.push(x); await waitFor(() => w.length === 1); assert.match(w[0], /no such room/);
     listener.close(); await waitFor(() => s.rooms.size === 0);

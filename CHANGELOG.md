@@ -4,6 +4,8 @@ All packages are released together under one version number. `node tools/release
 
 ## Unreleased
 
+- Dialogue boxes understand a little markup: `[b]bold[/b]`, `[i]leaning[/i]` and `[color=#ff6b6b]coloured[/color]` words (`parseMarkup`, `stripMarkup`, `layoutMarkup`, `drawMarkup` in the arcade kit). Tags do not count as letters for the typewriter, and the text no longer re-wraps while it is typed.
+
 - Arcade lights now cast **shadows** and can have a strong **core**: list the kinds of thing that block light in `screen.occluders`, and each light's glow is cut by their shadows (`light.shadows: false` opts a light out; `light.core` keeps full strength out to that fraction of the radius). `shadowShapes` is exported. The Lights panel has the matching controls. Files without these fields draw exactly as before.
 
 - Studio: **Play with a friend** panel. Two browsers join with a pair of invitation codes (WebRTC, no server), check they have the same game, and run it in lockstep, trading only held keys. Arcade kit gains `Lockstep` (`packages/arcade/src/netplay.js`) and `me()`/`playerCount()`/`isOnline()`/`isWaiting()`; a game opts in with `export const players = 2` and reads `inputs` (4th argument of `update`).

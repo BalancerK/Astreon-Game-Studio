@@ -1,6 +1,6 @@
 // Made by tools/studio-offline.js: the files the studio keeps for offline use, and a version made from their contents.
 self.STUDIO_OFFLINE = {
- "version": "9c9dda02b18b",
+ "version": "ade505af58c4",
  "files": [
   "packages/ai/src/bt.js",
   "packages/ai/src/crowd.js",
@@ -25,6 +25,7 @@ self.STUDIO_OFFLINE = {
   "packages/arcade/src/kinds.js",
   "packages/arcade/src/lights.js",
   "packages/arcade/src/map.js",
+  "packages/arcade/src/markup.js",
   "packages/arcade/src/music.js",
   "packages/arcade/src/netplay.js",
   "packages/arcade/src/particles.js",

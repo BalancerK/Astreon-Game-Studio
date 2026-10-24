@@ -43,3 +43,4 @@ export {
   camera3d, forward3d, move3d, mouseLook3d, chase3d, jump3d, slideAgainst, block, ramp, stairs, groundAt, gem, project3d, drawWorld3d, block3d, gem3d, sky3d, floor3d,
 } from './view3d.js';
 export { Lockstep, keyList, setNetInfo, me, playerCount, isOnline, isWaiting } from './netplay.js';
+export { parseMarkup, stripMarkup, layoutMarkup, drawMarkup } from './markup.js';
