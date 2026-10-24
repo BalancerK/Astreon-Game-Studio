@@ -9,7 +9,7 @@ const MAKERS = [
     'resources',
     'tests',
     'controls',
-  'story', 'backpack', 'ship', 'netlab', 'friend', 'plugins', 'rules', 'scene3d', 'environment',
+  'story', 'backpack', 'ship', 'netlab', 'friend', 'plugins', 'rules', 'scene3d', 'environment', 'rig',
 ];
 /** The group of tabs at the side of most workspaces: the project, then everything that makes things. */
 const SIDE = ['files', 'search', 'history', 'learn', 'inspect', 'profiler', ...MAKERS];
