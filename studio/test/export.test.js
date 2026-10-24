@@ -133,3 +133,11 @@ test('the project settings shape the exported page: canvas size, aspect, backgro
   assert.match(usual.files['index.html'], /width="480" height="320"/); assert.equal(JSON.parse(usual.files['manifest.webmanifest']).orientation, 'landscape');
   assert.match(usual.files['icon.svg'], />P<\/text>/);
 });
+
+test('a pixel art project is exported with sharp scaling, and others stay smooth', async () => {
+  const build = async (pixelArt) => (await buildWebExport({ files: TEMPLATES.hero.files, title: 'Px', readEngine, runtime, controls,
+    settings: { title: 'Px', width: 320, height: 180, background: '#000000', pixelArt, icon: { letter: '', color: '#4f46e5' } } })).files['index.html'];
+  const sharp = await build(true), smooth = await build(false);
+  assert.match(sharp, /image-rendering: pixelated/); assert.match(sharp, /"pixelArt":true/);
+  assert.match(smooth, /image-rendering: auto/); assert.doesNotMatch(smooth, /pixelArt/);
+});

@@ -10,6 +10,7 @@ export const DEFAULTS = Object.freeze({
   width: 480,
   height: 320,
   background: '#12161f',
+  pixelArt: false,
   icon: Object.freeze({ letter: '', color: '#4f46e5' }),
 });
 
@@ -19,6 +20,7 @@ export const PRESETS = [
   { id: 'wide', label: 'Wide screen (640 × 360)', width: 640, height: 360 },
   { id: 'large', label: 'Large wide screen (960 × 540)', width: 960, height: 540 },
   { id: 'portrait', label: 'Phone upright (360 × 640)', width: 360, height: 640 },
+  { id: 'pixel', label: 'Pixel art (320 × 180)', width: 320, height: 180 },
   { id: 'square', label: 'Square (400 × 400)', width: 400, height: 400 },
 ];
 
@@ -49,10 +51,13 @@ export function cleanSettings(raw) {
   if (outside(width) || outside(height)) problems.push(`The screen size is kept between ${LIMITS.min} and ${LIMITS.max}.`);
   const colourOk = (v) => typeof v === 'string' && HEX.test(v);
   const background = pick('background', colourOk, DEFAULTS.background, 'background must be a colour like #12161f.');
+  const pixelArt = pick('pixelArt', (v) => typeof v === 'boolean', DEFAULTS.pixelArt, 'pixelArt must be true or false.');
   const icon = r.icon && typeof r.icon === 'object' ? r.icon : {};
   const letter = typeof icon.letter === 'string' ? [...icon.letter.trim()][0] ?? '' : '';
   const color = typeof icon.color === 'string' && HEX.test(icon.color) ? icon.color : DEFAULTS.icon.color;
-  const settings = { title, width: size(width, DEFAULTS.width), height: size(height, DEFAULTS.height), background, icon: { letter, color } };
+  const settings = {
+    title, width: size(width, DEFAULTS.width), height: size(height, DEFAULTS.height), background, pixelArt, icon: { letter, color },
+  };
   return { settings, problems };
 }
 
@@ -75,6 +80,7 @@ export function serialize(settings) {
   if (s.width !== DEFAULTS.width) out.width = s.width;
   if (s.height !== DEFAULTS.height) out.height = s.height;
   if (s.background !== DEFAULTS.background) out.background = s.background;
+  if (s.pixelArt) out.pixelArt = true;
   if (s.icon.letter || s.icon.color !== DEFAULTS.icon.color) out.icon = { letter: s.icon.letter, color: s.icon.color };
   return Object.keys(out).length ? `${JSON.stringify(out, null, 2)}\n` : null;
 }

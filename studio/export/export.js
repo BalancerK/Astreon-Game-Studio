@@ -19,9 +19,9 @@ export const slug = (title) => String(title).toLowerCase().replace(/[^a-z0-9]+/g
 
 /** The page that holds the game. */
 export function indexHtml({ title, id, hasKit, hasSound, offline, assets = [], settings = DEFAULTS, build = null }) {
-  const { width, height, background } = settings;
+  const { width, height, background, pixelArt = false } = settings;
   const config = JSON.stringify({
-    id, hasKit, hasSound, offline, assets: assets.map(({ path, kind }) => ({ path, kind })), settings: { width, height, background },
+    id, hasKit, hasSound, offline, assets: assets.map(({ path, kind }) => ({ path, kind })), settings: { width, height, background, ...(pixelArt ? { pixelArt: true } : {}) },
     ...(build ? { build: { name: String(build.name).slice(0, 24), debug: Boolean(build.debug) } } : {}),
   }).replace(/</g, '\\u003c');
   return `<!doctype html>
@@ -35,7 +35,7 @@ ${offline ? '<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon"
   html, body { margin: 0; height: 100%; background: #0b0e15; color: #dde2f0; font: 16px system-ui, sans-serif; }
   body { display: grid; place-items: center; }
   .wrap { position: relative; width: min(100vw, calc(100vh * ${width} / ${height})); aspect-ratio: ${width} / ${height}; }
-  canvas { width: 100%; height: 100%; display: block; background: ${background}; image-rendering: auto; outline: none; }
+  canvas { width: 100%; height: 100%; display: block; background: ${background}; image-rendering: ${pixelArt ? 'pixelated' : 'auto'}; outline: none; }
   #start { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(11, 14, 21,
     .72); cursor: pointer; font-size: 22px; border: 0; color: inherit; }
   #banner { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px; background: #7f1d1d; color: #fff; font-size: 14px; }

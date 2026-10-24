@@ -281,6 +281,7 @@ function makeLoop() {
       const t = performance.now();
       let renderMs = 0;
       try {
+        g.imageSmoothingEnabled = !globalThis.__engineSettings?.pixelArt;
         mod.render(state, profiling && profG ? profG : g, alpha);
         renderMs = performance.now() - t;
         outline();

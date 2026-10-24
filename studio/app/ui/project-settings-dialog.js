@@ -24,6 +24,7 @@ export async function editProjectSettings(studio) {
   const shape = h('span', { class: 'dim' });
   const background = h('input',
     { type: 'color', value: now.background.length === 4 ? `#${[...now.background.slice(1)].map((c) => c + c).join('')}` : now.background });
+  const pixelArt = h('input', { type: 'checkbox', checked: Boolean(now.pixelArt) });
   const letter = h('input', { type: 'text', value: now.icon.letter, maxlength: '2', placeholder: 'first letter of the title', size: '8' });
   const colour = h('input',
     { type: 'color', value: now.icon.color.length === 4 ? `#${[...now.icon.color.slice(1)].map((c) => c + c).join('')}` : now.icon.color });
@@ -50,6 +51,7 @@ export async function editProjectSettings(studio) {
     field('Screen size', preset),
     h('div', { class: 'settings-size' }, field('Width', width), field('Height', height), shape),
     field('Background colour', background, 'What clear(g) paints, and the colour behind the game on its page.'),
+    field('Pixel art', pixelArt, 'Keep pictures sharp when the game is scaled up (no blurring), in the studio and in the exported game.'),
     h('div', { class: 'settings-size' }, field('Icon letter', letter), field('Icon colour', colour)),
     h('small', { class: 'dim', text: 'Saved in project.json, a plain text file in your project.' }));
 
@@ -59,8 +61,8 @@ export async function editProjectSettings(studio) {
   });
   if (answer !== true) return false;
   const text = serialize({
-    title: title.value, width: Number(width.value), height: Number(height.value), background: background.value, icon: { letter: letter.value,
-      color: colour.value },
+    title: title.value, width: Number(width.value), height: Number(height.value), background: background.value, pixelArt: pixelArt.checked,
+    icon: { letter: letter.value, color: colour.value },
   });
   if (text === null) { if (project.has(FILE)) project.remove(FILE); } else project.write(FILE, text);
   studio.emit('files');

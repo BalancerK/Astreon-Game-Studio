@@ -115,6 +115,7 @@ function spawn(files, run, state) {
   const canvas = document.createElement('canvas');
   canvas.width = currentSettings.width;
   canvas.height = currentSettings.height;
+  canvas.style.imageRendering = currentSettings.pixelArt ? 'pixelated' : 'auto';
   canvas.tabIndex = 0;
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'The game. It is drawn on a canvas; play it with the arrow keys, Space, X and Enter, or with a gamepad.');
@@ -275,6 +276,8 @@ function run(message) {
 
 async function runNow({ run: number, files, restart, assets, assetData, settings }) {
   currentSettings = cleanSettings(settings);
+  const shown = stage.querySelector('canvas');
+  if (shown) shown.style.imageRendering = currentSettings.pixelArt ? 'pixelated' : 'auto';
   runs.set(number, files);
   for (const old of runs.keys()) if (old < number - 3) runs.delete(old);
   await store(number, files, assets, assetData);
@@ -306,7 +309,7 @@ setInterval(() => {
 function cleanSettings(raw) {
   const size = (v, fallback) => (Number.isFinite(v) ? Math.max(120, Math.min(1920, Math.round(v))) : fallback);
   const colour = typeof raw?.background === 'string' && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw.background) ? raw.background : '#12161f';
-  return { width: size(raw?.width, 480), height: size(raw?.height, 320), background: colour };
+  return { width: size(raw?.width, 480), height: size(raw?.height, 320), background: colour, pixelArt: raw?.pixelArt === true };
 }
 
 /** The list of pictures and sounds the studio sent, with anything odd left out (this page does not trust what it is sent). */

@@ -140,6 +140,7 @@ function frame(now) {
   last = now;
   try {
     while (accumulator >= 1 / 60) { mod.update(state, keys, 1 / 60); accumulator -= 1 / 60; }
+    g.imageSmoothingEnabled = !globalThis.__engineSettings.pixelArt;
     mod.render(state, g, accumulator * 60);
   } catch (error) { fail('The game stopped', error); }
 }
@@ -176,6 +177,7 @@ overlay.addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code ==
 if ('serviceWorker' in navigator && config.offline) navigator.serviceWorker.register('./sw.js').catch(() => {});
 await boot();
 if (!stopped) {
+  g.imageSmoothingEnabled = !globalThis.__engineSettings.pixelArt;
   try { mod.render(state, g, 0); } catch (error) { fail('The game stopped', error); }
   overlay.hidden = false;
   overlay.focus();
