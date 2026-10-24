@@ -110,6 +110,26 @@ export class NavVolume {
   /** @param {Box[]} boxes */
   addBoxes(boxes) { for (const b of boxes) this.addBox(b); }
 
+  /**
+   * Mark the ground: every cube whose feet would be inside the land is blocked. The land is a function from a place to its height; the highest point under the agent's width counts, so the
+   * agent never fits through a gap between two hills that is narrower than its body.
+   * @param {(x: number, z: number) => number} heightAt
+   */
+  addHeightfield(heightAt) {
+    const r = this.radius, c = this.cell;
+    for (let iz = 0; iz < this.nz; iz++) {
+      for (let ix = 0; ix < this.nx; ix++) {
+        const cx = this.min[0] + (ix + 0.5) * c, cz = this.min[2] + (iz + 0.5) * c;
+        let ground = -Infinity;
+        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) ground = Math.max(ground, heightAt(cx + a * (c / 2 + r) * 0.8, cz + b * (c / 2 + r) * 0.8));
+        for (let iy = 0; iy < this.ny; iy++) {
+          if (this.min[1] + iy * c < ground - 1e-6) this.blocked[(iy * this.nz + iz) * this.nx + ix] = 1; else break;
+        }
+      }
+    }
+    this.version++;
+  }
+
   /** Is the agent allowed to be with its feet here? @param {number} x @param {number} y @param {number} z */
   free(x, y, z) {
     const i = this.cellAt(x, y, z);

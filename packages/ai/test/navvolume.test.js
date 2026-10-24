@@ -94,3 +94,18 @@ test('a big space is searched fast enough to ask every few ticks', () => {
   const ms = Number(process.hrtime.bigint() - t0) / 1e6 / 5;
   assert.ok(ms < 200, `${ms.toFixed(1)} ms a search`);
 });
+
+test('the ground can be added as a height function: paths go over a hill, or round it, and never through it', () => {
+  const nav = volume({ min: [-40, -8, -40], max: [40, 60, 40], cell: 4 });
+  const hill = (x, z) => Math.max(-2, 30 - Math.hypot(x, z) * 1.5);                  // a cone 30 m high, 20 m across at the foot, over a plain at -2
+  nav.addHeightfield(hill);
+  assert.equal(nav.free(0, 0, 0), false, 'inside the hill');
+  assert.equal(nav.free(0, 40, 0), true, 'above it');
+  assert.equal(nav.free(30, 0, 30), true, 'on the plain');
+  const r = nav.findPath([-35, 0, 0], [35, 0, 0]);
+  assert.equal(r.status, 'found');
+  for (let i = 1; i < r.path.length; i++) assert.ok(nav.lineClear(r.path[i - 1], r.path[i]), 'every leg is clear of the ground');
+  const climb = nav.findPath([-35, 0, 0], [0, 33, 0]);
+  assert.ok(['found', 'partial'].includes(climb.status));
+  assert.ok(climb.path[climb.path.length - 1][1] > 20, 'a goal on top of the hill is reached high up');
+});
