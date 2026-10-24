@@ -1,6 +1,7 @@
 export { AudioEngine, onUserGesture } from './engine.js';
+export { LayeredMusic } from './music.js';
 export { synthesize, sfx, sequence, ambientLoop, noteFrequency } from './synth.js';
-export { createListener, setListenerFromYawPitch, spatialize, distanceGain } from './spatial.js';
+export { createListener, setListenerFromYawPitch, spatialize, distanceGain, dopplerRatio } from './spatial.js';
 export { VoicePool } from './voices.js';
 export { lowpass, highpass, bandpass, filter, reverb, echo, compressor, reverbImpulse, occlusionFrequency } from './effects.js';
 export { AudioSprite, packSounds, spriteMapFromMs } from './sprites.js';

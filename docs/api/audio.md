@@ -8,7 +8,7 @@ npm install @engine/audio
 
 Version 0.1.0. The package's own README ([packages/audio](../../packages/audio/README.md)) explains how the pieces fit together; this page lists every export.
 
-## Contents (46 of 46 documented)
+## Contents (48 of 48 documented)
 
 | Name | Kind | Summary |
 |---|---|---|
@@ -18,6 +18,7 @@ Version 0.1.0. The package's own README ([packages/audio](../../packages/audio/R
 | [`CODEC`](#codec) | constant | Codec numbers on the wire. |
 | [`FrameSlicer`](#class-frameslicer) | class | Cuts a stream arriving in chunks of any size into frames of exactly `frameSamples`. |
 | [`JitterBuffer`](#class-jitterbuffer) | class | Packets cross a network late, out of order, twice or not at all; speech has to come out at an even pace. |
+| [`LayeredMusic`](#class-layeredmusic) | class | Layers of one tune that play in time together, with a volume each that follows an intensity, and stingers that land on the beat. |
 | [`Microphone`](#class-microphone) | class | The microphone: asks the player's permission, gives a level meter and a speaking flag, and a stream of samples for a voice chat. |
 | [`OpusCodec`](#class-opuscodec) | class | Opus through the browser's WebCodecs: speech in 2 to 3 KB/s (24 kbit/s here) with the loss handling Opus is known for. |
 | [`Pcm16Codec`](#class-pcm16codec) | class | 16-bit samples, uncompressed: the plainest, 32 KB/s at 16 kHz. |
@@ -38,6 +39,7 @@ Version 0.1.0. The package's own README ([packages/audio](../../packages/audio/R
 | [`createListener`](#createlistener) | function | Where the listener is and which way it faces. |
 | [`decodeVoicePacket`](#decodevoicepacket) | function | Read a voice packet. |
 | [`distanceGain`](#distancegain) | function | Loudness of a source at a distance: the chosen model between `refDistance` and `maxDistance`, then a smooth fade to zero over the last fifth of that range so nothing pops out of existence. |
+| [`dopplerRatio`](#dopplerratio) | function | Doppler shift: how much higher (above 1) or lower (below 1) a moving source sounds to a moving listener. |
 | [`echo`](#echo) | function | Echo: the sound repeats every `time` seconds, each repeat `feedback` times as loud (below 1), mixed in at `wet`. |
 | [`encodeVoicePacket`](#encodevoicepacket) | function | A voice packet: 8 bytes of header (flags, codec, sequence number, time in milliseconds) and the encoded audio. |
 | [`filter`](#filter) | function | Any filter: `type` is lowpass, highpass, bandpass, notch, lowshelf, highshelf, peaking or allpass; `gain` in dB is used by the shelves and peaking. |
@@ -168,6 +170,28 @@ the last fifth of that range so nothing pops out of existence.
 
 <sub>src/spatial.js:40</sub>
 
+### `dopplerRatio`
+
+```js
+function dopplerRatio(listener, listenerVelocity, position, velocity, speedOfSound = 343, strength = 1)
+```
+
+Doppler shift: how much higher (above 1) or lower (below 1) a moving source sounds to a moving listener. A source coming at you, or you going at it, raises the pitch; going
+away lowers it. Only the speeds along the line between the two count. The result is held to 0.5..2 so a shout across a supersonic gap cannot make noise.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `listener` | `ReturnType<typeof createListener>` |  |
+| `listenerVelocity` | `number[]` | [vx, vy, vz] in metres per second |
+| `position` | `number[]` | where the source is |
+| `velocity` | `number[]` | how the source moves |
+| `speedOfSound` (optional) | `number` | metres per second (343 in air; a game with huge, fast things can raise it) |
+| `strength` (optional) | `number` | 0 no shift .. 1 the true shift (a game may want less) |
+
+<sub>src/spatial.js:89</sub>
+
 ### `echo`
 
 ```js
@@ -264,7 +288,7 @@ warning if you create an `AudioContext` earlier), so the cleanest way to start a
 
 **Returns** `() => void` — cancel
 
-<sub>src/engine.js:52</sub>
+<sub>src/engine.js:56</sub>
 
 ### `opusAvailable`
 
@@ -739,6 +763,23 @@ Asking for the track that is already streaming does nothing. The result also has
 
 **Returns** `StreamedTrack`
 
+#### `AudioEngine.playLayers`
+
+```js
+playLayers(layers, o = {})
+```
+
+Play music in layers that always stay in time with each other (stems of one tune, all the same length): drums, bass, a pad, a lead. All start at the same instant and loop together,
+and you decide which are heard, so the music can follow the game: `music.setIntensity(0.8)` brings layers in as it rises, `music.setLayer('drums', 0, 2)` fades one out over two seconds.
+Cross-fades from the music that is playing. See `LayeredMusic`.
+
+| Name | Type | Description |
+|---|---|---|
+| `layers` | `Record<string, Sound>` |  |
+| `o` (optional) | `import('./music.js').LayeredOptions` |  |
+
+**Returns** `LayeredMusic`
+
 #### `AudioEngine.stopMusic`
 
 ```js
@@ -752,6 +793,14 @@ setListener(x, y, z, yaw, pitch = 0)
 ```
 
 Put the listener (your camera) somewhere and facing a direction (yaw and pitch as for `Camera3D`).
+
+#### `AudioEngine.setListenerVelocity`
+
+```js
+setListenerVelocity(vx, vy, vz)
+```
+
+How fast the listener moves, metres per second, for the Doppler effect on sounds that have a `velocity`.
 
 #### `AudioEngine.update`
 
@@ -769,7 +818,7 @@ dispose()
 
 Stop everything and release the audio device (if the engine made it).
 
-<sub>src/engine.js:70</sub>
+<sub>src/engine.js:74</sub>
 
 ### `class AudioSprite`
 
@@ -912,6 +961,107 @@ reset()
 ```
 
 <sub>src/voice-core.js:235</sub>
+
+### `class LayeredMusic`
+
+```js
+class LayeredMusic
+```
+
+Layers of one tune that play in time together, with a volume each that follows an intensity, and stingers that land on the beat. Made by `AudioEngine.playLayers`.
+
+#### `LayeredMusic.constructor`
+
+```js
+constructor(engine, layers, { bus = 'music', volume = 1, fade = 1.5, bpm = 0, beatsPerBar = 4, levels = {}, intensity = 0 } = {})
+```
+
+| Name | Type | Description |
+|---|---|---|
+| `engine` | `import('./engine.js').AudioEngine` |  |
+| `layers` | `Record<string, import('./engine.js').Sound>` |  |
+| `o` (optional) | `LayeredOptions` |  |
+
+#### `LayeredMusic.playing`
+
+```js
+get playing
+```
+
+True until `stop` is called.
+
+#### `LayeredMusic.levelsNow`
+
+```js
+levelsNow()
+```
+
+How loud each layer is meant to be right now (0..1+).
+
+#### `LayeredMusic.setIntensity`
+
+```js
+setIntensity(value, fade = 1)
+```
+
+Set the intensity, 0 (calm) to 1 (everything), gliding over `fade` seconds. Layers set by hand with `setLayer` follow the intensity again.
+
+#### `LayeredMusic.setLayer`
+
+```js
+setLayer(name, level, fade = 1)
+```
+
+Set one layer's level by hand, gliding over `fade` seconds.
+
+#### `LayeredMusic.setVolume`
+
+```js
+setVolume(volume, fade = 0)
+```
+
+The overall level of the whole tune (its layers keep their balance).
+
+#### `LayeredMusic.position`
+
+```js
+get position
+```
+
+Seconds into the loop now.
+
+#### `LayeredMusic.untilBeat`
+
+```js
+untilBeat(unit = 'beat')
+```
+
+Seconds until the next beat (or bar, with `'bar'`). Needs the tempo (`bpm`).
+
+#### `LayeredMusic.stinger`
+
+```js
+stinger(sound, { quantize = 'beat', bus = this.bus, volume = 1, duckMusic = 0 } = {})
+```
+
+Play a short sound so that it lands on the next beat or bar of the music (`quantize: 'beat' | 'bar'`; null plays it at once).
+
+| Name | Type | Description |
+|---|---|---|
+| `sound` | `import('./engine.js').Sound` |  |
+| `o` (optional) | `{quantize?: 'beat' \| 'bar' \| null, bus?: string, volume?: number, duckMusic?: number}` |  |
+
+**Returns**  — the voice, or null
+
+#### `LayeredMusic.stop`
+
+```js
+stop(fade = 1)
+```
+
+Fade out and stop every layer.
+
+<sub>src/music.js:26</sub>
 
 ### `class Microphone`
 
@@ -1739,6 +1889,20 @@ Type: `{kind: string, [key: string]: any}`
 | `enabled` | `boolean` | Turn the effect on and off (it is taken out of the chain while off, so it costs nothing) |
 | `set` | `(values: Record<string, number>, fade?: number) => void` | Change settings, optionally gliding over `fade` seconds (for example `{ frequency: 400 }`) |
 
+### `LayeredOptions`
+
+Type: `Object`
+
+| Name | Type | Description |
+|---|---|---|
+| `bus` (optional) | `string` | default 'music' |
+| `volume` (optional) | `number` | overall level 0..1+ (default 1) |
+| `fade` (optional) | `number` | seconds the music takes to fade in (default 1.5) |
+| `bpm` (optional) | `number` | The tempo, for `stinger` and `untilBeat` |
+| `beatsPerBar` (optional) | `number` | default 4 |
+| `levels` (optional) | `Record<string, number \| {at: number, width?: number, max?: number}>` | When each layer is heard as the intensity (0..1) rises. A number is the intensity at which the layer starts (it is full over the next 0.2); an object gives `at`, `width` (the rise) and `max` (its top level). A layer with no entry is always full. Default intensity 0. |
+| `intensity` (optional) | `number` | The starting intensity (default 0) |
+
 ### `PcmSound`
 
 Mono samples in -1..1
@@ -1776,6 +1940,9 @@ Type: `Object`
 | `loopEnd` (optional) | `number` | With `loop`: the end of the looped part. |
 | `key` (optional) | `string` | What the per-sound voice limit counts this by (default: the sound; `playSprite` uses the sprite and the region) |
 | `occlusion` (optional) | `number` | 0 (clear) to 1 (heard through a thick wall): dulls and quietens this sound; change it later with `voice.setOcclusion` |
+| `velocity` (optional) | `number[]` | [vx, vy, vz] metres per second of a positioned source: its pitch is shifted by the Doppler effect against the listener's own velocity (`setListenerVelocity`); move it later with `voice.setVelocity` |
+| `doppler` (optional) | `number` | How much of the true Doppler shift to apply, 0..1 (default 1) |
+| `absorption` (optional) | `number` | 0..1: the air takes the highs off a distant sound: at 1 a sound at its `maxDistance` is as dull as one behind a thick wall. Combines with `occlusion`. |
 | `onEnded` (optional) | `() => void` |  |
 
 ### `Sound`
@@ -1811,6 +1978,9 @@ Type: `Object`
 | `loopEnd` (optional) | `number` | With `loop`: the end of the looped part. |
 | `key` (optional) | `string` | What the per-sound voice limit counts this by (default: the sound; `playSprite` uses the sprite and the region) |
 | `occlusion` (optional) | `number` | 0 (clear) to 1 (heard through a thick wall): dulls and quietens this sound; change it later with `voice.setOcclusion` |
+| `velocity` (optional) | `number[]` | [vx, vy, vz] metres per second of a positioned source: its pitch is shifted by the Doppler effect against the listener's own velocity (`setListenerVelocity`); move it later with `voice.setVelocity` |
+| `doppler` (optional) | `number` | How much of the true Doppler shift to apply, 0..1 (default 1) |
+| `absorption` (optional) | `number` | 0..1: the air takes the highs off a distant sound: at 1 a sound at its `maxDistance` is as dull as one behind a thick wall. Combines with `occlusion`. |
 | `onEnded` (optional) | `() => void` |  |
 
 ### `SpriteRegion`

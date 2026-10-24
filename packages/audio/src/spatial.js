@@ -76,3 +76,21 @@ export function spatialize(listener, x, y, z, o = {}, out = { gain: 0, pan: 0, d
   out.pan = distance < 1e-6 ? 0 : Math.max(-1, Math.min(1, ((dx * rx + dy * ry + dz * rz) / distance) * near));
   return out;
 }
+
+/**
+ * Doppler shift: how much higher (above 1) or lower (below 1) a moving source sounds to a moving listener. A source coming at you, or you going at it, raises the pitch; going
+ * away lowers it. Only the speeds along the line between the two count. The result is held to 0.5..2 so a shout across a supersonic gap cannot make noise.
+ * @param {ReturnType<typeof createListener>} listener
+ * @param {number[]} listenerVelocity [vx, vy, vz] in metres per second
+ * @param {number[]} position where the source is @param {number[]} velocity how the source moves
+ * @param {number} [speedOfSound] metres per second (343 in air; a game with huge, fast things can raise it)
+ * @param {number} [strength] 0 no shift .. 1 the true shift (a game may want less)
+ */
+export function dopplerRatio(listener, listenerVelocity, position, velocity, speedOfSound = 343, strength = 1) {
+  const dx = position[0] - listener.x, dy = position[1] - listener.y, dz = position[2] - listener.z, d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (d < 1e-6) return 1;
+  const toward = (listenerVelocity[0] * dx + listenerVelocity[1] * dy + listenerVelocity[2] * dz) / d;        // the listener's speed toward the source
+  const away = (velocity[0] * dx + velocity[1] * dy + velocity[2] * dz) / d;                                    // the source's speed away from the listener
+  const c = speedOfSound, ratio = Math.max(0.5, Math.min(2, (c + toward) / Math.max(c * 0.05, c + away)));
+  return 1 + (ratio - 1) * Math.max(0, Math.min(1, strength));
+}

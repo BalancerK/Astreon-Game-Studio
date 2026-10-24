@@ -1,5 +1,6 @@
 import { VoicePool } from './voices.js';
-import { createListener, setListenerFromYawPitch, spatialize } from './spatial.js';
+import { createListener, setListenerFromYawPitch, spatialize, dopplerRatio } from './spatial.js';
+import { LayeredMusic } from './music.js';
 import { synthesize } from './synth.js';
 import { buildEffect, occlusionFrequency } from './effects.js';
 import { AudioSprite } from './sprites.js';
@@ -33,6 +34,9 @@ import { StreamedTrack } from './stream.js';
  * @property {number} [loopStart] With `loop`: go back to this time (seconds into the sound) at the end of the loop. @property {number} [loopEnd] With `loop`: the end of the looped part.
  * @property {string} [key] What the per-sound voice limit counts this by (default: the sound; `playSprite` uses the sprite and the region)
  * @property {number} [occlusion] 0 (clear) to 1 (heard through a thick wall): dulls and quietens this sound; change it later with `voice.setOcclusion`
+ * @property {number[]} [velocity] [vx, vy, vz] metres per second of a positioned source: its pitch is shifted by the Doppler effect against the listener's own velocity (`setListenerVelocity`); move it later with `voice.setVelocity`
+ * @property {number} [doppler] How much of the true Doppler shift to apply, 0..1 (default 1)
+ * @property {number} [absorption] 0..1: the air takes the highs off a distant sound: at 1 a sound at its `maxDistance` is as dull as one behind a thick wall. Combines with `occlusion`.
  * @property {() => void} [onEnded]
  */
 
@@ -95,6 +99,9 @@ export class AudioEngine {
     this.music = null;
     this.musicSound = null;
     this.scratch = { gain: 0, pan: 0, distance: 0 };
+    this.listenerVelocity = [0, 0, 0];
+    /** Metres per second for the Doppler effect (343 in air). */
+    this.speedOfSound = 343;
 
     const master = ctx.createGain();
     let masterHead = ctx.destination;
@@ -336,7 +343,7 @@ export class AudioEngine {
     if (!sound) return null;
     const {
       bus = 'sfx', volume = 1, pitch = 1, pitchVariation = 0, loop = false, pan = 0, position = null, model, refDistance, maxDistance, rolloff,
-      priority = 0, maxPerSound = Infinity, fadeIn = 0, delay = 0, offset = 0, duration, loopStart, loopEnd, key, occlusion, onEnded,
+      priority = 0, maxPerSound = Infinity, fadeIn = 0, delay = 0, offset = 0, duration, loopStart, loopEnd, key, occlusion, onEnded, velocity, doppler = 1, absorption = 0,
     } = opts;
     const ctx = this.context, target = this.#bus(bus);
     if (!loop && this.skipWhenSuspended && ctx.state !== 'running') { this.stats.skipped++; return null; }
@@ -355,7 +362,8 @@ export class AudioEngine {
     src.buffer = sound.buffer;
     src.loop = loop;
     if (loop && loopEnd !== undefined) { src.loopStart = loopStart ?? 0; src.loopEnd = loopEnd; }
-    src.playbackRate.value = pitch * (1 + (Math.random() * 2 - 1) * pitchVariation);
+    const basePitch = pitch * (1 + (Math.random() * 2 - 1) * pitchVariation);
+    src.playbackRate.value = basePitch;
     const gain = ctx.createGain();
     gain.gain.value = fadeIn > 0 ? 0 : volume;
     src.connect(gain);
@@ -366,22 +374,26 @@ export class AudioEngine {
 
     const voice = {
       id: grant.id, sound, bus, loop, position: position ? [position[0], position[1], position[2]] : null, distanceOptions, priority,
-      src, gain, spatial, panner, volume, ended: false, occ: null, occGain: null, firstAfterGain: null,
+      src, gain, spatial, panner, volume, ended: false, occ: null, occGain: null, firstAfterGain: null, pitch: basePitch, distance: sp ? sp.distance : 0,
+      velocity: velocity ? [velocity[0], velocity[1], velocity[2]] : null, doppler, absorption: position ? absorption : 0, wall: 0, shown: 0,
       get playing() { return !this.ended; },
       stop: (fade = 0) => this.#stopVoice(voice, fade),
       setVolume: (v, time = 0) => this.#rampGain(voice, v, time),
       setPitch: (p, time = 0) => {
+        voice.pitch = p;
         const now = ctx.currentTime, current = src.playbackRate.value;
         src.playbackRate.cancelScheduledValues(now); src.playbackRate.setValueAtTime(current, now);
         if (time > 0) src.playbackRate.linearRampToValueAtTime(p, now + time); else src.playbackRate.setValueAtTime(p, now);
       },
       setPosition: (x, y, z) => { if (voice.position) { voice.position[0] = x; voice.position[1] = y; voice.position[2] = z; } },
-      setOcclusion: (amount, time = 0) => this.#occlude(voice, amount, time),
+      setOcclusion: (amount, time = 0) => { voice.wall = amount; this.#occlude(voice, this.#dullness(voice), time); },
+      setVelocity: (x, y, z) => { if (!voice.velocity) voice.velocity = [0, 0, 0]; voice.velocity[0] = x; voice.velocity[1] = y; voice.velocity[2] = z; },
       setPan: (p) => { if (panner && !voice.position) panner.pan.value = Math.max(-1, Math.min(1, p)); },
     };
     src.onended = () => this.#finish(voice, onEnded);
     voice.firstAfterGain = spatial ?? panner ?? target.node;
-    if (occlusion !== undefined) this.#occlude(voice, occlusion, 0);
+    if (occlusion !== undefined) { voice.wall = occlusion; this.#occlude(voice, this.#dullness(voice), 0); }
+    else if (voice.absorption > 0) this.#occlude(voice, this.#dullness(voice), 0);
     this.voices.add(voice);
     this.#duckTriggered(bus, 1);
     if (duration !== undefined && !loop) src.start(ctx.currentTime + delay, offset, duration); else src.start(ctx.currentTime + delay, offset);
@@ -391,8 +403,15 @@ export class AudioEngine {
   }
 
   /** Dull and quieten a voice as if a wall stood between it and the listener. */
+  /** How dull a voice is: the wall in the way and the air in between, together. */
+  #dullness(voice) {
+    const air = voice.absorption > 0 ? voice.absorption * Math.min(1, voice.distance / (voice.distanceOptions.maxDistance ?? 50)) : 0;
+    return 1 - (1 - voice.wall) * (1 - air);
+  }
+
   #occlude(voice, amount, time) {
     if (voice.ended) return;
+    voice.shown = amount;
     const ctx = this.context, now = ctx.currentTime;
     if (!voice.occ) {
       if (!(amount > 0)) return;
@@ -499,6 +518,20 @@ export class AudioEngine {
     return this.music;
   }
 
+  /**
+   * Play music in layers that always stay in time with each other (stems of one tune, all the same length): drums, bass, a pad, a lead. All start at the same instant and loop together,
+   * and you decide which are heard, so the music can follow the game: `music.setIntensity(0.8)` brings layers in as it rises, `music.setLayer('drums', 0, 2)` fades one out over two seconds.
+   * Cross-fades from the music that is playing. See `LayeredMusic`.
+   * @param {Record<string, Sound>} layers @param {import('./music.js').LayeredOptions} [o]
+   * @returns {LayeredMusic}
+   */
+  playLayers(layers, o = {}) {
+    this.music?.stop(o.fade ?? 1.5);
+    this.musicSound = null;
+    this.music = new LayeredMusic(this, layers, o);
+    return this.music;
+  }
+
   stopMusic(fade = 1) {
     this.music?.stop(fade);
     this.music = null; this.musicSound = null;
@@ -509,14 +542,20 @@ export class AudioEngine {
   /** Put the listener (your camera) somewhere and facing a direction (yaw and pitch as for `Camera3D`). */
   setListener(x, y, z, yaw, pitch = 0) { return setListenerFromYawPitch(this.listener, x, y, z, yaw, pitch); }
 
+  /** How fast the listener moves, metres per second, for the Doppler effect on sounds that have a `velocity`. */
+  setListenerVelocity(vx, vy, vz) { this.listenerVelocity[0] = vx; this.listenerVelocity[1] = vy; this.listenerVelocity[2] = vz; }
+
   /** Call once per frame after moving the listener and any sound sources: updates loudness and panning of positioned voices. */
   update() {
     const now = this.context.currentTime, sc = this.scratch;
     for (const v of this.voices) {
       if (!v.position) continue;
       spatialize(this.listener, v.position[0], v.position[1], v.position[2], v.distanceOptions, sc);
+      v.distance = sc.distance;
       v.spatial.gain.setTargetAtTime(sc.gain, now, 0.03);
       v.panner?.pan.setTargetAtTime(sc.pan, now, 0.03);
+      if (v.velocity) v.src.playbackRate.setTargetAtTime(v.pitch * dopplerRatio(this.listener, this.listenerVelocity, v.position, v.velocity, this.speedOfSound, v.doppler), now, 0.05);
+      if (v.absorption > 0) { const d = this.#dullness(v); if (Math.abs(d - v.shown) > 0.02) this.#occlude(v, d, 0.1); }
     }
   }
 
