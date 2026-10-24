@@ -4,6 +4,8 @@ All packages are released together under one version number. `node tools/release
 
 ## Unreleased
 
+- Studio: a **Tables** panel. A game's rules (weapons, frames, enemies, items) kept as a plain data file (`export default { "weapons": [ {...} ] }`) are edited as a grid, with a box of the right kind for every column (text, number with limits, choice, tick, colour) described by a `name.schema.json` beside it. Cells are checked as you type (ranges, kinds, duplicate names), saved to the file, and the game picks them up like any edit; rows can be added, copied, moved and removed. Made for Mecha Strike's parts tables.
+
 - Studio: a **Rig** panel. It finds skeleton files (JSON in `rigs/`, in the `@engine/skeleton2d` format), draws them with the engine's renderer using the project's pictures (a coloured block stands in for a missing one), plays any animation with pause, speed, loop and a moment slider, shows events and (if you like) the bones, and can add a sample rig to start from.
 
 - Fixed a rare lost first message on browser-to-browser connections: `RtcTransport` now keeps messages that arrive before `onMessage` is set (the handler is usually set a moment after the connection opens) and delivers them, in order, when it is.
