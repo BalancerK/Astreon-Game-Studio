@@ -178,7 +178,10 @@ export class NavVolume {
     if (!s0 || !g0) return { status: 'none', path: [], cost: 0 };
     const start = this.cellAt(s0[0], s0[1], s0[2]), goal = this.cellAt(g0[0], g0[1], g0[2]);
     const total = this.blocked.length;
-    const g = new Float64Array(total).fill(Infinity), f = new Float64Array(total).fill(Infinity), came = new Int32Array(total).fill(-1), closed = new Uint8Array(total);
+    // the working arrays are kept between searches (a big volume searched often would otherwise make a lot of garbage)
+    const w = (this.work ??= { g: new Float64Array(total), f: new Float64Array(total), came: new Int32Array(total), closed: new Uint8Array(total) });
+    const { g, f, came, closed } = w;
+    g.fill(Infinity); f.fill(Infinity); came.fill(-1); closed.fill(0);
     const gc = this.centerOf(goal);
     const heuristic = (cell) => {
       const c = this.centerOf(cell), ex = c[0] - gc[0], ey = c[1] - gc[1], ez = c[2] - gc[2];
