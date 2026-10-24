@@ -1001,6 +1001,19 @@ addBoxes(boxes)
 |---|---|---|
 | `boxes` | `Box[]` |  |
 
+#### `NavVolume.addHeightfield`
+
+```js
+addHeightfield(heightAt)
+```
+
+Mark the ground: every cube whose feet would be inside the land is blocked. The land is a function from a place to its height; the highest point under the agent's width counts, so the
+agent never fits through a gap between two hills that is narrower than its body.
+
+| Name | Type | Description |
+|---|---|---|
+| `heightAt` | `(x: number, z: number) => number` |  |
+
 #### `NavVolume.free`
 
 ```js

@@ -348,6 +348,10 @@
 <h4 id="navvolumeaddboxes"><code>NavVolume.addBoxes</code><a class="anchor" href="#navvolumeaddboxes" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">addBoxes</span>(boxes)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>boxes</code></td><td><code>Box[]</code></td><td></td></tr></tbody></table></div>
+<h4 id="navvolumeaddheightfield"><code>NavVolume.addHeightfield</code><a class="anchor" href="#navvolumeaddheightfield" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">addHeightfield</span>(heightAt)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Mark the ground: every cube whose feet would be inside the land is blocked. The land is a function from a place to its height; the highest point under the agent's width counts, so the agent never fits through a gap between two hills that is narrower than its body.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>heightAt</code></td><td><code>(x: number, z: number) =&gt; number</code></td><td></td></tr></tbody></table></div>
 <h4 id="navvolumefree"><code>NavVolume.free</code><a class="anchor" href="#navvolumefree" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">free</span>(x, y, z)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Is the agent allowed to be with its feet here?</p>
