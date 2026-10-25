@@ -8,7 +8,7 @@ npm install @engine/ai
 
 Version 0.1.0. The package's own README ([packages/ai](../../packages/ai/README.md)) explains how the pieces fit together; this page lists every export.
 
-## Contents (50 of 50 documented)
+## Contents (51 of 51 documented)
 
 | Name | Kind | Summary |
 |---|---|---|
@@ -29,6 +29,7 @@ Version 0.1.0. The package's own README ([packages/ai](../../packages/ai/README.
 | [`Parallel`](#class-parallel) | class | Runs all children every tick. |
 | [`PathFollower`](#class-pathfollower) | class | Walks an agent along a path (the points from `findPath`): head for the next point, move on when close, slow down at the end. |
 | [`PathQuery`](#class-pathquery) | class | One path request: `step(n)` expands up to n nodes, `status` is 'running', 'found', 'partial' or 'none'. |
+| [`PathSearch`](#class-pathsearch) | class | One search for a path, that can be done a few cubes at a time (see `NavVolume.request`); `NavVolume.findPath` runs one to the end. |
 | [`RUNNING`](#running) | constant | What a behaviour-tree node reports when it is ticked: `SUCCESS` (1), `FAILURE` (2), or `RUNNING` (3, still working: it is ticked again next time and carries on). |
 | [`RandomSelector`](#class-randomselector) | class | Picks one child at random (by weight) when started and keeps running it until it finishes. |
 | [`Repeater`](#class-repeater) | class | Repeats its child `times` times (Infinity: forever, always RUNNING); stops early with FAILURE if the child fails. |
@@ -1052,20 +1053,61 @@ Is the straight line between two points clear (every step along it is a free pla
 #### `NavVolume.findPath`
 
 ```js
-findPath(from, to, { maxNodes = 40000, smooth = true } = {})
+findPath(from, to, o = {})
 ```
 
 Find a path. The start and the goal are moved to the nearest free place if they are inside something.
+`weight` above 1 trades a little length for a lot of speed (the search leans toward the goal: a path at most `weight` times the best, found by looking at far fewer cubes).
 
 | Name | Type | Description |
 |---|---|---|
 | `from` | `number[]` |  |
 | `to` | `number[]` |  |
-| `o` (optional) | `{maxNodes?: number, smooth?: boolean}` |  |
+| `o` (optional) | `{maxNodes?: number, smooth?: boolean, weight?: number}` |  |
 
 **Returns** `{status: 'found' \| 'partial' \| 'none', path: number[][], cost: number}` — `partial` means the goal cannot be reached; the path ends as near to it as the search got.
 
-<sub>src/navvolume.js:60</sub>
+#### `NavVolume.request`
+
+```js
+request(from, to, o = {})
+```
+
+Ask for a path to be found a little at a time: the answer comes when `pump` has spent enough effort on it, so a long search never holds up a frame. Searches are done one after another, in the
+order they were asked for. Watch `done` (then read `result`) on what it returns; `cancel()` drops a request that is no longer wanted.
+
+| Name | Type | Description |
+|---|---|---|
+| `from` | `number[]` |  |
+| `to` | `number[]` |  |
+| `o` (optional) | `{maxNodes?: number, smooth?: boolean, weight?: number}` |  |
+
+**Returns** `{done: boolean, result: {status: 'found' \| 'partial' \| 'none', path: number[][], cost: number} \| null, cancel: () => void}`
+
+#### `NavVolume.pump`
+
+```js
+pump(budget, tick = undefined)
+```
+
+Spend up to `budget` cubes of searching on the requests that are waiting. Call it once a tick (a second call in the same tick does nothing, so every caller may call it).
+
+| Name | Type | Description |
+|---|---|---|
+| `budget` | `number` |  |
+| `tick` (optional) | `number` | a number that changes every tick |
+
+**Returns** `number` — how many cubes were looked at
+
+#### `NavVolume.smoothPath`
+
+```js
+smoothPath(points)
+```
+
+Pull the path straight: from each point, jump to the furthest later point that can be reached in a straight line. Internal: used by `PathSearch`.
+
+<sub>src/navvolume.js:63</sub>
 
 ### `class Node`
 
@@ -1214,6 +1256,57 @@ cancel()
 Give up on a running query (its search memory goes back to the pool).
 
 <sub>src/path.js:55</sub>
+
+### `class PathSearch`
+
+```js
+class PathSearch
+```
+
+One search for a path, that can be done a few cubes at a time (see `NavVolume.request`); `NavVolume.findPath` runs one to the end.
+
+#### `PathSearch.constructor`
+
+```js
+constructor(nav, from, to, { maxNodes = 40000, smooth = true, weight = 1 } = {})
+```
+
+| Name | Type | Description |
+|---|---|---|
+| `nav` | `NavVolume` |  |
+| `from` | `number[]` |  |
+| `to` | `number[]` |  |
+| `o` (optional) | `{maxNodes?: number, smooth?: boolean, weight?: number}` |  |
+
+#### `PathSearch.touch`
+
+```js
+touch(c)
+```
+
+#### `PathSearch.cancel`
+
+```js
+cancel()
+```
+
+Give up: the working arrays go back.
+
+#### `PathSearch.step`
+
+```js
+step(budget = Infinity)
+```
+
+Look at up to `budget` more cubes (all that are needed if it is not given).
+
+| Name | Type | Description |
+|---|---|---|
+| `budget` (optional) | `number` |  |
+
+**Returns** `number` — how many cubes were looked at
+
+<sub>src/navvolume.js:253</sub>
 
 ### `class RandomSelector`
 

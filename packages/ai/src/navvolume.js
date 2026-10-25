@@ -12,6 +12,9 @@ const sqrt = Math.sqrt;
 const OFFSETS = [];
 for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if (dx || dy || dz) OFFSETS.push([dx, dy, dz, sqrt(dx * dx + dy * dy * 1.96 + dz * dz)]);
 
+/** The working arrays of searches, by the number of cubes in the volume (volumes of one size share a set, because only one search is at work at a time). */
+const SHARED_WORK = new Map();
+
 const OFF_N = OFFSETS.length;
 const OFF_DX = Int8Array.from(OFFSETS, (o) => o[0]), OFF_DY = Int8Array.from(OFFSETS, (o) => o[1]), OFF_DZ = Int8Array.from(OFFSETS, (o) => o[2]), OFF_STEP = Float64Array.from(OFFSETS, (o) => o[3]);
 
@@ -174,74 +177,65 @@ export class NavVolume {
 
   /**
    * Find a path. The start and the goal are moved to the nearest free place if they are inside something.
-   * @param {number[]} from @param {number[]} to @param {{maxNodes?: number, smooth?: boolean}} [o]
+   * `weight` above 1 trades a little length for a lot of speed (the search leans toward the goal: a path at most `weight` times the best, found by looking at far fewer cubes).
+   * @param {number[]} from @param {number[]} to @param {{maxNodes?: number, smooth?: boolean, weight?: number}} [o]
    * @returns {{status: 'found' | 'partial' | 'none', path: number[][], cost: number}} `partial` means the goal cannot be reached; the path ends as near to it as the search got.
    */
-  findPath(from, to, { maxNodes = 40000, smooth = true } = {}) {
-    const s0 = this.nearestFree(from[0], from[1], from[2]), g0 = this.nearestFree(to[0], to[1], to[2]);
-    if (!s0 || !g0) return { status: 'none', path: [], cost: 0 };
-    const start = this.cellAt(s0[0], s0[1], s0[2]), goal = this.cellAt(g0[0], g0[1], g0[2]);
-    const total = this.blocked.length;
-    // the working arrays are kept between searches, and a cube's entries count only if it was touched in this search (a stamp), so nothing is cleared: a big volume searched often
-    // would otherwise spend most of its time filling arrays
-    const w = (this.work ??= { g: new Float64Array(total), f: new Float64Array(total), came: new Int32Array(total), closed: new Uint8Array(total), stamp: new Uint32Array(total), gen: 0 });
-    if (w.gen >= 0xfffffff0) { w.stamp.fill(0); w.gen = 0; }
-    const gen = ++w.gen;
-    const { g, f, came, closed, stamp } = w;
-    const touch = (c) => { if (stamp[c] !== gen) { stamp[c] = gen; g[c] = Infinity; f[c] = Infinity; came[c] = -1; closed[c] = 0; } };
-    const gc = this.centerOf(goal), gx = gc[0], gy = gc[1], gz = gc[2];
-    const { nx, ny, nz, cell: size, blocked } = this, minX = this.min[0], minY = this.min[1], minZ = this.min[2];
-    const open = new Heap(f);
-    touch(start); touch(goal);
-    g[start] = 0;
-    {
-      const ix = start % nx, iz = Math.floor(start / nx) % nz, iy = Math.floor(start / (nx * nz));
-      const ex = minX + (ix + 0.5) * size - gx, ey = minY + iy * size - gy, ez = minZ + (iz + 0.5) * size - gz;
-      f[start] = sqrt(ex * ex + ey * ey + ez * ez);
-    }
-    open.push(start);
-    let nearest = start, nearestH = f[start], expanded = 0;
-    const layer = nx * nz;
-    while (open.size && expanded < maxNodes) {
-      const cur = open.pop();
-      if (closed[cur]) continue;
-      closed[cur] = 1;
-      expanded++;
-      if (cur === goal) { nearest = cur; break; }
-      const h = f[cur] - g[cur];
-      if (h < nearestH) { nearestH = h; nearest = cur; }
-      const ix = cur % nx, iz = Math.floor(cur / nx) % nz, iy = Math.floor(cur / layer), gcur = g[cur];
-      for (let k = 0; k < OFF_N; k++) {
-        const dx = OFF_DX[k], dy = OFF_DY[k], dz = OFF_DZ[k];
-        const jx = ix + dx, jy = iy + dy, jz = iz + dz;
-        if (jx < 0 || jy < 0 || jz < 0 || jx >= nx || jy >= ny || jz >= nz) continue;
-        const j = jy * layer + jz * nx + jx;
-        if (blocked[j]) continue;
-        touch(j);
-        if (closed[j]) continue;
-        if ((dx && blocked[iy * layer + iz * nx + jx]) || (dz && blocked[iy * layer + jz * nx + ix]) || (dy && blocked[jy * layer + iz * nx + ix])) continue;
-        const cost = gcur + OFF_STEP[k] * size;
-        if (cost < g[j]) {
-          const ex = minX + (jx + 0.5) * size - gx, ey = minY + jy * size - gy, ez = minZ + (jz + 0.5) * size - gz;
-          g[j] = cost;
-          f[j] = cost + sqrt(ex * ex + ey * ey + ez * ez);
-          came[j] = cur;
-          open.push(j);
-        }
-      }
-    }
-    const end = closed[goal] ? goal : nearest;
-    const cells = [];
-    for (let c = end; c !== -1; c = came[c]) cells.push(c);
-    cells.reverse();
-    let points = cells.map((c) => this.centerOf(c));
-    if (smooth) points = this.#smooth(points);
-    const status = end === goal ? 'found' : end === start ? 'none' : 'partial';
-    return { status, path: points, cost: g[end] };
+  findPath(from, to, o = {}) {
+    const search = new PathSearch(this, from, to, o);
+    search.step(Infinity);
+    return search.result;
   }
 
-  /** Pull the path straight: from each point, jump to the furthest later point that can be reached in a straight line. */
-  #smooth(points) {
+  /**
+   * Ask for a path to be found a little at a time: the answer comes when `pump` has spent enough effort on it, so a long search never holds up a frame. Searches are done one after another, in the
+   * order they were asked for. Watch `done` (then read `result`) on what it returns; `cancel()` drops a request that is no longer wanted.
+   * @param {number[]} from @param {number[]} to @param {{maxNodes?: number, smooth?: boolean, weight?: number}} [o]
+   * @returns {{done: boolean, result: {status: 'found' | 'partial' | 'none', path: number[][], cost: number} | null, cancel: () => void}}
+   */
+  request(from, to, o = {}) {
+    const nav = this;
+    const handle = {
+      done: false, result: null, cancelled: false, search: null, from: from.slice(), to: to.slice(), o,
+      cancel() { if (!handle.done) { handle.cancelled = true; handle.search?.cancel(); } },
+    };
+    (this.queue ??= []).push(handle);
+    void nav;
+    return handle;
+  }
+
+  /**
+   * Spend up to `budget` cubes of searching on the requests that are waiting. Call it once a tick (a second call in the same tick does nothing, so every caller may call it).
+   * @param {number} budget @param {number} [tick] a number that changes every tick
+   * @returns {number} how many cubes were looked at
+   */
+  pump(budget, tick = undefined) {
+    if (tick !== undefined) { if (this.pumpedAt === tick) return 0; this.pumpedAt = tick; }
+    const queue = this.queue;
+    let spent = 0;
+    while (queue?.length && spent < budget) {
+      const head = queue[0];
+      if (head.cancelled) { queue.shift(); continue; }
+      head.search ??= new PathSearch(this, head.from, head.to, head.o);
+      spent += head.search.step(budget - spent);
+      if (head.search.done) { head.done = true; head.result = head.search.result; queue.shift(); }
+      else break;
+    }
+    return spent;
+  }
+
+  /** The working arrays for a search. One set is kept for every volume of the same size (the volumes for the different sizes of agent on one map share it), and if it is in use a temporary set is made. Internal: used by `PathSearch`. */
+  _lease() {
+    const total = this.blocked.length;
+    const kept = SHARED_WORK.get(total);
+    if (kept && !kept.busy) { kept.busy = true; return kept; }
+    const w = { g: new Float64Array(total), f: new Float64Array(total), came: new Int32Array(total), closed: new Uint8Array(total), stamp: new Uint32Array(total), gen: 0, busy: true };
+    if (!kept) SHARED_WORK.set(total, w);
+    return w;
+  }
+
+  /** Pull the path straight: from each point, jump to the furthest later point that can be reached in a straight line. Internal: used by `PathSearch`. */
+  smoothPath(points) {
     if (points.length <= 2) return points;
     const out = [points[0]];
     let i = 0;
@@ -252,5 +246,91 @@ export class NavVolume {
       i = j;
     }
     return out;
+  }
+}
+
+/** One search for a path, that can be done a few cubes at a time (see `NavVolume.request`); `NavVolume.findPath` runs one to the end. */
+export class PathSearch {
+  /** @param {NavVolume} nav @param {number[]} from @param {number[]} to @param {{maxNodes?: number, smooth?: boolean, weight?: number}} [o] */
+  constructor(nav, from, to, { maxNodes = 40000, smooth = true, weight = 1 } = {}) {
+    this.nav = nav; this.maxNodes = maxNodes; this.smooth = smooth; this.weight = Math.max(1, weight);
+    /** Whether the search is over, and (then) what it found. */
+    this.done = false; this.result = null; this.expanded = 0;
+    const s0 = nav.nearestFree(from[0], from[1], from[2]), g0 = nav.nearestFree(to[0], to[1], to[2]);
+    if (!s0 || !g0) { this.#finish({ status: 'none', path: [], cost: 0 }); return; }
+    const start = (this.start = nav.cellAt(s0[0], s0[1], s0[2])), goal = (this.goal = nav.cellAt(g0[0], g0[1], g0[2]));
+    // the working arrays are kept between searches, and a cube's entries count only if it was touched in this search (a stamp), so nothing is cleared: a big volume searched often
+    // would otherwise spend most of its time filling arrays
+    const w = (this.w = nav._lease());
+    if (w.gen >= 0xfffffff0) { w.stamp.fill(0); w.gen = 0; }
+    this.gen = ++w.gen;
+    this.open = new Heap(w.f);
+    const gc = nav.centerOf(goal);
+    this.gx = gc[0]; this.gy = gc[1]; this.gz = gc[2];
+    this.touch(start); this.touch(goal);
+    w.g[start] = 0;
+    const { nx, nz, cell: size } = nav, ix = start % nx, iz = Math.floor(start / nx) % nz, iy = Math.floor(start / (nx * nz));
+    const ex = nav.min[0] + (ix + 0.5) * size - this.gx, ey = nav.min[1] + iy * size - this.gy, ez = nav.min[2] + (iz + 0.5) * size - this.gz;
+    w.f[start] = this.weight * sqrt(ex * ex + ey * ey + ez * ez);
+    this.open.push(start);
+    this.nearest = start; this.nearestH = w.f[start];
+  }
+
+  touch(c) { const w = this.w; if (w.stamp[c] !== this.gen) { w.stamp[c] = this.gen; w.g[c] = Infinity; w.f[c] = Infinity; w.came[c] = -1; w.closed[c] = 0; } }
+
+  /** Give up: the working arrays go back. */
+  cancel() { if (this.w) { this.w.busy = false; this.w = null; } this.done = true; }
+
+  #finish(result) { this.result = result; this.done = true; if (this.w) { this.w.busy = false; this.w = null; } }
+
+  /**
+   * Look at up to `budget` more cubes (all that are needed if it is not given).
+   * @param {number} [budget] @returns {number} how many cubes were looked at
+   */
+  step(budget = Infinity) {
+    if (this.done) return 0;
+    const nav = this.nav, w = this.w, { g, f, came, closed } = w, { nx, ny, nz, cell: size, blocked } = nav, minX = nav.min[0], minY = nav.min[1], minZ = nav.min[2];
+    const open = this.open, goal = this.goal, gx = this.gx, gy = this.gy, gz = this.gz, weight = this.weight, layer = nx * nz;
+    let used = 0, { nearest, nearestH } = this;
+    while (open.size && this.expanded < this.maxNodes && used < budget) {
+      const cur = open.pop();
+      if (closed[cur]) continue;
+      closed[cur] = 1;
+      this.expanded++; used++;
+      if (cur === goal) { nearest = cur; break; }
+      const h = f[cur] - g[cur];
+      if (h < nearestH) { nearestH = h; nearest = cur; }
+      const ix = cur % nx, iz = Math.floor(cur / nx) % nz, iy = Math.floor(cur / layer), gcur = g[cur];
+      for (let k = 0; k < OFF_N; k++) {
+        const dx = OFF_DX[k], dy = OFF_DY[k], dz = OFF_DZ[k];
+        const jx = ix + dx, jy = iy + dy, jz = iz + dz;
+        if (jx < 0 || jy < 0 || jz < 0 || jx >= nx || jy >= ny || jz >= nz) continue;
+        const j = jy * layer + jz * nx + jx;
+        if (blocked[j]) continue;
+        this.touch(j);
+        if (closed[j]) continue;
+        if ((dx && blocked[iy * layer + iz * nx + jx]) || (dz && blocked[iy * layer + jz * nx + ix]) || (dy && blocked[jy * layer + iz * nx + ix])) continue;
+        const cost = gcur + OFF_STEP[k] * size;
+        if (cost < g[j]) {
+          const ex = minX + (jx + 0.5) * size - gx, ey = minY + jy * size - gy, ez = minZ + (jz + 0.5) * size - gz;
+          g[j] = cost;
+          f[j] = cost + weight * sqrt(ex * ex + ey * ey + ez * ez);
+          came[j] = cur;
+          open.push(j);
+        }
+      }
+    }
+    this.nearest = nearest; this.nearestH = nearestH;
+    const over = closed[goal] || !open.size || this.expanded >= this.maxNodes;
+    if (!over) return used;
+    const end = closed[goal] ? goal : nearest;
+    const cells = [];
+    for (let c = end; c !== -1; c = came[c]) cells.push(c);
+    cells.reverse();
+    let points = cells.map((c) => nav.centerOf(c));
+    if (this.smooth) points = nav.smoothPath(points);
+    const status = end === goal ? 'found' : end === this.start ? 'none' : 'partial';
+    this.#finish({ status, path: points, cost: g[end] });
+    return used;
   }
 }

@@ -16,16 +16,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * @template T
  * @param {string} url
  * @param {(page: any) => Promise<T>} fn
- * @param {{width?: number, height?: number}} [o]
+ * @param {{width?: number, height?: number, args?: string[]}} [o] `args` are more command line flags for Chrome (for example `--disable-gpu-vsync`, to time frames without the display's pace)
  * @returns {Promise<T>}
  */
-export async function withChromePage(url, fn, { width = 1400, height = 800 } = {}) {
+export async function withChromePage(url, fn, { width = 1400, height = 800, args = [] } = {}) {
   const exe = findBrowser('chrome');
   if (!exe) throw new Error('Chrome not found');
   const profile = mkdtempSync(join(tmpdir(), 'engine-cdp-'));
   const proc = spawn(exe, [
     '--headless=new', `--user-data-dir=${profile}`, '--remote-debugging-port=0', `--window-size=${width},${height}`,
-    '--no-first-run', '--no-default-browser-check', '--enable-unsafe-webgpu', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', 'about:blank',
+    '--no-first-run', '--no-default-browser-check', '--enable-unsafe-webgpu', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', ...args, 'about:blank',
   ], { stdio: 'ignore' });
   const guard = guardBrowser(proc, profile);                      // the browser never outlives this process, however it ends
   let ws;

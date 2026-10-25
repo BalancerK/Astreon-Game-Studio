@@ -109,3 +109,40 @@ test('the ground can be added as a height function: paths go over a hill, or rou
   assert.ok(['found', 'partial'].includes(climb.status));
   assert.ok(climb.path[climb.path.length - 1][1] > 20, 'a goal on top of the hill is reached high up');
 });
+
+test('a path asked for a little at a time is the same path as one found at once, and arrives when enough has been spent on it', () => {
+  const nav = volume();
+  nav.addBox(wall);
+  const at = [[0, 0, -20], [0, 0, 20]];
+  const once = nav.findPath(...at);
+  const asked = nav.request(...at);
+  assert.equal(asked.done, false);
+  let ticks = 0;
+  while (!asked.done && ticks < 400) { nav.pump(40, ++ticks); }
+  assert.ok(asked.done && ticks > 1, `done after ${ticks} small steps`);
+  assert.deepEqual(asked.result, once);
+  assert.equal(nav.pump(40, ticks), 0, 'a second call in the same tick does nothing');
+});
+
+test('requests are done one after another, a request that is cancelled is dropped, and findPath still works while one is half done', () => {
+  const nav = volume();
+  nav.addBox(wall);
+  const a = nav.request([0, 0, -20], [0, 0, 20]), b = nav.request([-30, 0, -30], [30, 0, 30]), c = nav.request([20, 0, -30], [-20, 0, 30]);
+  nav.pump(30, 1);
+  assert.ok(!a.done && !b.done, 'the first is only part done, the others wait');
+  c.cancel();
+  const direct = nav.findPath([-30, 0, 30], [30, 0, -30]);
+  assert.equal(direct.status, 'found', 'a direct search does not disturb the half-done one');
+  for (let t = 2; t < 200 && !(a.done && b.done); t++) nav.pump(100, t);
+  assert.ok(a.done && b.done && !c.done);
+  assert.equal(a.result.status, 'found'); assert.equal(b.result.status, 'found');
+});
+
+test('a weight above one finds a path nearly as short by looking at far fewer cubes', () => {
+  const nav = volume({ min: [-200, 0, -200], max: [200, 40, 200] });
+  for (let k = -8; k <= 8; k++) nav.addBox(box(k * 20 - 3, k * 20 + 3, 0, 30, -150 + (k % 3) * 50, 150 + (k % 3) * 50));
+  const exact = nav.findPath([-180, 0, -180], [180, 0, 180], { smooth: false }), quick = nav.findPath([-180, 0, -180], [180, 0, 180], { smooth: false, weight: 1.8 });
+  assert.equal(exact.status, 'found'); assert.equal(quick.status, 'found');
+  assert.ok(quick.cost <= exact.cost * 1.8 + 1e-6, `${quick.cost.toFixed(0)} against ${exact.cost.toFixed(0)}`);
+  assert.ok(quick.cost >= exact.cost - 1e-6);
+});
