@@ -30,6 +30,9 @@ test('the lexer tells code from comments, strings, templates and regular express
   assert.equal(isCode(src.indexOf('${a}') + 2), true, 'an expression inside a template is code');
   assert.equal(isCode(src.indexOf('/g') - 3), false, 'regex body');
   assert.equal(isCode(src.indexOf('a / 2')), true); assert.equal(isCode(src.indexOf('/ 3')), true, 'division is not a regex');
+  const props = 'const s = e.in / 60, t = o?.of / 2, u = a.new / 3; const r = x in /y/;';
+  const segs = scan(props), kinds = segs.map((q) => q.type);
+  assert.deepEqual(kinds, ['regex'], 'only the real regex after the keyword `in` is a regex; a property called in, of or new is followed by division');
   assert.throws(() => scan('const a = "oops\nnext'), /unterminated string/);
   assert.throws(() => scan('/* never closed'), /unterminated comment/);
 });

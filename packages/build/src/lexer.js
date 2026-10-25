@@ -60,7 +60,7 @@ export function scan(src) {
       prev = c; word = ''; i++; continue;
     }
     const code = src.charCodeAt(i);
-    if (isIdent(code)) { let j = i; while (j < n && isIdent(src.charCodeAt(j))) j++; word = src.slice(i, j); prev = 'a'; i = j; continue; }
+    if (isIdent(code)) { let j = i; while (j < n && isIdent(src.charCodeAt(j))) j++; word = prev === '.' ? '' : src.slice(i, j); prev = 'a'; i = j; continue; }          // (a name after a dot is a property, even `e.in` or `x.of`: a slash after it divides)
     if (c === ' ' || c === '\t' || c === '\n' || c === '\r') { i++; continue; }
     prev = c; word = ''; i++;
   }
