@@ -62,7 +62,7 @@ export async function withChromePage(url, fn, { width = 1400, height = 800 } = {
 
     const KEYS = { F3: [114, 'F3'], F5: [116, 'F5'], F9: [120, 'F9'], KeyD: [68, 'd'], KeyS: [83, 's'], KeyW: [87, 'w'], KeyA: [65, 'a'], ShiftLeft: [16, 'Shift'], Escape: [27, 'Escape'], Backspace: [8, 'Backspace'], Enter: [13, 'Enter'], Tab: [9, 'Tab'], ArrowDown: [40, 'ArrowDown'], ArrowUp: [38, 'ArrowUp'], ArrowLeft: [37, 'ArrowLeft'], ArrowRight: [39, 'ArrowRight'], Space: [32, ' '], KeyJ: [74, 'j'], KeyZ: [90, 'z'] };
     const page = {
-      errors,
+      errors, send,
       /** Change the size of the window (what a narrower screen would give). */
       setViewport(w, h) { return send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false }); },
       async eval(expression) {

@@ -28,7 +28,7 @@ export { skyEnvironment, uniformEnvironment, environmentFromImage, loadEnvironme
 export { MaterialSet, cleanMaterial, MAX_MATERIALS, MATERIAL_FLOATS, pbrLight, pbrAmbient, pbrAmbientEnvironment, environmentBrdf, srgbToLinear, linearToSrgb } from './materials.js';
 export { resolvePostOptions, TONEMAPS, circleOfConfusion } from './post.js';
 export { solveTwoBone, solveChain, aimJoint, humanoidKey, autoMapJoints, retargetPose, retargetClip, poseFromRagdoll, poseToRagdoll, ragdollSpecFromSkeleton } from './ik.js';
-export { lightType, spotAngles, planLocalShadows, resolveLocalShadowOptions, MAX_LOCAL_SHADOW_LAYERS } from './shadow.js';
+export { lightType, spotAngles, planLocalShadows, resolveLocalShadowOptions, MAX_LOCAL_SHADOW_LAYERS, packInstancesForLight, computeShadowMatrix } from './shadow.js';
 export { ParticleBatch, PARTICLE_FLOATS, ORIENT } from './particles.js';
 export { Skeleton, Pose, AnimationClip, Animator, samplePose, blendPoses } from './skeleton.js';
 export { bidiClass, resolveBidi, reorder, visualRuns, mirrored, needsBidi } from './bidi.js';

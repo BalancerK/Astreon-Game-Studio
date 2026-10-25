@@ -4,7 +4,7 @@ import { GLPost } from './post-gl.js';
 import { VERTEX_BYTES, SKIN_BYTES } from './mesh.js';
 import { INSTANCE3D_FLOATS, INSTANCE3D_BYTES, SKINNED_INSTANCE_FLOATS, SKINNED_INSTANCE_BYTES, MAX_POINT_LIGHTS } from './drawlist.js';
 import { SCENE_UNIFORM_FLOATS, writeSceneUniforms } from './webgpu3d.js';
-import { computeCascades, resolveShadowOptions, MAX_CASCADES, MAX_LOCAL_SHADOW_LAYERS, resolveLocalShadowOptions, planLocalShadows, computeLocalMatrix } from './shadow.js';
+import { computeCascades, packInstancesForLight, resolveShadowOptions, MAX_CASCADES, MAX_LOCAL_SHADOW_LAYERS, resolveLocalShadowOptions, planLocalShadows, computeLocalMatrix } from './shadow.js';
 import { createLighting } from './drawlist.js';
 import { ENV_BLOCK_AT, ENV_BLOCK_VEC4S, halfFaceData, writeEnvironmentBlock } from './environment.js';
 import { SKY_BLOCK_AT, writeSkyBlock } from './sky.js';
@@ -922,12 +922,21 @@ export class WebGL2Renderer3D {
   }
 
   /** Put the plain instances on the GPU; returns what to draw. */
-  #uploadPlain(list) {
+  #uploadPlain(list, shadow = null) {
     const { gl } = this;
     let total = 0;
     for (const g of list.groups.values()) total += g.count;
     const draws = [];
+    draws.cuts = [];
     if (total === 0) return draws;
+    // after the instances of the main pass come those of each sun cascade: only the ones that can touch that cascade's box (the maps come out the same, and far buildings and hillsides are not drawn into a small near map)
+    let extra = 0;
+    const cuts = [];
+    if (shadow && this.cullCascades !== false) {
+      const need = total * shadow.matrices.length * INSTANCE3D_FLOATS;
+      if (!this.cutStaging || this.cutStaging.length < need) this.cutStaging = new Float32Array(Math.max(need, 4096));
+      for (const matrix of shadow.matrices) { const r = packInstancesForLight(list.groups, matrix, INSTANCE3D_FLOATS, this.cutStaging, extra); cuts.push(r.parts); extra += r.rows; }
+    }
     let first = 0; // make sure every mesh is on the GPU first (uploading one rebinds ARRAY_BUFFER), then fill the instance buffer
     for (const [mesh, g] of list.groups) {
       if (g.count === 0) continue;
@@ -935,8 +944,10 @@ export class WebGL2Renderer3D {
       first += g.count;
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, total * INSTANCE3D_BYTES, gl.DYNAMIC_DRAW); // a fresh store each frame: the driver orphans the old one instead of stalling on it
+    gl.bufferData(gl.ARRAY_BUFFER, (total + extra) * INSTANCE3D_BYTES, gl.DYNAMIC_DRAW); // a fresh store each frame: the driver orphans the old one instead of stalling on it
     for (const d of draws) gl.bufferSubData(gl.ARRAY_BUFFER, d.first * INSTANCE3D_BYTES, d.data, 0, d.count * INSTANCE3D_FLOATS); // straight from the draw list
+    if (extra > 0) gl.bufferSubData(gl.ARRAY_BUFFER, total * INSTANCE3D_BYTES, this.cutStaging, 0, extra * INSTANCE3D_FLOATS);
+    draws.cuts = cuts.map((parts) => parts.map((p) => ({ gpu: this.#gpuMesh(p.mesh), first: total + p.row, count: p.count })));
     return draws;
   }
 
@@ -1023,11 +1034,11 @@ export class WebGL2Renderer3D {
     gl.bindBuffer(gl.UNIFORM_BUFFER, this.sceneBuffer);
     gl.bufferSubData(gl.UNIFORM_BUFFER, 0, this.sceneData);
     gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, this.sceneBuffer);
-    const plain = this.#uploadPlain(list), skinned = this.#uploadSkinned(list);
+    const plain = this.#uploadPlain(list, shadow), skinned = this.#uploadSkinned(list);
 
     const jobs = []; // the depth passes: each cascade of the sun, then each layer of a point or spot light's map
-    if (shadow) shadow.matrices.forEach((matrix, layer) => jobs.push({ texture: this.shadowTexture, size: shadow.size, layer, matrix }));
-    if (local) local.matrices.forEach((matrix, layer) => jobs.push({ texture: this.localTexture, size: local.size, layer, matrix }));
+    if (shadow) shadow.matrices.forEach((matrix, layer) => jobs.push({ texture: this.shadowTexture, size: shadow.size, layer, matrix, draws: plain.cuts[layer] }));
+    if (local) local.matrices.forEach((matrix, layer) => jobs.push({ texture: this.localTexture, size: local.size, layer, matrix, draws: plain }));
     if (jobs.length > 0) { // first the world as the lights see it (depth only)
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFbo);
       gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
@@ -1041,7 +1052,8 @@ export class WebGL2Renderer3D {
         gl.drawBuffers([gl.NONE]); gl.readBuffer(gl.NONE);
         gl.clearDepth(1);
         gl.clear(gl.DEPTH_BUFFER_BIT);
-        if (plain.length > 0) { gl.useProgram(this.shadowProg); this.#drawAll(plain, false); }
+        const mine = job.draws ?? plain;
+        if (mine.length > 0) { gl.useProgram(this.shadowProg); this.#drawAll(mine, false); }
         if (skinned.length > 0) {
           gl.useProgram(this.shadowSkinProg);
           gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.paletteTexture);
@@ -1103,6 +1115,8 @@ export class WebGL2Renderer3D {
       this.particles.draw(particles, camera);
     }
     if (post) this.post.finish(); // bloom, tone mapping and grading, onto the canvas
+    /** What the last frame drew: instances and draw calls in the main pass, and in the sun's depth passes (which draw only what can reach each cascade). */
+    this.stats = { instances: plain.reduce((n, d) => n + d.count, 0), draws: plain.length, shadowInstances: plain.cuts.reduce((n, c) => n + c.reduce((m, d) => m + d.count, 0), 0), shadowDraws: plain.cuts.reduce((n, c) => n + c.length, 0), cascades: plain.cuts.length };
   }
 
   destroy() {

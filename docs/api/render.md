@@ -8,7 +8,7 @@ npm install @engine/render
 
 Version 0.1.0. The package's own README ([packages/render](../../packages/render/README.md)) explains how the pieces fit together; this page lists every export.
 
-## Contents (202 of 202 documented)
+## Contents (204 of 204 documented)
 
 | Name | Kind | Summary |
 |---|---|---|
@@ -103,6 +103,7 @@ Version 0.1.0. The package's own README ([packages/render](../../packages/render
 | [`cleanMaterial`](#cleanmaterial) | function | Check a material and fill in what it leaves out, so the renderers always get the same complete shape. |
 | [`computeNormals`](#computenormals) | function | Smooth vertex normals from positions and indices (area-weighted average of the faces around each vertex). |
 | [`computeSdf`](#computesdf) | function | Turn a coverage image into a signed distance field byte image. |
+| [`computeShadowMatrix`](#computeshadowmatrix) | function | The matrix that takes world positions to the shadow map's clip space (depth 0..1), for a camera and a light. |
 | [`createBox`](#createbox) | function | An axis-aligned box centred on the origin with flat-shaded faces. |
 | [`createCapsule`](#createcapsule) | function | An upright capsule (a cylinder with hemispherical ends): `height` is the total height. |
 | [`createCylinder`](#createcylinder) | function | An upright cylinder (axis along y, centred on the origin) with capped ends. |
@@ -157,6 +158,7 @@ Version 0.1.0. The package's own README ([packages/render](../../packages/render
 | [`nearestLights`](#nearestlights) | function | The lights that matter most to a viewpoint, for when a scene has more than `MAX_POINT_LIGHTS`: the nearest ones (by distance to the edge of each light's reach). |
 | [`needsBidi`](#needsbidi) | function | Does this text contain anything that reads right to left or controls direction (so it needs the algorithm)? |
 | [`needsEngine`](#needsengine) | function | Does a string need the engine (right-to-left, shaping, or clusters of more than one character)? |
+| [`packInstancesForLight`](#packinstancesforlight) | function | Copy into `staging` (rows of `floats` numbers, from row `startRow`) the instances of the draw list's groups that could put anything into the map of one light matrix: an instance is left out only when its bounding sphere lies wholly outside the box the matrix covers, sideways, so the finished map is the same as if everything had been drawn. |
 | [`packLighting`](#packlighting) | function | Turn the lighting into the numbers the shaders read, in canvas pixels. |
 | [`packTint`](#packtint) | function | Pack 0..255 channel values into the tint word. |
 | [`paintSplat`](#paintsplat) | function | Paint on a splat map with a round brush: push the pixels under it toward one of the four pictures. |
@@ -354,7 +356,7 @@ function buildChunkMesh(map, chunk, lod, chunkCells, skirt)
 
 Build one chunk's mesh at a level of detail: a grid of vertices every `2^lod` samples, with outward-facing skirts on the four edges.
 
-<sub>src/terrain.js:407</sub>
+<sub>src/terrain.js:438</sub>
 
 ### `buildEnvironment`
 
@@ -455,6 +457,28 @@ around 0.5 with a width taken from the screen-space derivative.
 **Returns** `Uint8Array`
 
 <sub>src/sdf.js:56</sub>
+
+### `computeShadowMatrix`
+
+```js
+function computeShadowMatrix(out, camera, lightDirection, { size, radius })
+```
+
+The matrix that takes world positions to the shadow map's clip space (depth 0..1), for a camera and a light.
+The box is moved in whole texels so shadows do not shimmer as the camera moves.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `out` | `Float64Array \| Float32Array` | 16 floats |
+| `camera` | `import('./camera3d.js').Camera3D` |  |
+| `lightDirection` | `ArrayLike<number>` | Direction TO the light (any length) |
+| `opts` | `{size: number, radius: number}` |  |
+
+**Returns** `number` — Size of one shadow texel in metres
+
+<sub>src/shadow.js:46</sub>
 
 ### `createBox`
 
@@ -991,7 +1015,7 @@ Fractal noise: several octaves of `valueNoise`, each finer and fainter, between 
 | `y` | `number` |  |
 | `o` (optional) | `{seed?: number, octaves?: number, lacunarity?: number, persistence?: number, ridged?: boolean}` |  |
 
-<sub>src/terrain.js:46</sub>
+<sub>src/terrain.js:47</sub>
 
 ### `filterColor`
 
@@ -1168,7 +1192,7 @@ What kind of light this is: `'area'` if it says so, `'spot'` if it has a `direct
 |---|---|---|
 | `light` | `{type?: string, direction?: ArrayLike<number>}` |  |
 
-<sub>src/shadow.js:105</sub>
+<sub>src/shadow.js:140</sub>
 
 ### `linearToSrgb`
 
@@ -1410,6 +1434,31 @@ Does a string need the engine (right-to-left, shaping, or clusters of more than 
 
 <sub>src/textlayout.js:32</sub>
 
+### `packInstancesForLight`
+
+```js
+function packInstancesForLight(groups, matrix, floats, staging, startRow, margin = 0.02)
+```
+
+Copy into `staging` (rows of `floats` numbers, from row `startRow`) the instances of the draw list's groups that could put anything into the map of one light matrix: an instance is
+left out only when its bounding sphere lies wholly outside the box the matrix covers, sideways, so the finished map is the same as if everything had been drawn. This is for the
+sun's orthographic cascades, where most of a big world is outside the small box round the camera.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `groups` | `Map<any, {data: Float32Array, count: number}>` | the draw list's groups, by mesh |
+| `matrix` | `ArrayLike<number>` | world to the light's clip space |
+| `floats` | `number` | numbers in an instance |
+| `staging` | `Float32Array` | big enough for every instance |
+| `startRow` | `number` |  |
+| `margin` (optional) | `number` | extra room round the box, in clip units |
+
+**Returns** `{parts: {mesh: any, row: number, count: number}[], rows: number}` — the runs of rows written, one run for each mesh that has any
+
+<sub>src/shadow.js:75</sub>
+
 ### `packLighting`
 
 ```js
@@ -1463,7 +1512,7 @@ Paint on a splat map with a round brush: push the pixels under it toward one of 
 
 **Returns** `{x0: number, y0: number, x1: number, y1: number} \| null` — The changed pixels (to upload again with `TextureSet.update`).
 
-<sub>src/terrain.js:294</sub>
+<sub>src/terrain.js:295</sub>
 
 ### `parseBmfont`
 
@@ -1683,7 +1732,7 @@ smaller one tried.
 
 **Returns** `{slots: Int32Array, layers: {light: number, face: number}[]}` — `slots[i]` is light i's first layer, or -1; `layers` lists every layer in order
 
-<sub>src/shadow.js:124</sub>
+<sub>src/shadow.js:159</sub>
 
 ### `poseFromRagdoll`
 
@@ -1840,7 +1889,7 @@ Fill in defaults and check ranges.
 |---|---|---|
 | `opts` (optional) | `LocalShadowOptions \| true` |  |
 
-<sub>src/shadow.js:96</sub>
+<sub>src/shadow.js:131</sub>
 
 ### `resolvePostOptions`
 
@@ -2232,7 +2281,7 @@ or `{ height: [from, to] }` in metres, with a smooth fade between the two; leave
 
 **Returns** `Uint8ClampedArray` — RGBA bytes, rows from z = the map's origin.
 
-<sub>src/terrain.js:270</sub>
+<sub>src/terrain.js:271</sub>
 
 ### `spotAngles`
 
@@ -2244,7 +2293,7 @@ The spot cone's half-angle in radians (default 0.7), and where its soft edge sta
 
 **Returns** `{outer: number, inner: number}`
 
-<sub>src/shadow.js:111</sub>
+<sub>src/shadow.js:146</sub>
 
 ### `srgbToLinear`
 
@@ -2391,7 +2440,7 @@ Smooth value noise in two dimensions, between 0 and 1: the same for the same see
 | `y` | `number` |  |
 | `seed` (optional) | `number` |  |
 
-<sub>src/terrain.js:35</sub>
+<sub>src/terrain.js:36</sub>
 
 ### `visualRuns`
 
@@ -3185,6 +3234,22 @@ still throw a shadow into view and the shadow map is drawn from this list. Pass 
 |---|---|---|
 | `buffer` | `import('./occlusion.js').OcclusionBuffer \| null` |  |
 
+#### `DrawList3D.sphereVisible`
+
+```js
+sphereVisible(x, y, z, radius)
+```
+
+Could a sphere put anything in the picture: is it in the view, or could its shadow fall into the view or into the reach of a light that casts shadows? What `add` asks about every
+instance; ask it yourself about a whole group of things (a character, a building) to skip all of them at once. Always true without a camera.
+
+| Name | Type | Description |
+|---|---|---|
+| `x` | `number` |  |
+| `y` | `number` |  |
+| `z` | `number` |  |
+| `radius` | `number` |  |
+
 #### `DrawList3D.clear`
 
 ```js
@@ -3741,7 +3806,7 @@ The ground as triangles (nine numbers each: three corners), for a collision worl
 
 **Returns** `Float32Array`
 
-<sub>src/terrain.js:57</sub>
+<sub>src/terrain.js:58</sub>
 
 ### `class LayoutTypeface`
 
@@ -4618,13 +4683,13 @@ The ground of a heightmap as chunks of mesh with levels of detail.
 #### `Terrain.constructor`
 
 ```js
-constructor(map, { chunkCells = 32, lods = 4, skirt = 2, lodDistance } = {})
+constructor(map, { chunkCells = 32, lods = 4, skirt = 2, lodDistance, farMerge = 0 } = {})
 ```
 
 | Name | Type | Description |
 |---|---|---|
 | `map` | `Heightmap` |  |
-| `o` (optional) | `{chunkCells?: number, lods?: number, skirt?: number, lodDistance?: number}` | `chunkCells`: grid cells along a chunk (the map's cells must divide by it, and it by 2 to the power of `lods` less one). `lods`: levels of detail (each halves the cells). `skirt`: how far (metres) the edge of each chunk is dropped to hide the join with a neighbour of a different level. `lodDistance`: how far (metres) the most detailed level reaches; each next level doubles it. |
+| `o` (optional) | `{chunkCells?: number, lods?: number, skirt?: number, lodDistance?: number}` | `chunkCells`: grid cells along a chunk (the map's cells must divide by it, and it by 2 to the power of `lods` less one). `lods`: levels of detail (each halves the cells). `skirt`: how far (metres) the edge of each chunk is dropped to hide the join with a neighbour of a different level. `lodDistance`: how far (metres) the most detailed level reaches; each next level doubles it. `farMerge`: a number of chunks (0, the default, is off): squares of this many chunks on a side that are all at the coarsest level of detail are drawn as one mesh instead of one each, which is the same picture in far fewer draw calls (a wide view over a big map has hundreds of far chunks). |
 
 #### `Terrain.markDirty`
 
@@ -4709,7 +4774,7 @@ Add the chunks that can be seen to a draw list at the right level of detail. Set
 
 **Returns** `number` — How many chunks were added.
 
-<sub>src/terrain.js:316</sub>
+<sub>src/terrain.js:317</sub>
 
 ### `class TextureSet`
 
@@ -5573,7 +5638,7 @@ Most layers of local shadow map a frame can use: a spot light takes one, a point
 
 Value: `12`
 
-<sub>src/shadow.js:84</sub>
+<sub>src/shadow.js:119</sub>
 
 ### `MAX_MATERIALS`
 

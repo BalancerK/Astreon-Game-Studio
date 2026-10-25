@@ -368,7 +368,7 @@
 <p>Find a path. The start and the goal are moved to the nearest free place if they are inside something.</p>
 <div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>from</code></td><td><code>number[]</code></td><td></td></tr><tr><td><code>to</code></td><td><code>number[]</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{maxNodes?: number, smooth?: boolean}</code></td><td></td></tr></tbody></table></div>
 <p><strong>Returns</strong> <code>{status: 'found' \| 'partial' \| 'none', path: number[][], cost: number}</code> — <code>partial</code> means the goal cannot be reached; the path ends as near to it as the search got.</p>
-<p><sub>src/navvolume.js:56</sub></p>
+<p><sub>src/navvolume.js:60</sub></p>
 <h3 id="class-node"><code>class Node</code><a class="anchor" href="#class-node" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Base class. Subclasses implement <code>tick(ctx)</code>; <code>reset(ctx)</code> clears memory when a node is abandoned.</p>

@@ -12,34 +12,38 @@ const sqrt = Math.sqrt;
 const OFFSETS = [];
 for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if (dx || dy || dz) OFFSETS.push([dx, dy, dz, sqrt(dx * dx + dy * dy * 1.96 + dz * dz)]);
 
-/** The cheapest first: a binary heap of cell numbers by cost, ties broken by the smaller cell number, so the order never depends on how the engine sorts. */
+const OFF_N = OFFSETS.length;
+const OFF_DX = Int8Array.from(OFFSETS, (o) => o[0]), OFF_DY = Int8Array.from(OFFSETS, (o) => o[1]), OFF_DZ = Int8Array.from(OFFSETS, (o) => o[2]), OFF_STEP = Float64Array.from(OFFSETS, (o) => o[3]);
+
+/** The cheapest first: a binary heap of cell numbers by cost, ties broken by the smaller cell number, so the order never depends on how the engine sorts. (The numbers live in a typed array that is reused.) */
 class Heap {
-  constructor(cost) { this.cost = cost; this.items = []; }
-  get size() { return this.items.length; }
-  less(a, b) { return this.cost[a] < this.cost[b] || (this.cost[a] === this.cost[b] && a < b); }
+  constructor(cost) { this.cost = cost; this.items = new Int32Array(1024); this.length = 0; }
+  get size() { return this.length; }
+  less(a, b) { const c = this.cost; return c[a] < c[b] || (c[a] === c[b] && a < b); }
   push(cell) {
-    const h = this.items;
-    h.push(cell);
-    let i = h.length - 1;
+    if (this.length === this.items.length) { const bigger = new Int32Array(this.items.length * 2); bigger.set(this.items); this.items = bigger; }
+    const h = this.items, cost = this.cost;
+    let i = this.length++;
+    h[i] = cell;
     while (i > 0) {
-      const p = (i - 1) >> 1;
-      if (!this.less(h[i], h[p])) break;
-      [h[i], h[p]] = [h[p], h[i]];
+      const p = (i - 1) >> 1, hp = h[p], ci = cost[cell], cp = cost[hp];
+      if (!(ci < cp || (ci === cp && cell < hp))) break;
+      h[i] = hp; h[p] = cell;
       i = p;
     }
   }
   pop() {
-    const h = this.items, top = h[0], last = h.pop();
-    if (h.length) {
+    const h = this.items, cost = this.cost, top = h[0], last = h[--this.length], n = this.length;
+    if (n > 0) {
       h[0] = last;
       let i = 0;
       for (;;) {
         const l = 2 * i + 1, r = l + 1;
-        let m = i;
-        if (l < h.length && this.less(h[l], h[m])) m = l;
-        if (r < h.length && this.less(h[r], h[m])) m = r;
+        let m = i, hm = h[i];
+        if (l < n) { const hl = h[l], cl = cost[hl], cm = cost[hm]; if (cl < cm || (cl === cm && hl < hm)) { m = l; hm = hl; } }
+        if (r < n) { const hr = h[r], cr = cost[hr], cm = cost[hm]; if (cr < cm || (cr === cm && hr < hm)) { m = r; hm = hr; } }
         if (m === i) break;
-        [h[i], h[m]] = [h[m], h[i]];
+        h[m] = h[i]; h[i] = hm;
         i = m;
       }
     }
@@ -178,21 +182,26 @@ export class NavVolume {
     if (!s0 || !g0) return { status: 'none', path: [], cost: 0 };
     const start = this.cellAt(s0[0], s0[1], s0[2]), goal = this.cellAt(g0[0], g0[1], g0[2]);
     const total = this.blocked.length;
-    // the working arrays are kept between searches (a big volume searched often would otherwise make a lot of garbage)
-    const w = (this.work ??= { g: new Float64Array(total), f: new Float64Array(total), came: new Int32Array(total), closed: new Uint8Array(total) });
-    const { g, f, came, closed } = w;
-    g.fill(Infinity); f.fill(Infinity); came.fill(-1); closed.fill(0);
-    const gc = this.centerOf(goal);
-    const heuristic = (cell) => {
-      const c = this.centerOf(cell), ex = c[0] - gc[0], ey = c[1] - gc[1], ez = c[2] - gc[2];
-      return sqrt(ex * ex + ey * ey + ez * ez);
-    };
+    // the working arrays are kept between searches, and a cube's entries count only if it was touched in this search (a stamp), so nothing is cleared: a big volume searched often
+    // would otherwise spend most of its time filling arrays
+    const w = (this.work ??= { g: new Float64Array(total), f: new Float64Array(total), came: new Int32Array(total), closed: new Uint8Array(total), stamp: new Uint32Array(total), gen: 0 });
+    if (w.gen >= 0xfffffff0) { w.stamp.fill(0); w.gen = 0; }
+    const gen = ++w.gen;
+    const { g, f, came, closed, stamp } = w;
+    const touch = (c) => { if (stamp[c] !== gen) { stamp[c] = gen; g[c] = Infinity; f[c] = Infinity; came[c] = -1; closed[c] = 0; } };
+    const gc = this.centerOf(goal), gx = gc[0], gy = gc[1], gz = gc[2];
+    const { nx, ny, nz, cell: size, blocked } = this, minX = this.min[0], minY = this.min[1], minZ = this.min[2];
     const open = new Heap(f);
+    touch(start); touch(goal);
     g[start] = 0;
-    f[start] = heuristic(start);
+    {
+      const ix = start % nx, iz = Math.floor(start / nx) % nz, iy = Math.floor(start / (nx * nz));
+      const ex = minX + (ix + 0.5) * size - gx, ey = minY + iy * size - gy, ez = minZ + (iz + 0.5) * size - gz;
+      f[start] = sqrt(ex * ex + ey * ey + ez * ez);
+    }
     open.push(start);
     let nearest = start, nearestH = f[start], expanded = 0;
-    const layer = this.nx * this.nz;
+    const layer = nx * nz;
     while (open.size && expanded < maxNodes) {
       const cur = open.pop();
       if (closed[cur]) continue;
@@ -201,17 +210,21 @@ export class NavVolume {
       if (cur === goal) { nearest = cur; break; }
       const h = f[cur] - g[cur];
       if (h < nearestH) { nearestH = h; nearest = cur; }
-      const ix = cur % this.nx, iz = Math.floor(cur / this.nx) % this.nz, iy = Math.floor(cur / layer);
-      for (const [dx, dy, dz, step] of OFFSETS) {
+      const ix = cur % nx, iz = Math.floor(cur / nx) % nz, iy = Math.floor(cur / layer), gcur = g[cur];
+      for (let k = 0; k < OFF_N; k++) {
+        const dx = OFF_DX[k], dy = OFF_DY[k], dz = OFF_DZ[k];
         const jx = ix + dx, jy = iy + dy, jz = iz + dz;
-        if (jx < 0 || jy < 0 || jz < 0 || jx >= this.nx || jy >= this.ny || jz >= this.nz) continue;
-        const j = jy * layer + jz * this.nx + jx;
-        if (closed[j] || this.blocked[j]) continue;
-        if ((dx && this.blocked[iy * layer + iz * this.nx + jx]) || (dz && this.blocked[iy * layer + jz * this.nx + ix]) || (dy && this.blocked[jy * layer + iz * this.nx + ix])) continue;
-        const cost = g[cur] + step * this.cell;
+        if (jx < 0 || jy < 0 || jz < 0 || jx >= nx || jy >= ny || jz >= nz) continue;
+        const j = jy * layer + jz * nx + jx;
+        if (blocked[j]) continue;
+        touch(j);
+        if (closed[j]) continue;
+        if ((dx && blocked[iy * layer + iz * nx + jx]) || (dz && blocked[iy * layer + jz * nx + ix]) || (dy && blocked[jy * layer + iz * nx + ix])) continue;
+        const cost = gcur + OFF_STEP[k] * size;
         if (cost < g[j]) {
+          const ex = minX + (jx + 0.5) * size - gx, ey = minY + jy * size - gy, ez = minZ + (jz + 0.5) * size - gz;
           g[j] = cost;
-          f[j] = cost + heuristic(j);
+          f[j] = cost + sqrt(ex * ex + ey * ey + ez * ez);
           came[j] = cur;
           open.push(j);
         }

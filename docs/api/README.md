@@ -25,7 +25,7 @@ Generated from the source by `npm run docs` (`tools/api-docs.js`): every export 
 | [`@engine/physics`](physics.md) | 2D spatial hash and swept box collision; 3D triangle worlds, swept-ellipsoid movement and a character controller (no tunnelling at any speed); rigid bodies with joints, sleeping and triggers | 57 | 100% |
 | [`@engine/prefab`](prefab.md) | Entity templates as JSON: inheritance, children, parameters, overrides, parent-child transforms, capturing what changed for saves | 13 | 100% |
 | [`@engine/protocol`](protocol.md) | Binary codecs, quantization, delta snapshots with acks, handshake, inputs | 48 | 100% |
-| [`@engine/render`](render.md) | 2D sprites, text (including scalable SDF text) and a 3D mesh renderer with glTF loading: WebGPU -> WebGL2 (-> Canvas2D for 2D) | 202 | 100% |
+| [`@engine/render`](render.md) | 2D sprites, text (including scalable SDF text) and a 3D mesh renderer with glTF loading: WebGPU -> WebGL2 (-> Canvas2D for 2D) | 204 | 100% |
 | [`@engine/replay`](replay.md) | Replays and spectating: record a match as compact snapshot deltas (seek anywhere, any speed) or as its inputs (a few KB, with drift detection), a delayed feed shared by any number of spectators | 10 | 100% |
 | [`@engine/save`](save.md) | Save and load: slots, quick and auto saves, checksums and backups, all-or-nothing loads, versioned data with migrations, sections for the scene, physics and state machines, storage in memory, localStorage, IndexedDB, files or over HTTP | 21 | 100% |
 | [`@engine/scene`](scene.md) | Levels as data (scene files, validation, migrations, loading and unloading) and the undoable SceneDocument the editor uses | 11 | 100% |

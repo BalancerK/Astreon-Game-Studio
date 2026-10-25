@@ -1,4 +1,5 @@
 import { createMesh } from './mesh.js';
+import { mergeMeshes } from './merge.js';
 import { createDecal } from './decal.js';
 
 /**
@@ -318,8 +319,10 @@ export class Terrain {
    * @param {Heightmap} map
    * @param {{chunkCells?: number, lods?: number, skirt?: number, lodDistance?: number}} [o] `chunkCells`: grid cells along a chunk (the map's cells must divide by it, and it by 2 to the power of `lods` less one). `lods`: levels of detail (each halves the cells).
    * `skirt`: how far (metres) the edge of each chunk is dropped to hide the join with a neighbour of a different level. `lodDistance`: how far (metres) the most detailed level reaches; each next level doubles it.
+   * `farMerge`: a number of chunks (0, the default, is off): squares of this many chunks on a side that are all at the coarsest level of detail are drawn as one mesh instead of one each, which is the
+   * same picture in far fewer draw calls (a wide view over a big map has hundreds of far chunks).
    */
-  constructor(map, { chunkCells = 32, lods = 4, skirt = 2, lodDistance } = {}) {
+  constructor(map, { chunkCells = 32, lods = 4, skirt = 2, lodDistance, farMerge = 0 } = {}) {
     const cells = map.size - 1;
     if (cells % chunkCells !== 0) throw new Error(`a heightmap of ${cells} cells cannot be cut into chunks of ${chunkCells} cells (size - 1 must be a multiple of it)`);
     if (chunkCells % (1 << (lods - 1)) !== 0) throw new Error(`chunks of ${chunkCells} cells cannot have ${lods} levels of detail (it must divide by ${1 << (lods - 1)})`);
@@ -331,6 +334,17 @@ export class Terrain {
     /** Triangles in the meshes drawn last frame. */ this.triangles = 0;
     for (let cz = 0; cz < this.chunksPerSide; cz++) for (let cx = 0; cx < this.chunksPerSide; cx++) this.chunks.push({ cx, cz, i0: cx * chunkCells, j0: cz * chunkCells, min: [0, 0, 0], max: [0, 0, 0], meshes: new Array(lods).fill(null) });
     for (const c of this.chunks) this.#bounds(c);
+    this.farMerge = lods > 1 ? farMerge : 0;
+    /** @type {{chunks: TerrainChunk[], mesh: import('./mesh.js').Mesh | null}[]} */ this.squares = [];
+    this.lodOf = new Int8Array(this.chunks.length);
+    if (this.farMerge > 0) {
+      const side = this.chunksPerSide, k = this.farMerge;
+      for (let sz = 0; sz < side; sz += k) for (let sx = 0; sx < side; sx += k) {
+        const chunks = [];
+        for (let z = sz; z < Math.min(side, sz + k); z++) for (let x = sx; x < Math.min(side, sx + k); x++) chunks.push(z * side + x);
+        this.squares.push({ chunks, mesh: null });
+      }
+    }
   }
 
   #bounds(c) {
@@ -349,6 +363,7 @@ export class Terrain {
       for (let l = 0; l < this.lods; l++) if (c.meshes[l]) { this.discarded.push(c.meshes[l]); c.meshes[l] = null; }
       this.#bounds(c);
     }
+    for (const q of this.squares) if (q.mesh && q.chunks.some((i) => !this.chunks[i].meshes[this.lods - 1])) { this.discarded.push(q.mesh); q.mesh = null; }
   }
 
   /** The meshes replaced since the last call: pass each to `renderer.releaseMesh` to free its GPU memory. @returns {import('./mesh.js').Mesh[]} */
@@ -389,10 +404,26 @@ export class Terrain {
    */
   addToDrawList(list, camera, { r = 1, g = 1, b = 1, a = 1 } = {}) {
     let added = 0; this.triangles = 0;
-    for (const c of this.chunks) {
+    const lodOf = this.lodOf, far = this.lods - 1, chunks = this.chunks;
+    for (let k = 0; k < chunks.length; k++) {
+      const c = chunks[k];
       const cx = (c.min[0] + c.max[0]) / 2, cz = (c.min[2] + c.max[2]) / 2, half = (c.max[0] - c.min[0]) / 2;
-      const dist = Math.max(0, Math.hypot(camera.x - cx, camera.z - cz) - half);
-      const mesh = this.chunkMesh(c, this.lodFor(dist));
+      lodOf[k] = this.lodFor(Math.max(0, Math.hypot(camera.x - cx, camera.z - cz) - half));
+    }
+    const merged = this.squares.length > 0;
+    if (merged) {                                                    // a square of chunks that are all at the coarsest level is one mesh
+      for (const q of this.squares) {
+        if (q.chunks.length < 2 || !q.chunks.every((i) => lodOf[i] === far)) continue;
+        q.mesh ??= mergeMeshes(q.chunks.map((i) => ({ mesh: this.chunkMesh(chunks[i], far), model: IDENTITY })), 'terrain-far');
+        const before = list.count;
+        list.add(q.mesh, IDENTITY, r, g, b, a);
+        if (list.count > before) { added++; this.triangles += q.mesh.indices.length / 3; }
+        for (const i of q.chunks) lodOf[i] = -1;                     // (drawn)
+      }
+    }
+    for (let k = 0; k < chunks.length; k++) {
+      if (lodOf[k] < 0) continue;
+      const mesh = this.chunkMesh(chunks[k], lodOf[k]);
       const before = list.count;
       list.add(mesh, IDENTITY, r, g, b, a);
       if (list.count > before) { added++; this.triangles += mesh.indices.length / 3; }

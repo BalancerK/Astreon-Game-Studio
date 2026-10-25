@@ -1065,7 +1065,7 @@ Find a path. The start and the goal are moved to the nearest free place if they 
 
 **Returns** `{status: 'found' \| 'partial' \| 'none', path: number[][], cost: number}` — `partial` means the goal cannot be reached; the path ends as near to it as the search got.
 
-<sub>src/navvolume.js:56</sub>
+<sub>src/navvolume.js:60</sub>
 
 ### `class Node`
 

@@ -65,6 +65,41 @@ export function computeShadowMatrix(out, camera, lightDirection, { size, radius 
 }
 
 /**
+ * Copy into `staging` (rows of `floats` numbers, from row `startRow`) the instances of the draw list's groups that could put anything into the map of one light matrix: an instance is
+ * left out only when its bounding sphere lies wholly outside the box the matrix covers, sideways, so the finished map is the same as if everything had been drawn. This is for the
+ * sun's orthographic cascades, where most of a big world is outside the small box round the camera.
+ * @param {Map<any, {data: Float32Array, count: number}>} groups the draw list's groups, by mesh @param {ArrayLike<number>} matrix world to the light's clip space
+ * @param {number} floats numbers in an instance @param {Float32Array} staging big enough for every instance @param {number} startRow @param {number} [margin] extra room round the box, in clip units
+ * @returns {{parts: {mesh: any, row: number, count: number}[], rows: number}} the runs of rows written, one run for each mesh that has any
+ */
+export function packInstancesForLight(groups, matrix, floats, staging, startRow, margin = 0.02) {
+  const parts = [];
+  let row = startRow;
+  const a0 = matrix[0], a1 = matrix[4], a2 = matrix[8], ax = matrix[12], b0 = matrix[1], b1 = matrix[5], b2 = matrix[9], bx = matrix[13];
+  const ra = Math.hypot(a0, a1, a2), rb = Math.hypot(b0, b1, b2);
+  for (const [mesh, g] of groups) {
+    if (g.count === 0) continue;
+    const bd = (mesh.bound ??= {
+      cx: (mesh.min[0] + mesh.max[0]) / 2, cy: (mesh.min[1] + mesh.max[1]) / 2, cz: (mesh.min[2] + mesh.max[2]) / 2,
+      r: Math.hypot(mesh.max[0] - mesh.min[0], mesh.max[1] - mesh.min[1], mesh.max[2] - mesh.min[2]) / 2,
+    });
+    const base = mesh.cullRadius ?? bd.r, d = g.data, first = row;
+    for (let i = 0; i < g.count; i++) {
+      const o = i * floats;
+      const sx = d[o] * d[o] + d[o + 1] * d[o + 1] + d[o + 2] * d[o + 2], sy = d[o + 4] * d[o + 4] + d[o + 5] * d[o + 5] + d[o + 6] * d[o + 6], sz = d[o + 8] * d[o + 8] + d[o + 9] * d[o + 9] + d[o + 10] * d[o + 10];
+      const scale2 = sx > sy ? (sx > sz ? sx : sz) : (sy > sz ? sy : sz), radius = base * (scale2 === 1 ? 1 : Math.sqrt(scale2));
+      const x = d[o] * bd.cx + d[o + 4] * bd.cy + d[o + 8] * bd.cz + d[o + 12], y = d[o + 1] * bd.cx + d[o + 5] * bd.cy + d[o + 9] * bd.cz + d[o + 13], z = d[o + 2] * bd.cx + d[o + 6] * bd.cy + d[o + 10] * bd.cz + d[o + 14];
+      const px = a0 * x + a1 * y + a2 * z + ax, py = b0 * x + b1 * y + b2 * z + bx;
+      if (Math.abs(px) > 1 + radius * ra + margin || Math.abs(py) > 1 + radius * rb + margin) continue;
+      staging.set(d.subarray(o, o + floats), row * floats);
+      row++;
+    }
+    if (row > first) parts.push({ mesh, row: first, count: row - first });
+  }
+  return { parts, rows: row - startRow };
+}
+
+/**
  * The matrices of every cascade, nearest first: cascade i covers a box of half-width `radius * ratio^(cascades - 1 - i)`.
  * @param {(Float64Array | Float32Array)[]} out One 16-float array per cascade.
  * @param {import('./camera3d.js').Camera3D} camera

@@ -2,7 +2,7 @@ import { VERTEX_BYTES, SKIN_BYTES } from './mesh.js';
 import { textureFormatInfo } from './ktx2.js';
 import { GPUParticles } from './particles-gpu.js';
 import { GPUPost, HDR_FORMAT } from './post-gpu.js';
-import { computeCascades, resolveShadowOptions, MAX_CASCADES, MAX_LOCAL_SHADOW_LAYERS, resolveLocalShadowOptions, planLocalShadows, computeLocalMatrix, lightType, spotAngles } from './shadow.js';
+import { computeCascades, packInstancesForLight, resolveShadowOptions, MAX_CASCADES, MAX_LOCAL_SHADOW_LAYERS, resolveLocalShadowOptions, planLocalShadows, computeLocalMatrix, lightType, spotAngles } from './shadow.js';
 import { ENV_BLOCK_AT, ENV_BLOCK_VEC4S, halfFaceData, writeEnvironmentBlock } from './environment.js';
 import { SKY_BLOCK_AT, writeSkyBlock } from './sky.js';
 import { skyWgsl } from './sky-shaders.js';
@@ -1023,26 +1023,40 @@ export class WebGPURenderer3D {
       this.shadowBindGroups[c] ??= device.createBindGroup({ layout: this.shadowPipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: this.cascadeBuffers[c] } }] });
     }
 
-    // all instances of all meshes into one buffer, each mesh's range remembered
+    // all instances of all meshes into one buffer, each mesh's range remembered. After them come the instances of each sun cascade: only the ones that can touch that cascade's box, since
+    // most of a big world is far outside the small box round the camera (the main pass draws the first part; each cascade's depth pass draws its own part, and the maps come out the same).
     let total = 0;
     for (const g of list.groups.values()) total += g.count;
-    if (total > this.instanceCapacity) {
+    const cuts = [];
+    let extra = 0;
+    const cutting = cascades > 0 && total > 0 && this.cullCascades !== false;
+    const need = total * (1 + (cutting ? cascades : 0)) * INSTANCE3D_FLOATS;
+    if (!this.staging || this.staging.length < need) this.staging = new Float32Array(Math.max(need, 4096));   // every instance of the frame, copied here once, then sent in a few big pieces
+    if (cutting) {
+      for (let c = 0; c < cascades; c++) {
+        const r = packInstancesForLight(list.groups, shadow.matrices[c], INSTANCE3D_FLOATS, this.staging, total + extra);
+        cuts.push(r.parts);
+        extra += r.rows;
+      }
+    }
+    if (total + extra > this.instanceCapacity) {
       this.instanceBuffer?.destroy();
-      this.instanceCapacity = Math.max(total, this.instanceCapacity * 2, 256);
+      this.instanceCapacity = Math.max(total + extra, this.instanceCapacity * 2, 256);
       this.instanceBuffer = device.createBuffer({ size: this.instanceCapacity * INSTANCE3D_BYTES, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
     }
     const draws = [];
     let first = 0;
     for (const [mesh, g] of list.groups) {
       if (g.count === 0) continue;
-      // straight from the draw list (no intermediate copy), in chunks: one very large writeBuffer is much slower than the same bytes in pieces
-      for (let k = 0; k < g.count; k += WRITE_CHUNK) {
-        const n = Math.min(WRITE_CHUNK, g.count - k);
-        device.queue.writeBuffer(this.instanceBuffer, (first + k) * INSTANCE3D_BYTES, g.data, k * INSTANCE3D_FLOATS, n * INSTANCE3D_FLOATS);
-      }
+      this.staging.set(g.count * INSTANCE3D_FLOATS === g.data.length ? g.data : g.data.subarray(0, g.count * INSTANCE3D_FLOATS), first * INSTANCE3D_FLOATS);
       draws.push({ gpu: this.#gpuMesh(mesh), first, count: g.count });
       first += g.count;
     }
+    for (let k = 0; k < total + extra; k += WRITE_CHUNK) {         // in chunks: one very large writeBuffer is much slower than the same bytes in pieces
+      const n = Math.min(WRITE_CHUNK, total + extra - k);
+      device.queue.writeBuffer(this.instanceBuffer, k * INSTANCE3D_BYTES, this.staging, k * INSTANCE3D_FLOATS, n * INSTANCE3D_FLOATS);
+    }
+    const cutDraws = cuts.map((parts) => parts.map((p) => ({ gpu: this.#gpuMesh(p.mesh), first: p.row, count: p.count })));
 
     let particleCount = 0;
     if (particles && particles.count > 0) { this.particles ??= new GPUParticles(device, this.sceneFormat, this.samples); particleCount = this.particles.prepare(particles, camera); }
@@ -1056,11 +1070,12 @@ export class WebGPURenderer3D {
     if (passes > 0) { // first the world as the lights see it (depth only)
       for (let ci = 0; ci < passes; ci++) {
       const sp = encoder.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: ci < cascades ? this.shadowLayerViews[ci] : this.localLayerViews[ci - cascades], depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'store' } });
-      if (draws.length > 0) {
+      const mine = ci < cascades ? cutDraws[ci] ?? draws : draws;                     // a sun cascade draws only what can reach its box
+      if (mine.length > 0) {
         sp.setPipeline(this.shadowPipeline);
         sp.setBindGroup(0, this.shadowBindGroups[ci]);
         sp.setVertexBuffer(1, this.instanceBuffer);
-        for (const d of draws) {
+        for (const d of mine) {
           sp.setVertexBuffer(0, d.gpu.vb);
           sp.setIndexBuffer(d.gpu.ib, 'uint32');
           sp.drawIndexed(d.gpu.indexCount, d.count, 0, 0, d.first);
@@ -1131,6 +1146,8 @@ export class WebGPURenderer3D {
     pass.end();
     if (post) this.post.encode(encoder, swap, this.depthTexture);
     device.queue.submit([encoder.finish()]);
+    /** What the last frame drew: instances and draw calls in the main pass, and in the sun's depth passes (which draw only what can reach each cascade). */
+    this.stats = { instances: total, draws: draws.length, shadowInstances: extra, shadowDraws: cutDraws.reduce((n, d) => n + d.length, 0), cascades };
   }
 
   destroy() {

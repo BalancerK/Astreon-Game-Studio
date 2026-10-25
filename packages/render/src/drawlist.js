@@ -85,6 +85,8 @@ export class DrawList3D {
     this.material = [-1, 0, 1, 0];
     this.light = null; // [x, y, z] unit direction TO the light, and how far a shadow may reach (see setCamera)
     this.shadowReach = 0;
+    /** Set false to add instances without asking whether each is in view: for a caller that has already decided (see `sphereVisible`) and wants the cheapest `add`. */
+    this.cull = true;
     this.localCasters = null; // [x, y, z, radius] of each point or spot light that casts shadows (see setCamera)
     this.scratch = new Float64Array(16);
   }
@@ -195,6 +197,17 @@ export class DrawList3D {
     const x = model[0] * b.cx + model[4] * b.cy + model[8] * b.cz + model[12];
     const y = model[1] * b.cx + model[5] * b.cy + model[9] * b.cz + model[13];
     const z = model[2] * b.cx + model[6] * b.cy + model[10] * b.cz + model[14];
+    return this.sphereVisible(x, y, z, radius);
+  }
+
+  /**
+   * Could a sphere put anything in the picture: is it in the view, or could its shadow fall into the view or into the reach of a light that casts shadows? What `add` asks about every
+   * instance; ask it yourself about a whole group of things (a character, a building) to skip all of them at once. Always true without a camera.
+   * @param {number} x @param {number} y @param {number} z @param {number} radius
+   */
+  sphereVisible(x, y, z, radius) {
+    const cam = this.camera;
+    if (!cam) return true;
     if (cam.sphereVisible(x, y, z, radius)) {
       if (this.occlusion && !this.light && !this.localCasters && this.occlusion.sphereHidden(x, y, z, radius)) { this.occluded++; return false; }
       return true;
@@ -233,7 +246,7 @@ export class DrawList3D {
    * @param {number} [a]
    */
   add(mesh, model, r = 1, g = 1, b = 1, a = 1) {
-    if (this.camera && !this.#visible(mesh, model, false)) return;
+    if (this.camera && this.cull && !this.#visible(mesh, model, false)) return;
     const slot = this.#slot(mesh);
     const o = slot.count++ * INSTANCE3D_FLOATS, d = slot.data;
     for (let i = 0; i < 16; i++) d[o + i] = model[i];
