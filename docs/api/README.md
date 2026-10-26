@@ -31,7 +31,7 @@ Generated from the source by `npm run docs` (`tools/api-docs.js`): every export 
 | [`@engine/scene`](scene.md) | Levels as data (scene files, validation, migrations, loading and unloading) and the undoable SceneDocument the editor uses | 11 | 100% |
 | [`@engine/server`](server.md) | Interest management, bandwidth budgets, lag-compensation queries, isolated rooms (worker threads) | 6 | 100% |
 | [`@engine/skeleton2d`](skeleton2d.md) | 2D skeletal animation: bones, skins, weighted meshes with deformation, IK, keyframes with curves and events, crossfading tracks, drawn through the renderer's mesh batch | 29 | 100% |
-| [`@engine/transport`](transport.md) | Reliable/unreliable channel contract, in-memory network + loss/latency simulator, own RFC 6455 WebSocket server and client | 36 | 100% |
+| [`@engine/transport`](transport.md) | Reliable/unreliable channel contract, in-memory network + loss/latency simulator, own RFC 6455 WebSocket server and client | 46 | 100% |
 | [`@engine/turns`](turns.md) | Turn-based and card games: rules as plain functions with hidden information and seeded randomness, a server room (tokens, robots, turn timers, rematch) and a client with reconnect | 12 | 100% |
 | [`@engine/tween`](tween.md) | Tweens and timelines: 30+ easings, delays, repeats, yoyo, relative values, labels, overlapping steps, seeking; deterministic | 10 | 100% |
 | [`@engine/ui`](ui.md) | Menus and HUDs on the 2D renderer: flexbox-style layout, buttons, sliders, switches, text fields, lists, themes, keyboard / gamepad / mouse / touch navigation, and ready-made pause, settings (key rebinding) and room-browser screens | 47 | 100% |

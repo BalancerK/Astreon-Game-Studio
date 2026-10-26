@@ -8,7 +8,7 @@ npm install @engine/transport
 
 Version 0.1.0. The package's own README ([packages/transport](../../packages/transport/README.md)) explains how the pieces fit together; this page lists every export.
 
-## Contents (36 of 36 documented)
+## Contents (46 of 46 documented)
 
 | Name | Kind | Summary |
 |---|---|---|
@@ -16,24 +16,30 @@ Version 0.1.0. The package's own README ([packages/transport](../../packages/tra
 | [`CHANNEL`](#channel) | constant | Transport contract. |
 | [`LinkSimulator`](#class-linksimulator) | class | One direction of a simulated network path. |
 | [`LoopbackSignaling`](#class-loopbacksignaling) | class | Rooms inside one JavaScript context: a host and its joiners in the same page or process. |
+| [`MAX_STREAM_MESSAGE`](#max_stream_message) | constant | The most a stream message may hold unless told otherwise: one mebibyte. |
 | [`MemoryNetwork`](#class-memorynetwork) | class | In-process network for tests, tools and single-page demos. |
+| [`MessageParser`](#class-messageparser) | class | Cuts the bytes that come out of a stream (in pieces of any size) into messages. |
 | [`Negotiation`](#class-negotiation) | class | One end of a negotiation. |
 | [`RELIABLE_LABEL`](#reliable_label) | constant | Label of the reliable, ordered data channel (id 0; both ends agree on the labels and ids in advance). |
 | [`ROOM_ALPHABET`](#room_alphabet) | constant | Characters for room codes: no 0 / O or 1 / I / L, which are mistaken for each other when read aloud. |
 | [`RealClock`](#class-realclock) | class | The real clock: `now()` from `performance.now()` and `schedule` with `setTimeout`. |
 | [`RtcTransport`](#class-rtctransport) | class | A peer-to-peer connection as a `Transport`. |
 | [`ServerSignaling`](#class-serversignaling) | class | Rooms on a signalling server (`createSignalingServer` in `@engine/transport/node`, which you run yourself): it only introduces peers and relays their handshake messages; the game itself never passes through it. |
+| [`StreamError`](#class-streamerror) | class | Thrown by a parser when the other side sends something that is not a message (one that is too long). |
 | [`UNRELIABLE_LABEL`](#unreliable_label) | constant | Label of the unreliable, unordered data channel (id 1). |
 | [`VirtualClock`](#class-virtualclock) | class | Deterministic clock: events fire in (time, insertion) order as time is advanced. |
 | [`acceptInvitation`](#acceptinvitation) | function | Friend's side: accept an invitation. |
 | [`connectSignalingServer`](#connectsignalingserver) | function | A provider for a signalling server. |
 | [`connectWebRTC`](#connectwebrtc) | function | Join a room. |
 | [`connectWebSocket`](#connectwebsocket) | function | Connect to a server started with `listenWebSocket`. |
+| [`connectWebTransport`](#connectwebtransport) | function | Connect to a server started with `listenWebTransport` (or any WebTransport server that takes a stream opened by the client as the reliable channel). |
 | [`createInvitation`](#createinvitation) | function | Host side, step one: make an invitation. |
 | [`createRng`](#createrng) | function | Small fast seeded PRNG (mulberry32) so simulated networks are reproducible. |
 | [`createStats`](#createstats) | function | A fresh set of transport counters (messages and bytes sent and received). |
+| [`createWtTransport`](#createwttransport) | function | Make a `Transport` from a WebTransport session and the bidirectional stream used as its reliable channel (the client and the server both use this). |
 | [`decodeCode`](#decodecode) | function | Unpack a code. |
 | [`encodeCode`](#encodecode) | function | Pack a handshake into a code you can paste. |
+| [`encodeMessage`](#encodemessage) | function | A message ready to write to a stream. |
 | [`isRoomCode`](#isroomcode) | function | Is this a plausible room code (letters and digits, 3 to 16 of them)? |
 | [`listenWebRTC`](#listenwebrtc) | function | Start a room that browsers can join, and accept them one by one: every peer that completes the handshake arrives as a `Transport` in `onConnection`, exactly like a client of a WebSocket server, so the same server code (rooms, replication, lag compensation) can run in the host's browser. |
 | [`makeRoomCode`](#makeroomcode) | function | A random room code. |
@@ -41,13 +47,17 @@ Version 0.1.0. The package's own README ([packages/transport](../../packages/tra
 | [`simulateLink`](#simulatelink) | function | Wrap any transport so its traffic suffers simulated latency, jitter, loss, duplication, reordering and bandwidth limits. |
 | [`tapTransport`](#taptransport) | function | Observe every packet crossing a transport, in both directions, without changing behaviour. |
 | [`FrameParser`](#class-frameparser) | class (Node) | Incremental frame parser and message assembler. |
+| [`MAX_HASH_CERT_DAYS`](#max_hash_cert_days) | constant (Node) | The longest a browser accepts a certificate trusted by hash: fourteen days. |
 | [`OP`](#op) | constant (Node) | WebSocket frame opcodes (RFC 6455): continuation, text, binary, close, ping, pong. |
 | [`WsError`](#class-wserror) | class (Node) | A protocol violation; `code` is the close code to send to the peer. |
 | [`acceptKey`](#acceptkey) | function (Node) | Value for the Sec-WebSocket-Accept header. |
+| [`certificateHash`](#certificatehash) | function (Node) | The SHA-256 hash of a certificate, as base64: what a page passes as `certificateHashes`. |
+| [`createSelfSignedCert`](#createselfsignedcert) | function (Node) | Make a self-signed certificate and key that a page can trust by its hash. |
 | [`createSignalingServer`](#createsignalingserver) | function (Node) | Start a signalling server. |
 | [`encodeClose`](#encodeclose) | function (Node) | Close frame payload: 2-byte code + UTF-8 reason truncated to the 123 bytes allowed. |
 | [`encodeFrame`](#encodeframe) | function (Node) | Build one unfragmented frame. |
 | [`listenWebSocket`](#listenwebsocket) | function (Node) | Start a WebSocket server. |
+| [`listenWebTransport`](#listenwebtransport) | function (Node) | Start a WebTransport server. |
 
 ## Functions
 
@@ -138,6 +148,26 @@ Connect to a server started with `listenWebSocket`. Returns immediately;
 
 <sub>src/ws/client.js:15</sub>
 
+### `connectWebTransport`
+
+```js
+function connectWebTransport(url, { certificateHashes, WebTransportImpl = globalThis.WebTransport, maxMessageSize, statsEveryMs } = {})
+```
+
+Connect to a server started with `listenWebTransport` (or any WebTransport server that takes a stream opened by the client as the reliable channel). Returns at once; `state` is 'connecting'
+until the session is up, then `onOpen` is called.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `url` | `string` | e.g. `https://game.example:8788/wt` |
+| `o` (optional) | `{certificateHashes?: Array<string \| Uint8Array>, WebTransportImpl?: any, maxMessageSize?: number, statsEveryMs?: number}` | `certificateHashes` (SHA-256 of the server's certificate, base64) lets a page trust a self-signed certificate that is valid for up to two weeks, which is what `createSelfSignedCert` makes. |
+
+**Returns** `import('../types.js').Transport & {onOpen: (() => void) \| null, rttMs: number, maxDatagramSize: number, session: any}`
+
+<sub>src/wt/client.js:21</sub>
+
 ### `createInvitation`
 
 ```js
@@ -179,6 +209,24 @@ A fresh set of transport counters (messages and bytes sent and received).
 
 <sub>src/types.js:45</sub>
 
+### `createWtTransport`
+
+```js
+function createWtTransport({ session, stream, maxMessageSize = MAX_STREAM_MESSAGE, statsEveryMs = 1000 })
+```
+
+Make a `Transport` from a WebTransport session and the bidirectional stream used as its reliable channel (the client and the server both use this).
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `o` | `{session: WtSessionLike, stream: {readable: ReadableStream<Uint8Array>, writable: WritableStream<Uint8Array>}, maxMessageSize?: number, statsEveryMs?: number}` |  |
+
+**Returns** `import('../types.js').Transport & {rttMs: number, maxDatagramSize: number, session: WtSessionLike, stats: any}`
+
+<sub>src/wt/transport.js:23</sub>
+
 ### `decodeCode`
 
 ```js
@@ -214,6 +262,24 @@ Pack a handshake into a code you can paste.
 | `sdp` | `string` |  |
 
 <sub>src/rtc/invite.js:12</sub>
+
+### `encodeMessage`
+
+```js
+function encodeMessage(bytes)
+```
+
+A message ready to write to a stream.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `bytes` | `Uint8Array` |  |
+
+**Returns** `Uint8Array`
+
+<sub>src/wt/frame.js:12</sub>
 
 ### `isRoomCode`
 
@@ -517,6 +583,36 @@ connect(address, link = this.link)
 
 <sub>src/memory.js:59</sub>
 
+### `class MessageParser`
+
+```js
+class MessageParser
+```
+
+Cuts the bytes that come out of a stream (in pieces of any size) into messages.
+
+#### `MessageParser.constructor`
+
+```js
+constructor({ maxMessageSize = MAX_STREAM_MESSAGE, onMessage })
+```
+
+| Name | Type | Description |
+|---|---|---|
+| `o` | `{maxMessageSize?: number, onMessage: (bytes: Uint8Array) => void}` |  |
+
+#### `MessageParser.push`
+
+```js
+push(chunk)
+```
+
+| Name | Type | Description |
+|---|---|---|
+| `chunk` | `Uint8Array` |  |
+
+<sub>src/wt/frame.js:23</sub>
+
 ### `class Negotiation`
 
 ```js
@@ -722,6 +818,16 @@ The public rooms on the server: `[{ room, name, peers, max }]`.
 
 <sub>src/rtc/signaling.js:167</sub>
 
+### `class StreamError`
+
+```js
+class StreamError extends Error
+```
+
+Thrown by a parser when the other side sends something that is not a message (one that is too long).
+
+<sub>src/wt/frame.js:20</sub>
+
 ### `class VirtualClock`
 
 ```js
@@ -816,6 +922,18 @@ Value: `Object.freeze({ RELIABLE: 0, UNRELIABLE: 1 })`
 
 <sub>src/types.js:16</sub>
 
+### `MAX_STREAM_MESSAGE`
+
+```js
+const MAX_STREAM_MESSAGE
+```
+
+The most a stream message may hold unless told otherwise: one mebibyte.
+
+Value: `1 << 20`
+
+<sub>src/wt/frame.js:5</sub>
+
 ### `RELIABLE_LABEL`
 
 ```js
@@ -857,7 +975,7 @@ Value: `'unreliable'`
 These come from `@engine/transport/src/node.js` and use Node's built-in modules, so they are for servers and tools, not browsers.
 
 ```js
-import { FrameParser, OP, WsError } from '@engine/transport/src/node.js';
+import { FrameParser, MAX_HASH_CERT_DAYS, OP } from '@engine/transport/src/node.js';
 ```
 
 ### `class FrameParser`
@@ -909,6 +1027,18 @@ push(chunk)
 
 <sub>src/ws/frame.js:78</sub>
 
+### `MAX_HASH_CERT_DAYS`
+
+```js
+const MAX_HASH_CERT_DAYS
+```
+
+The longest a browser accepts a certificate trusted by hash: fourteen days.
+
+Value: `14`
+
+<sub>src/wt/cert.js:11</sub>
+
 ### `OP`
 
 ```js
@@ -957,6 +1087,42 @@ Value for the Sec-WebSocket-Accept header.
 | `key` | `string` |  |
 
 <sub>src/ws/server.js:11</sub>
+
+### `certificateHash`
+
+```js
+function certificateHash(cert)
+```
+
+The SHA-256 hash of a certificate, as base64: what a page passes as `certificateHashes`.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `cert` | `string \| Buffer` | a PEM text, or the DER bytes |
+
+**Returns** `string`
+
+<sub>src/wt/cert.js:18</sub>
+
+### `createSelfSignedCert`
+
+```js
+function createSelfSignedCert({ hosts = ['localhost', '127.0.0.1'], days = 13, openssl = 'openssl' } = {})
+```
+
+Make a self-signed certificate and key that a page can trust by its hash.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `o` (optional) | `{hosts?: string[], days?: number, openssl?: string}` | `hosts` are the names and addresses the server is reached by (an address is recognised by its shape); `days` is at most 13 |
+
+**Returns** `{cert: string, privKey: string, hash: string, notBefore: Date, notAfter: Date, hosts: string[]}`
+
+<sub>src/wt/cert.js:28</sub>
 
 ### `createSignalingServer`
 
@@ -1025,6 +1191,24 @@ Start a WebSocket server. Resolves once listening.
 **Returns** `Promise<import('../types.js').Listener & {port: number, host: string, connections: Set<any>, close: () => Promise<void>}>`
 
 <sub>src/ws/server.js:186</sub>
+
+### `listenWebTransport`
+
+```js
+async function listenWebTransport(options = {})
+```
+
+Start a WebTransport server.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `options` (optional) | `WtServerOptions` |  |
+
+**Returns** `Promise<{onConnection: ((connection: import('../types.js').Transport) => void) \| null, port: number, host: string, path: string, readonly certificateHash: string \| null, readonly certificateExpires: Date \| null,   onCertificate: ((hash: string, expires: Date) => void) \| null, connections: Set<any>, rotateCertificate: () => string \| null, close: () => Promise<void>}>`
+
+<sub>src/wt/server.js:34</sub>
 
 ## Types
 
@@ -1220,3 +1404,16 @@ Type: `Object`
 | `close` | `(reason?: string) => void` |  |
 | `onConnection` | `((connection: Transport) => void) \| null` | Called for each accepted client. |
 | `close` | `() => void` |  |
+
+### `WtSessionLike`
+
+What a session of either implementation (the browser's `WebTransport`, or the Node package's) offers.
+
+Type: `Object`
+
+| Name | Type | Description |
+|---|---|---|
+| `closed` | `Promise<any>` |  |
+| `close` | `(info?: {closeCode?: number, reason?: string}) => void` |  |
+| `datagrams` | `{readable: ReadableStream<Uint8Array>, writable: WritableStream<Uint8Array>, maxDatagramSize?: number}` |  |
+| `getStats` (optional) | `() => Promise<any>` |  |

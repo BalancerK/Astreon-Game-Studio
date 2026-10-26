@@ -36,6 +36,29 @@ Protections: message size cap, per-IP and total connection caps, Origin allowlis
 
 Not yet run against Autobahn|Testsuite (needs Docker); covered by RFC-derived unit tests, a randomized fragmentation/chunking property test and fuzzing.
 
+## WebTransport (HTTP/3 over UDP)
+The same `Transport` contract over QUIC: the reliable channel is one bidirectional stream (messages with their length in front), the unreliable channel is the session's **datagrams**, so a lost packet is never waited for (a WebSocket, being TCP, holds every later message back until a lost one is resent; the game then stalls for the length of the retransmit). A payload too big for a datagram (about 1200 bytes) goes on the stream instead (`stats.oversize`).
+
+```js
+import { listenWebTransport } from '@engine/transport/node';          // server, Node only
+import { connectWebTransport, CHANNEL } from '@engine/transport';      // client: any browser with WebTransport (or the Node package's class)
+import * as webtransport from '@fails-components/webtransport';        // the game installs this; see below
+
+const l = await listenWebTransport({ implementation: webtransport, port: 8788, host: '0.0.0.0', path: '/wt', selfSigned: { hosts: ['game.example', '203.0.113.7'] } });
+l.onConnection = (conn) => { conn.onMessage = (bytes, channel) => {}; };
+l.onCertificate = (hash) => publish(hash);                             // the certificate is replaced every few days; pages need the new hash
+publish(l.certificateHash);
+
+const t = connectWebTransport(`https://game.example:${l.port}/wt`, { certificateHashes: [hash] });
+t.onOpen = () => t.send(bytes, CHANNEL.UNRELIABLE);
+```
+- **Node has no HTTP/3**, so the server uses the optional package `@fails-components/webtransport` (and its prebuilt `...-transport-http3-quiche`: Windows, Linux and macOS, x64; arm on Linux and macOS). The engine imports nothing else; pass the package as `implementation` so the game's own copy is used.
+- **Certificates.** A page trusts a certificate from a certificate authority, or a self-signed one whose SHA-256 hash it is told (`certificateHashes`), if it uses an elliptic curve key and lasts at most 14 days. `createSelfSignedCert({ hosts, days })` makes one with `openssl`; `selfSigned` on the listener does that and replaces it before it runs out (`rotateCertificate()` for now, `onCertificate` tells you the new hash; open sessions keep going).
+- **A UDP port** must be reachable (and not the same as a web server's, which has the HTTP/3 port 443 on UDP).
+- Behind a reverse proxy (nginx, Caddy) WebTransport does not pass through: it needs its own port on the game server.
+- Limits: connection cap, message size cap, a session that never opens its stream is closed. The round trip is `rttMs` where the session reports it (browsers do).
+- Tests: framing, both channels, lost datagrams (a pretend QUIC in `test/fake-wt.js`), certificates, and a real QUIC loopback when the package is installed (`npm install --no-save @fails-components/webtransport @fails-components/webtransport-transport-http3-quiche`; or `WT_PACKAGE=<path to its index.node.js>`).
+
 ## Browser to browser (WebRTC)
 One player's browser can be the game server: the others connect to it directly, with the same `Transport` contract as a WebSocket client, so the same server code (rooms, delta snapshots, lag compensation) runs in the host's page. WebRTC data channels give the engine's two channels for real: reliable and ordered, and **unreliable and unordered** with no retransmits, which a WebSocket cannot.
 
