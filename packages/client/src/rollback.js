@@ -24,8 +24,10 @@
  * @property {number} [maxRollback] The most frames it may run ahead of what is confirmed (and so the most it ever re-simulates). Default 8.
  * @property {number} [inputDelay] Local inputs take effect this many frames late, which gives the other player time to receive them and so means fewer rollbacks. Default 0.
  * @property {any} [blank] The input that means "nothing pressed", used for the first frames and before anything is known. Default `null`.
+ * @property {boolean} [assumeBlank] Treat the first `inputDelay` frames as known (blank) for every player. Default true; pass false when a server decides every input, including those of the first frames.
  * @property {(last: any) => any} [guess] Guesses an input that has not arrived from the last one that did. Default: the same again.
  * @property {(state: any) => number} [checksum] A number that says what a state is, to find players that disagree.
+ * @property {number} [startFrame] The frame `init` gives the state of (default 0): a player who joins a game that is already going starts from the state they were sent, at the frame it was.
  */
 
 /**
@@ -49,16 +51,18 @@ export class RollbackSession {
     this.blank = o.blank ?? null;
     this.guess = o.guess ?? ((last) => last);
     this.checksumFn = o.checksum ?? null;
+    const start = Math.max(0, Math.floor(o.startFrame ?? 0));
     this.state = init();
-    this.frame = 0;                                                     // frames simulated: `state` is the state before frame `frame`
-    this.snapshots = new Map([[0, this.clone(this.state)]]);            // the state before each recent frame
+    this.frame = start;                                                 // frames simulated: `state` is the state before frame `frame`
+    this.#confirmed = start;
+    this.snapshots = new Map([[start, this.clone(this.state)]]);            // the state before each recent frame
     this.known = Array.from({ length: players }, () => new Map());      // the real inputs, by frame
     this.used = Array.from({ length: players }, () => new Map());       // the inputs each frame was actually simulated with
-    this.nextLocal = 0;
+    this.nextLocal = start;
     this.rollbackTo = null;
     this.desync = null;
     this.stats = { rollbacks: 0, resimulated: 0, stalls: 0, maxRollback: 0 };
-    for (let f = 0; f < this.inputDelay; f++) for (let p = 0; p < players; p++) this.known[p].set(f, this.blank);   // nobody can have pressed anything yet
+    for (let f = start; f < start + this.inputDelay; f++) for (let p = 0; p < players; p++) if (p === this.local || o.assumeBlank !== false) this.known[p].set(f, this.blank);   // nobody can have pressed anything yet (unless a server, not the players, decides what they did)
   }
 
   /**
@@ -96,6 +100,30 @@ export class RollbackSession {
       if (JSON.stringify(guessed) !== JSON.stringify(input) && (this.rollbackTo === null || frame < this.rollbackTo)) this.rollbackTo = frame;
     }
   }
+
+  /**
+   * Say what a player's input for a frame really was, whoever the player is, replacing what was known or guessed: for a game with a server that has the last word on every input (including this
+   * machine's own, if it arrived too late and the server used something else). If the frames already simulated used something different, they are simulated again at the next `advance`.
+   * @param {number} player @param {number} frame @param {any} input
+   */
+  setInput(player, frame, input) {
+    if (player < 0 || player >= this.players || frame < this.confirmedStart()) return;
+    const before = this.known[player].get(frame);
+    this.known[player].set(frame, input);
+    if (player === this.local && frame >= this.nextLocal) this.nextLocal = frame + 1;
+    if (frame < this.frame && (before === undefined || JSON.stringify(before) !== JSON.stringify(input))) {
+      const used = this.used[player].get(frame);
+      if (JSON.stringify(used) !== JSON.stringify(input) && (this.rollbackTo === null || frame < this.rollbackTo)) this.rollbackTo = frame;
+    }
+  }
+
+  /** Something other than an input has changed what a frame does (the game's own rules changed from that frame): simulate again from that frame at the next `advance`. @param {number} frame */
+  redoFrom(frame) {
+    if (frame < this.frame && frame >= this.confirmedStart() && (this.rollbackTo === null || frame < this.rollbackTo)) this.rollbackTo = frame;
+  }
+
+  /** The oldest frame an input can still be given for (nothing older than what was forgotten can be corrected). */
+  confirmedStart() { return this.snapshots.size ? Math.min(...this.snapshots.keys()) : 0; }
 
   #inputsFor(frame) {
     return Array.from({ length: this.players }, (_, p) => {

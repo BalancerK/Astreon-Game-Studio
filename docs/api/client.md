@@ -268,6 +268,41 @@ Give another player's real input, when it arrives (late, early or twice is fine)
 | `frame` | `number` |  |
 | `input` | `any` |  |
 
+#### `RollbackSession.setInput`
+
+```js
+setInput(player, frame, input)
+```
+
+Say what a player's input for a frame really was, whoever the player is, replacing what was known or guessed: for a game with a server that has the last word on every input (including this
+machine's own, if it arrived too late and the server used something else). If the frames already simulated used something different, they are simulated again at the next `advance`.
+
+| Name | Type | Description |
+|---|---|---|
+| `player` | `number` |  |
+| `frame` | `number` |  |
+| `input` | `any` |  |
+
+#### `RollbackSession.redoFrom`
+
+```js
+redoFrom(frame)
+```
+
+Something other than an input has changed what a frame does (the game's own rules changed from that frame): simulate again from that frame at the next `advance`.
+
+| Name | Type | Description |
+|---|---|---|
+| `frame` | `number` |  |
+
+#### `RollbackSession.confirmedStart`
+
+```js
+confirmedStart()
+```
+
+The oldest frame an input can still be given for (nothing older than what was forgotten can be corrected).
+
 #### `RollbackSession.advance`
 
 ```js
@@ -303,7 +338,7 @@ Compare what another player says the state was at a confirmed frame with ours. W
 
 **Returns** `boolean` — true when they agree (or the frame is too old to check)
 
-<sub>src/rollback.js:35</sub>
+<sub>src/rollback.js:37</sub>
 
 ## Types
 
@@ -327,5 +362,7 @@ Type: `Object`
 | `maxRollback` (optional) | `number` | The most frames it may run ahead of what is confirmed (and so the most it ever re-simulates). Default 8. |
 | `inputDelay` (optional) | `number` | Local inputs take effect this many frames late, which gives the other player time to receive them and so means fewer rollbacks. Default 0. |
 | `blank` (optional) | `any` | The input that means "nothing pressed", used for the first frames and before anything is known. Default `null`. |
+| `assumeBlank` (optional) | `boolean` | Treat the first `inputDelay` frames as known (blank) for every player. Default true; pass false when a server decides every input, including those of the first frames. |
 | `guess` (optional) | `(last: any) => any` | Guesses an input that has not arrived from the last one that did. Default: the same again. |
 | `checksum` (optional) | `(state: any) => number` | A number that says what a state is, to find players that disagree. |
+| `startFrame` (optional) | `number` | The frame `init` gives the state of (default 0): a player who joins a game that is already going starts from the state they were sent, at the frame it was. |

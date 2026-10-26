@@ -173,3 +173,65 @@ test('it explains what it needs', () => {
   assert.throws(() => new RollbackSession({ players: 2, local: 5, init, step }), /which player is local/);
   assert.throws(() => new RollbackSession({ players: 2, local: 0 }), /init .* and step/);
 });
+
+test('a session can start from a game that is already going: from the state it was sent, at the frame that state is of', () => {
+  const real = init();
+  for (let f = 0; f < 50; f++) step(real, [0, 1].map((p) => press(p, f)));
+  const joined = new RollbackSession({ players: 2, local: 0, init: () => structuredClone(real), step, checksum, blank: 0, startFrame: 50 });
+  assert.equal(joined.frame, 50);
+  for (let f = 50; f < 90; f++) {
+    const frame = joined.addLocalInput(press(0, f));
+    assert.equal(frame, f, 'input goes to the frame it is for');
+    joined.setInput(1, f, press(1, f));
+    assert.ok(joined.advance());
+  }
+  const rest = structuredClone(real);
+  for (let f = 50; f < 90; f++) step(rest, [0, 1].map((p) => press(p, f)));
+  assert.equal(checksum(joined.state), checksum(rest));
+  assert.ok(joined.confirmedFrame >= 89, `confirmed up to ${joined.confirmedFrame}`);
+});
+
+test('the last word on an input, from a server: it replaces a guess or an earlier input, the frames since are played again, and an input that was right costs nothing', () => {
+  const s = make(0, { maxRollback: 16 });
+  for (let f = 0; f < 20; f++) { s.addLocalInput(press(0, f)); s.setInput(1, f, press(1, f)); s.advance(); }
+  assert.equal(s.stats.rollbacks, 0, 'all told in time: nothing to take back');
+  const before = checksum(s.state);
+  for (let f = 20; f < 30; f++) { s.addLocalInput(press(0, f)); s.advance(); }        // player 1's inputs have not come: guessed
+  s.setInput(1, 22, -1);                                                              // the truth about one frame, learned late
+  s.setInput(1, 23, s.used[1].get(23));                                               // and one that was guessed right
+  s.addLocalInput(press(0, 30)); s.advance();
+  assert.equal(s.stats.rollbacks, 1);
+  const check = make(0);
+  for (let f = 0; f < 31; f++) { check.addLocalInput(press(0, f)); check.setInput(1, f, f === 22 ? -1 : f >= 20 ? s.used[1].get(f) : press(1, f)); check.advance(); }
+  assert.equal(checksum(s.state), checksum(check.state), 'the same as if the truth had been known');
+  assert.notEqual(checksum(s.state), before);
+  // the server may also change this machine's own input (it arrived too late and was not used), as long as the frame is not yet confirmed by the server's word on the others
+  const me = make(0, { maxRollback: 16 });
+  for (let f = 0; f < 10; f++) { me.addLocalInput(1); if (f < 4) me.setInput(1, f, 0); me.advance(); }
+  me.setInput(0, 6, 0);
+  me.addLocalInput(1); me.advance();
+  assert.equal(me.used[0].get(6), 0, 'the frame was played again with what the server said');
+});
+
+test('a change in the rules from some frame on makes the frames since be played again with the new rules', () => {
+  let double = false;
+  const doubling = (s, inputs, frame) => { if (frame >= 10 && double) s.x[0] += 5; step(s, inputs); };
+  const s = new RollbackSession({ players: 2, local: 0, init, step: doubling, checksum, blank: 0, maxRollback: 40 });
+  for (let f = 0; f < 20; f++) { s.addLocalInput(0); s.advance(); }
+  const plain = checksum(s.state);
+  double = true;
+  s.redoFrom(10);
+  s.addLocalInput(0); s.advance();
+  assert.equal(s.stats.rollbacks, 1);
+  assert.notEqual(checksum(s.state), plain);
+  assert.equal(s.state.x[0], 0 + 5 * 11, 'frames 10 to 20 had the new rule');
+});
+
+test('with a server deciding every input, even the first frames are not taken as blank', () => {
+  const s = new RollbackSession({ players: 2, local: 0, init, step, checksum, blank: 0, inputDelay: 2, assumeBlank: false, maxRollback: 40 });
+  for (let f = 0; f < 6; f++) { s.addLocalInput(0); s.advance(); }
+  s.setInput(1, 0, 1);
+  s.setInput(0, 0, 0);
+  s.addLocalInput(0); s.advance();
+  assert.equal(s.used[1].get(0), 1, 'frame 0 was played again with what the server said');
+});
