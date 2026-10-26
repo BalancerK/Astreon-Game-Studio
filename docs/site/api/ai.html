@@ -15,7 +15,7 @@
 <div class="code"><pre><code class="lang-text">npm install @engine/ai</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Version 0.1.0. The package's own README (<a href="../packages/ai.html">packages/ai</a>) explains how the pieces fit together; this page lists every export.</p>
 <h2 id="contents-51-of-51-documented">Contents (51 of 51 documented)<a class="anchor" href="#contents-51-of-51-documented" aria-label="Link to this section">#</a></h2>
-<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-action"><code>Action</code></a></td><td>class</td><td>Runs a function: <code>(ctx) =&gt; status | boolean | void</code>.</td></tr><tr><td><a href="#class-behaviortree"><code>BehaviorTree</code></a></td><td>class</td><td>One agent's instance of a tree: its blackboard, its memory, its random generator.</td></tr><tr><td><a href="#class-condition"><code>Condition</code></a></td><td>class</td><td>Asks a yes/no question: <code>(ctx) =&gt; boolean</code>.</td></tr><tr><td><a href="#class-cooldown"><code>Cooldown</code></a></td><td>class</td><td>After the child has run (to success or failure), refuses to run it again for <code>seconds</code>.</td></tr><tr><td><a href="#class-crowd"><code>Crowd</code></a></td><td>class</td><td>Agents walking a <code>NavMesh</code>.</td></tr><tr><td><a href="#directions"><code>DIRECTIONS</code></a></td><td>constant</td><td>The eight directions: 0 = +x, then clockwise seen from above (+z is 2).</td></tr><tr><td><a href="#failure"><code>FAILURE</code></a></td><td>constant</td><td>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</td></tr><tr><td><a href="#class-guard"><code>Guard</code></a></td><td>class</td><td>Runs <code>child</code> only while <code>condition</code> holds; if the condition stops holding the child is abandoned (FAILURE).</td></tr><tr><td><a href="#class-inverter"><code>Inverter</code></a></td><td>class</td><td>Swaps success and failure.</td></tr><tr><td><a href="#class-memory"><code>Memory</code></a></td><td>class</td><td>What an agent remembers about things it has noticed: where it last saw each, how long ago, and how sure it is.</td></tr><tr><td><a href="#class-navgrid"><code>NavGrid</code></a></td><td>class</td><td>A grid of the walkable floor in a level, built once from its collision triangles: a height per cell, several floors per column (stairs, bridges), cells too close to walls removed for the agent's radius, and links for drops and small gaps.</td></tr><tr><td><a href="#class-navmesh"><code>NavMesh</code></a></td><td>class</td><td>The walkable surface of a level as a mesh of triangles.</td></tr><tr><td><a href="#class-navvolume"><code>NavVolume</code></a></td><td>class</td><td>A three-dimensional navigation volume for one size of agent: add the solid boxes, then ask for paths between points (see the notes at the top of this file).</td></tr><tr><td><a href="#class-node"><code>Node</code></a></td><td>class</td><td>Base class.</td></tr><tr><td><a href="#class-parallel"><code>Parallel</code></a></td><td>class</td><td>Runs all children every tick.</td></tr><tr><td><a href="#class-pathfollower"><code>PathFollower</code></a></td><td>class</td><td>Walks an agent along a path (the points from <code>findPath</code>): head for the next point, move on when close, slow down at the end.</td></tr><tr><td><a href="#class-pathquery"><code>PathQuery</code></a></td><td>class</td><td>One path request: <code>step(n)</code> expands up to n nodes, <code>status</code> is 'running', 'found', 'partial' or 'none'.</td></tr><tr><td><a href="#class-pathsearch"><code>PathSearch</code></a></td><td>class</td><td>One search for a path, that can be done a few cubes at a time (see <code>NavVolume.request</code>); <code>NavVolume.findPath</code> runs one to the end.</td></tr><tr><td><a href="#running"><code>RUNNING</code></a></td><td>constant</td><td>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</td></tr><tr><td><a href="#class-randomselector"><code>RandomSelector</code></a></td><td>class</td><td>Picks one child at random (by weight) when started and keeps running it until it finishes.</td></tr><tr><td><a href="#class-repeater"><code>Repeater</code></a></td><td>class</td><td>Repeats its child <code>times</code> times (Infinity: forever, always RUNNING); stops early with FAILURE if the child fails.</td></tr><tr><td><a href="#class-retry"><code>Retry</code></a></td><td>class</td><td>Tries the child up to <code>times</code> times until it succeeds.</td></tr><tr><td><a href="#status_names"><code>STATUS_NAMES</code></a></td><td>constant</td><td>The status numbers as readable names (<code>1: &quot;success&quot;</code>), for logs and debug views.</td></tr><tr><td><a href="#success"><code>SUCCESS</code></a></td><td>constant</td><td>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</td></tr><tr><td><a href="#class-selector"><code>Selector</code></a></td><td>class</td><td>Tries children in order until one succeeds: the first that works wins.</td></tr><tr><td><a href="#class-sequence"><code>Sequence</code></a></td><td>class</td><td>Runs children in order until one fails: all must succeed.</td></tr><tr><td><a href="#class-steeringagent"><code>SteeringAgent</code></a></td><td>class</td><td>A moving thing to steer.</td></tr><tr><td><a href="#class-succeeder"><code>Succeeder</code></a></td><td>class</td><td>Always succeeds (unless still running).</td></tr><tr><td><a href="#class-timeout"><code>Timeout</code></a></td><td>class</td><td>Fails the child if it is still running after <code>seconds</code>.</td></tr><tr><td><a href="#class-wait"><code>Wait</code></a></td><td>class</td><td>Waits <code>seconds</code> (RUNNING until then, then SUCCESS).</td></tr><tr><td><a href="#accelerate"><code>accelerate</code></a></td><td>function</td><td>Change the agent's velocity toward a desired one, no faster than its acceleration allows.</td></tr><tr><td><a href="#alignment"><code>alignment</code></a></td><td>function</td><td>Match the average heading of neighbours.</td></tr><tr><td><a href="#arrive"><code>arrive</code></a></td><td>function</td><td>Like seek, but slow down inside <code>slowRadius</code> and stop at the point (speed falls off linearly with the distance left).</td></tr><tr><td><a href="#avoidobstacles"><code>avoidObstacles</code></a></td><td>function</td><td>Steer around things ahead: probe along the way you are heading with <code>blocked(fromX, fromZ, toX, toZ)</code> (a ray cast or a nav line-of-walk test returning true if something is in the way) and swerve to whichever side is clear.</td></tr><tr><td><a href="#blend"><code>blend</code></a></td><td>function</td><td>The weighted sum of desired velocities, limited to the agent's top speed.</td></tr><tr><td><a href="#bt"><code>bt</code></a></td><td>constant</td><td>Short builders: <code>bt.sequence(bt.condition(canSee), bt.action(shoot))</code>.</td></tr><tr><td><a href="#canhear"><code>canHear</code></a></td><td>function</td><td>Did a sound at (x, y, z) of this loudness (metres it carries in the open) reach the listener?</td></tr><tr><td><a href="#cansee"><code>canSee</code></a></td><td>function</td><td>Can an agent at <code>eye</code> looking along (fx, fz) see a point?</td></tr><tr><td><a href="#cohesion"><code>cohesion</code></a></td><td>function</td><td>Move toward the middle of the neighbours.</td></tr><tr><td><a href="#describe"><code>describe</code></a></td><td>function</td><td>A readable outline of a tree (for debugging).</td></tr><tr><td><a href="#evade"><code>evade</code></a></td><td>function</td><td>Run from where a moving target will be.</td></tr><tr><td><a href="#findpath"><code>findPath</code></a></td><td>function</td><td>Find a path, all at once.</td></tr><tr><td><a href="#flee"><code>flee</code></a></td><td>function</td><td>Walk away from a point at full speed.</td></tr><tr><td><a href="#fromdata"><code>fromData</code></a></td><td>function</td><td>Build a tree from plain data (so a tree can live in a JSON file, be edited, or come from a mod).</td></tr><tr><td><a href="#limit"><code>limit</code></a></td><td>function</td><td>Clamp a vector to a length.</td></tr><tr><td><a href="#pathisclear"><code>pathIsClear</code></a></td><td>function</td><td>Whether a path still looks valid: every node of it is still walkable and unblocked (after <code>nav.version</code> changed).</td></tr><tr><td><a href="#pursue"><code>pursue</code></a></td><td>function</td><td>Seek where a moving target will be (looking ahead by the time it takes to reach it).</td></tr><tr><td><a href="#seek"><code>seek</code></a></td><td>function</td><td>Walk straight toward a point at full speed.</td></tr><tr><td><a href="#separation"><code>separation</code></a></td><td>function</td><td>Push away from neighbours that are too close (each pushes harder the closer it is).</td></tr><tr><td><a href="#smoothnodes"><code>smoothNodes</code></a></td><td>function</td><td>Drop the nodes of a path that a straight walk can skip: from each point, jump to the farthest one it can walk to in a line.</td></tr><tr><td><a href="#wander"><code>wander</code></a></td><td>function</td><td>Meander: keep going roughly the way you were going, turning a little at random.</td></tr></tbody></table></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-action"><code>Action</code></a></td><td>class</td><td>Runs a function: <code>(ctx) =&gt; status | boolean | void</code>.</td></tr><tr><td><a href="#class-behaviortree"><code>BehaviorTree</code></a></td><td>class</td><td>One agent's instance of a tree: its blackboard, its memory, its random generator.</td></tr><tr><td><a href="#class-condition"><code>Condition</code></a></td><td>class</td><td>Asks a yes/no question: <code>(ctx) =&gt; boolean</code>.</td></tr><tr><td><a href="#class-cooldown"><code>Cooldown</code></a></td><td>class</td><td>After the child has run (to success or failure), refuses to run it again for <code>seconds</code>.</td></tr><tr><td><a href="#class-crowd"><code>Crowd</code></a></td><td>class</td><td>Agents walking a <code>NavMesh</code>.</td></tr><tr><td><a href="#directions"><code>DIRECTIONS</code></a></td><td>constant</td><td>The eight directions: 0 = +x, then clockwise seen from above (+z is 2).</td></tr><tr><td><a href="#failure"><code>FAILURE</code></a></td><td>constant</td><td>The node could not do what it was asked.</td></tr><tr><td><a href="#class-guard"><code>Guard</code></a></td><td>class</td><td>Runs <code>child</code> only while <code>condition</code> holds; if the condition stops holding the child is abandoned (FAILURE).</td></tr><tr><td><a href="#class-inverter"><code>Inverter</code></a></td><td>class</td><td>Swaps success and failure.</td></tr><tr><td><a href="#class-memory"><code>Memory</code></a></td><td>class</td><td>What an agent remembers about things it has noticed: where it last saw each, how long ago, and how sure it is.</td></tr><tr><td><a href="#class-navgrid"><code>NavGrid</code></a></td><td>class</td><td>A grid of the walkable floor in a level, built once from its collision triangles: a height per cell, several floors per column (stairs, bridges), cells too close to walls removed for the agent's radius, and links for drops and small gaps.</td></tr><tr><td><a href="#class-navmesh"><code>NavMesh</code></a></td><td>class</td><td>The walkable surface of a level as a mesh of triangles.</td></tr><tr><td><a href="#class-navvolume"><code>NavVolume</code></a></td><td>class</td><td>A three-dimensional navigation volume for one size of agent: add the solid boxes, then ask for paths between points (see the notes at the top of this file).</td></tr><tr><td><a href="#class-node"><code>Node</code></a></td><td>class</td><td>Base class.</td></tr><tr><td><a href="#class-parallel"><code>Parallel</code></a></td><td>class</td><td>Runs all children every tick.</td></tr><tr><td><a href="#class-pathfollower"><code>PathFollower</code></a></td><td>class</td><td>Walks an agent along a path (the points from <code>findPath</code>): head for the next point, move on when close, slow down at the end.</td></tr><tr><td><a href="#class-pathquery"><code>PathQuery</code></a></td><td>class</td><td>One path request: <code>step(n)</code> expands up to n nodes, <code>status</code> is 'running', 'found', 'partial' or 'none'.</td></tr><tr><td><a href="#class-pathsearch"><code>PathSearch</code></a></td><td>class</td><td>One search for a path, that can be done a few cubes at a time (see <code>NavVolume.request</code>); <code>NavVolume.findPath</code> runs one to the end.</td></tr><tr><td><a href="#running"><code>RUNNING</code></a></td><td>constant</td><td>The node is still working: tick it again next time.</td></tr><tr><td><a href="#class-randomselector"><code>RandomSelector</code></a></td><td>class</td><td>Picks one child at random (by weight) when started and keeps running it until it finishes.</td></tr><tr><td><a href="#class-repeater"><code>Repeater</code></a></td><td>class</td><td>Repeats its child <code>times</code> times (Infinity: forever, always RUNNING); stops early with FAILURE if the child fails.</td></tr><tr><td><a href="#class-retry"><code>Retry</code></a></td><td>class</td><td>Tries the child up to <code>times</code> times until it succeeds.</td></tr><tr><td><a href="#status_names"><code>STATUS_NAMES</code></a></td><td>constant</td><td>The status numbers as readable names (<code>1: &quot;success&quot;</code>), for logs and debug views.</td></tr><tr><td><a href="#success"><code>SUCCESS</code></a></td><td>constant</td><td>The node did what it was asked (see above).</td></tr><tr><td><a href="#class-selector"><code>Selector</code></a></td><td>class</td><td>Tries children in order until one succeeds: the first that works wins.</td></tr><tr><td><a href="#class-sequence"><code>Sequence</code></a></td><td>class</td><td>Runs children in order until one fails: all must succeed.</td></tr><tr><td><a href="#class-steeringagent"><code>SteeringAgent</code></a></td><td>class</td><td>A moving thing to steer.</td></tr><tr><td><a href="#class-succeeder"><code>Succeeder</code></a></td><td>class</td><td>Always succeeds (unless still running).</td></tr><tr><td><a href="#class-timeout"><code>Timeout</code></a></td><td>class</td><td>Fails the child if it is still running after <code>seconds</code>.</td></tr><tr><td><a href="#class-wait"><code>Wait</code></a></td><td>class</td><td>Waits <code>seconds</code> (RUNNING until then, then SUCCESS).</td></tr><tr><td><a href="#accelerate"><code>accelerate</code></a></td><td>function</td><td>Change the agent's velocity toward a desired one, no faster than its acceleration allows.</td></tr><tr><td><a href="#alignment"><code>alignment</code></a></td><td>function</td><td>Match the average heading of neighbours.</td></tr><tr><td><a href="#arrive"><code>arrive</code></a></td><td>function</td><td>Like seek, but slow down inside <code>slowRadius</code> and stop at the point (speed falls off linearly with the distance left).</td></tr><tr><td><a href="#avoidobstacles"><code>avoidObstacles</code></a></td><td>function</td><td>Steer around things ahead: probe along the way you are heading with <code>blocked(fromX, fromZ, toX, toZ)</code> (a ray cast or a nav line-of-walk test returning true if something is in the way) and swerve to whichever side is clear.</td></tr><tr><td><a href="#blend"><code>blend</code></a></td><td>function</td><td>The weighted sum of desired velocities, limited to the agent's top speed.</td></tr><tr><td><a href="#bt"><code>bt</code></a></td><td>constant</td><td>Short builders: <code>bt.sequence(bt.condition(canSee), bt.action(shoot))</code>.</td></tr><tr><td><a href="#canhear"><code>canHear</code></a></td><td>function</td><td>Did a sound at (x, y, z) of this loudness (metres it carries in the open) reach the listener?</td></tr><tr><td><a href="#cansee"><code>canSee</code></a></td><td>function</td><td>Can an agent at <code>eye</code> looking along (fx, fz) see a point?</td></tr><tr><td><a href="#cohesion"><code>cohesion</code></a></td><td>function</td><td>Move toward the middle of the neighbours.</td></tr><tr><td><a href="#describe"><code>describe</code></a></td><td>function</td><td>A readable outline of a tree (for debugging).</td></tr><tr><td><a href="#evade"><code>evade</code></a></td><td>function</td><td>Run from where a moving target will be.</td></tr><tr><td><a href="#findpath"><code>findPath</code></a></td><td>function</td><td>Find a path, all at once.</td></tr><tr><td><a href="#flee"><code>flee</code></a></td><td>function</td><td>Walk away from a point at full speed.</td></tr><tr><td><a href="#fromdata"><code>fromData</code></a></td><td>function</td><td>Build a tree from plain data (so a tree can live in a JSON file, be edited, or come from a mod).</td></tr><tr><td><a href="#limit"><code>limit</code></a></td><td>function</td><td>Clamp a vector to a length.</td></tr><tr><td><a href="#pathisclear"><code>pathIsClear</code></a></td><td>function</td><td>Whether a path still looks valid: every node of it is still walkable and unblocked (after <code>nav.version</code> changed).</td></tr><tr><td><a href="#pursue"><code>pursue</code></a></td><td>function</td><td>Seek where a moving target will be (looking ahead by the time it takes to reach it).</td></tr><tr><td><a href="#seek"><code>seek</code></a></td><td>function</td><td>Walk straight toward a point at full speed.</td></tr><tr><td><a href="#separation"><code>separation</code></a></td><td>function</td><td>Push away from neighbours that are too close (each pushes harder the closer it is).</td></tr><tr><td><a href="#smoothnodes"><code>smoothNodes</code></a></td><td>function</td><td>Drop the nodes of a path that a straight walk can skip: from each point, jump to the farthest one it can walk to in a line.</td></tr><tr><td><a href="#wander"><code>wander</code></a></td><td>function</td><td>Meander: keep going roughly the way you were going, turning a little at random.</td></tr></tbody></table></div>
 <h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
 <h3 id="accelerate"><code>accelerate</code><a class="anchor" href="#accelerate" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">accelerate</span>(agent, desired, dt)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
@@ -58,7 +58,7 @@
 <h3 id="describe"><code>describe</code><a class="anchor" href="#describe" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">describe</span>(node, depth = <span class="tk-n">0</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>A readable outline of a tree (for debugging).</p>
-<p><sub>src/bt.js:288</sub></p>
+<p><sub>src/bt.js:293</sub></p>
 <h3 id="evade"><code>evade</code><a class="anchor" href="#evade" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">evade</span>(agent, target, out = { x: <span class="tk-n">0</span>, z: <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Run from where a moving target will be.</p>
@@ -79,7 +79,7 @@
 <p>Build a tree from plain data (so a tree can live in a JSON file, be edited, or come from a mod). Leaves name functions in <code>registry</code>. <code>{ type: 'selector', children: [ { type: 'sequence', children: [ { type: 'condition', name: 'canSeeEnemy' }, { type: 'action', name: 'shoot' } ] }, { type: 'action', name: 'patrol' } ] }</code></p>
 <p><strong>Parameters</strong></p>
 <div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>spec</code></td><td><code>object</code></td><td></td></tr><tr><td><code>registry</code></td><td><code>Record&lt;string, (ctx: TickContext) =&gt; any&gt;</code></td><td></td></tr></tbody></table></div>
-<p><sub>src/bt.js:265</sub></p>
+<p><sub>src/bt.js:270</sub></p>
 <h3 id="limit"><code>limit</code><a class="anchor" href="#limit" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">limit</span>(out, max)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Clamp a vector to a length.</p>
@@ -120,7 +120,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(fn, name = <span class="tk-s">'action'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="actiontick"><code>Action.tick</code><a class="anchor" href="#actiontick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:37</sub></p>
+<p><sub>src/bt.js:42</sub></p>
 <h3 id="class-behaviortree"><code>class BehaviorTree</code><a class="anchor" href="#class-behaviortree" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> BehaviorTree</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>One agent's instance of a tree: its blackboard, its memory, its random generator.</p>
@@ -143,7 +143,7 @@
 <h4 id="behaviortreereset"><code>BehaviorTree.reset</code><a class="anchor" href="#behaviortreereset" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">reset</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Forget what every node was doing (start over).</p>
-<p><sub>src/bt.js:197</sub></p>
+<p><sub>src/bt.js:202</sub></p>
 <h3 id="class-condition"><code>class Condition</code><a class="anchor" href="#class-condition" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Condition <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Asks a yes/no question: <code>(ctx) =&gt; boolean</code>.</p>
@@ -151,7 +151,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(fn, name = <span class="tk-s">'condition'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="conditiontick"><code>Condition.tick</code><a class="anchor" href="#conditiontick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:43</sub></p>
+<p><sub>src/bt.js:48</sub></p>
 <h3 id="class-cooldown"><code>class Cooldown</code><a class="anchor" href="#class-cooldown" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Cooldown <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>After the child has run (to success or failure), refuses to run it again for <code>seconds</code>.</p>
@@ -159,7 +159,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, seconds, name = <span class="tk-s">'cooldown'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="cooldowntick"><code>Cooldown.tick</code><a class="anchor" href="#cooldowntick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:145</sub></p>
+<p><sub>src/bt.js:150</sub></p>
 <h3 id="class-crowd"><code>class Crowd</code><a class="anchor" href="#class-crowd" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Crowd</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Agents walking a <code>NavMesh</code>.</p>
@@ -190,7 +190,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(condition, child, name = <span class="tk-s">'guard'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="guardtick"><code>Guard.tick</code><a class="anchor" href="#guardtick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:188</sub></p>
+<p><sub>src/bt.js:193</sub></p>
 <h3 id="class-inverter"><code>class Inverter</code><a class="anchor" href="#class-inverter" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Inverter <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Swaps success and failure.</p>
@@ -198,7 +198,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, name = <span class="tk-s">'not'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="invertertick"><code>Inverter.tick</code><a class="anchor" href="#invertertick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:108</sub></p>
+<p><sub>src/bt.js:113</sub></p>
 <h3 id="class-memory"><code>class Memory</code><a class="anchor" href="#class-memory" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Memory</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>What an agent remembers about things it has noticed: where it last saw each, how long ago, and how sure it is.</p>
@@ -393,7 +393,7 @@
 <p><strong>Returns</strong> <code>number</code></p>
 <h4 id="nodereset"><code>Node.reset</code><a class="anchor" href="#nodereset" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">reset</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:29</sub></p>
+<p><sub>src/bt.js:34</sub></p>
 <h3 id="class-parallel"><code>class Parallel</code><a class="anchor" href="#class-parallel" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Parallel <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Runs all children every tick. <code>policy: 'all'</code> succeeds when all succeed (fails when any fails); <code>'one'</code> succeeds when any succeeds.</p>
@@ -401,7 +401,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(children, { policy = <span class="tk-s">'all'</span>, name = <span class="tk-s">'parallel'</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="paralleltick"><code>Parallel.tick</code><a class="anchor" href="#paralleltick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:97</sub></p>
+<p><sub>src/bt.js:102</sub></p>
 <h3 id="class-pathfollower"><code>class PathFollower</code><a class="anchor" href="#class-pathfollower" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> PathFollower</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Walks an agent along a path (the points from <code>findPath</code>): head for the next point, move on when close, slow down at the end. <code>stuck</code> turns true when it has made no progress for <code>stuckTime</code> seconds (a moved obstacle, a blocked door): ask for a new path.</p>
@@ -458,7 +458,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(children, weights = <span class="tk-k">null</span>, name = <span class="tk-s">'random'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="randomselectortick"><code>RandomSelector.tick</code><a class="anchor" href="#randomselectortick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:171</sub></p>
+<p><sub>src/bt.js:176</sub></p>
 <h3 id="class-repeater"><code>class Repeater</code><a class="anchor" href="#class-repeater" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Repeater <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Repeats its child <code>times</code> times (Infinity: forever, always RUNNING); stops early with FAILURE if the child fails.</p>
@@ -466,7 +466,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, times = Infinity, name = <span class="tk-s">'repeat'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="repeatertick"><code>Repeater.tick</code><a class="anchor" href="#repeatertick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:119</sub></p>
+<p><sub>src/bt.js:124</sub></p>
 <h3 id="class-retry"><code>class Retry</code><a class="anchor" href="#class-retry" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Retry <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Tries the child up to <code>times</code> times until it succeeds.</p>
@@ -474,7 +474,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, times = <span class="tk-n">3</span>, name = <span class="tk-s">'retry'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="retrytick"><code>Retry.tick</code><a class="anchor" href="#retrytick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:132</sub></p>
+<p><sub>src/bt.js:137</sub></p>
 <h3 id="class-selector"><code>class Selector</code><a class="anchor" href="#class-selector" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Selector <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Tries children in order until one succeeds: the first that works wins. Without <code>memory</code> (default) it re-checks from the top every tick, so a more important behaviour can interrupt a less important one that is still running.</p>
@@ -482,7 +482,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(children, { memory = <span class="tk-k">false</span>, name = <span class="tk-s">'selector'</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="selectortick"><code>Selector.tick</code><a class="anchor" href="#selectortick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:78</sub></p>
+<p><sub>src/bt.js:83</sub></p>
 <h3 id="class-sequence"><code>class Sequence</code><a class="anchor" href="#class-sequence" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Sequence <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Runs children in order until one fails: all must succeed. With <code>memory</code> (default) a running child is resumed, not restarted.</p>
@@ -490,7 +490,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(children, { memory = <span class="tk-k">true</span>, name = <span class="tk-s">'sequence'</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="sequencetick"><code>Sequence.tick</code><a class="anchor" href="#sequencetick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:60</sub></p>
+<p><sub>src/bt.js:65</sub></p>
 <h3 id="class-steeringagent"><code>class SteeringAgent</code><a class="anchor" href="#class-steeringagent" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> SteeringAgent</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>A moving thing to steer. Positions in metres, velocities in m/s.</p>
@@ -504,7 +504,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, name = <span class="tk-s">'always'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="succeedertick"><code>Succeeder.tick</code><a class="anchor" href="#succeedertick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:113</sub></p>
+<p><sub>src/bt.js:118</sub></p>
 <h3 id="class-timeout"><code>class Timeout</code><a class="anchor" href="#class-timeout" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Timeout <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Fails the child if it is still running after <code>seconds</code>.</p>
@@ -512,7 +512,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(child, seconds, name = <span class="tk-s">'timeout'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="timeouttick"><code>Timeout.tick</code><a class="anchor" href="#timeouttick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:158</sub></p>
+<p><sub>src/bt.js:163</sub></p>
 <h3 id="class-wait"><code>class Wait</code><a class="anchor" href="#class-wait" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Wait <span class="tk-k">extends</span> Node</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Waits <code>seconds</code> (RUNNING until then, then SUCCESS).</p>
@@ -520,7 +520,7 @@
 <div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>(seconds, name = <span class="tk-s">'wait'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="waittick"><code>Wait.tick</code><a class="anchor" href="#waittick" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(ctx)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/bt.js:49</sub></p>
+<p><sub>src/bt.js:54</sub></p>
 <h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
 <h3 id="directions"><code>DIRECTIONS</code><a class="anchor" href="#directions" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> DIRECTIONS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
@@ -529,27 +529,29 @@
 <p><sub>src/navgrid.js:14</sub></p>
 <h3 id="failure"><code>FAILURE</code><a class="anchor" href="#failure" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> FAILURE</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</p>
-<p><sub>src/bt.js:10</sub></p>
+<p>The node could not do what it was asked.</p>
+<p>Value: <code>2</code></p>
+<p><sub>src/bt.js:13</sub></p>
 <h3 id="running"><code>RUNNING</code><a class="anchor" href="#running" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> RUNNING</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</p>
-<p><sub>src/bt.js:10</sub></p>
+<p>The node is still working: tick it again next time.</p>
+<p>Value: <code>3</code></p>
+<p><sub>src/bt.js:15</sub></p>
 <h3 id="status_names"><code>STATUS_NAMES</code><a class="anchor" href="#status_names" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> STATUS_NAMES</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>The status numbers as readable names (<code>1: &quot;success&quot;</code>), for logs and debug views.</p>
 <p>Value: <code>{ 1: 'success', 2: 'failure', 3: 'running' }</code></p>
-<p><sub>src/bt.js:12</sub></p>
+<p><sub>src/bt.js:17</sub></p>
 <h3 id="success"><code>SUCCESS</code><a class="anchor" href="#success" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> SUCCESS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p>What a behaviour-tree node reports when it is ticked: <code>SUCCESS</code> (1), <code>FAILURE</code> (2), or <code>RUNNING</code> (3, still working: it is ticked again next time and carries on).</p>
-<p>Value: <code>1, FAILURE = 2, RUNNING = 3</code></p>
-<p><sub>src/bt.js:10</sub></p>
+<p>The node did what it was asked (see above).</p>
+<p>Value: <code>1</code></p>
+<p><sub>src/bt.js:11</sub></p>
 <h3 id="bt"><code>bt</code><a class="anchor" href="#bt" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> bt</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Short builders: <code>bt.sequence(bt.condition(canSee), bt.action(shoot))</code>.</p>
 <p>Value: <code>{</code></p>
-<p><sub>src/bt.js:241</sub></p>
+<p><sub>src/bt.js:246</sub></p>
 <h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
 <h3 id="box"><code>Box</code><a class="anchor" href="#box" aria-label="Link to this section">#</a></h3>
 <p>A solid, with the smaller number first on each axis.</p>

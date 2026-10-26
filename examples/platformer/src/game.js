@@ -20,7 +20,9 @@ export const MOVE = {
 };
 
 // ---- inputs: three bits per tick, so a whole run is a short list of small numbers ----
-export const LEFT = 1, RIGHT = 2, JUMP = 4;
+export const LEFT = 1;
+export const RIGHT = 2;
+export const JUMP = 4;
 export const packInput = ({ left = false, right = false, jump = false } = {}) => (left ? LEFT : 0) | (right ? RIGHT : 0) | (jump ? JUMP : 0);
 
 const overlaps = (a, b) => Math.abs(a.x - b.x) < a.hw + b.hw && Math.abs(a.y - b.y) < a.hh + b.hh;

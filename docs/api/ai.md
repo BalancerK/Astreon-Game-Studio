@@ -18,7 +18,7 @@ Version 0.1.0. The package's own README ([packages/ai](../../packages/ai/README.
 | [`Cooldown`](#class-cooldown) | class | After the child has run (to success or failure), refuses to run it again for `seconds`. |
 | [`Crowd`](#class-crowd) | class | Agents walking a `NavMesh`. |
 | [`DIRECTIONS`](#directions) | constant | The eight directions: 0 = +x, then clockwise seen from above (+z is 2). |
-| [`FAILURE`](#failure) | constant | What a behaviour-tree node reports when it is ticked: `SUCCESS` (1), `FAILURE` (2), or `RUNNING` (3, still working: it is ticked again next time and carries on). |
+| [`FAILURE`](#failure) | constant | The node could not do what it was asked. |
 | [`Guard`](#class-guard) | class | Runs `child` only while `condition` holds; if the condition stops holding the child is abandoned (FAILURE). |
 | [`Inverter`](#class-inverter) | class | Swaps success and failure. |
 | [`Memory`](#class-memory) | class | What an agent remembers about things it has noticed: where it last saw each, how long ago, and how sure it is. |
@@ -30,12 +30,12 @@ Version 0.1.0. The package's own README ([packages/ai](../../packages/ai/README.
 | [`PathFollower`](#class-pathfollower) | class | Walks an agent along a path (the points from `findPath`): head for the next point, move on when close, slow down at the end. |
 | [`PathQuery`](#class-pathquery) | class | One path request: `step(n)` expands up to n nodes, `status` is 'running', 'found', 'partial' or 'none'. |
 | [`PathSearch`](#class-pathsearch) | class | One search for a path, that can be done a few cubes at a time (see `NavVolume.request`); `NavVolume.findPath` runs one to the end. |
-| [`RUNNING`](#running) | constant | What a behaviour-tree node reports when it is ticked: `SUCCESS` (1), `FAILURE` (2), or `RUNNING` (3, still working: it is ticked again next time and carries on). |
+| [`RUNNING`](#running) | constant | The node is still working: tick it again next time. |
 | [`RandomSelector`](#class-randomselector) | class | Picks one child at random (by weight) when started and keeps running it until it finishes. |
 | [`Repeater`](#class-repeater) | class | Repeats its child `times` times (Infinity: forever, always RUNNING); stops early with FAILURE if the child fails. |
 | [`Retry`](#class-retry) | class | Tries the child up to `times` times until it succeeds. |
 | [`STATUS_NAMES`](#status_names) | constant | The status numbers as readable names (`1: "success"`), for logs and debug views. |
-| [`SUCCESS`](#success) | constant | What a behaviour-tree node reports when it is ticked: `SUCCESS` (1), `FAILURE` (2), or `RUNNING` (3, still working: it is ticked again next time and carries on). |
+| [`SUCCESS`](#success) | constant | The node did what it was asked (see above). |
 | [`Selector`](#class-selector) | class | Tries children in order until one succeeds: the first that works wins. |
 | [`Sequence`](#class-sequence) | class | Runs children in order until one fails: all must succeed. |
 | [`SteeringAgent`](#class-steeringagent) | class | A moving thing to steer. |
@@ -178,7 +178,7 @@ function describe(node, depth = 0)
 
 A readable outline of a tree (for debugging).
 
-<sub>src/bt.js:288</sub>
+<sub>src/bt.js:293</sub>
 
 ### `evade`
 
@@ -235,7 +235,7 @@ Build a tree from plain data (so a tree can live in a JSON file, be edited, or c
 | `spec` | `object` |  |
 | `registry` | `Record<string, (ctx: TickContext) => any>` |  |
 
-<sub>src/bt.js:265</sub>
+<sub>src/bt.js:270</sub>
 
 ### `limit`
 
@@ -342,7 +342,7 @@ constructor(fn, name = 'action')
 tick(ctx)
 ```
 
-<sub>src/bt.js:37</sub>
+<sub>src/bt.js:42</sub>
 
 ### `class BehaviorTree`
 
@@ -408,7 +408,7 @@ reset()
 
 Forget what every node was doing (start over).
 
-<sub>src/bt.js:197</sub>
+<sub>src/bt.js:202</sub>
 
 ### `class Condition`
 
@@ -430,7 +430,7 @@ constructor(fn, name = 'condition')
 tick(ctx)
 ```
 
-<sub>src/bt.js:43</sub>
+<sub>src/bt.js:48</sub>
 
 ### `class Cooldown`
 
@@ -452,7 +452,7 @@ constructor(child, seconds, name = 'cooldown')
 tick(ctx)
 ```
 
-<sub>src/bt.js:145</sub>
+<sub>src/bt.js:150</sub>
 
 ### `class Crowd`
 
@@ -543,7 +543,7 @@ constructor(condition, child, name = 'guard')
 tick(ctx)
 ```
 
-<sub>src/bt.js:188</sub>
+<sub>src/bt.js:193</sub>
 
 ### `class Inverter`
 
@@ -565,7 +565,7 @@ constructor(child, name = 'not')
 tick(ctx)
 ```
 
-<sub>src/bt.js:108</sub>
+<sub>src/bt.js:113</sub>
 
 ### `class Memory`
 
@@ -1141,7 +1141,7 @@ tick(ctx)
 reset(ctx)
 ```
 
-<sub>src/bt.js:29</sub>
+<sub>src/bt.js:34</sub>
 
 ### `class Parallel`
 
@@ -1163,7 +1163,7 @@ constructor(children, { policy = 'all', name = 'parallel' } = {})
 tick(ctx)
 ```
 
-<sub>src/bt.js:97</sub>
+<sub>src/bt.js:102</sub>
 
 ### `class PathFollower`
 
@@ -1328,7 +1328,7 @@ constructor(children, weights = null, name = 'random')
 tick(ctx)
 ```
 
-<sub>src/bt.js:171</sub>
+<sub>src/bt.js:176</sub>
 
 ### `class Repeater`
 
@@ -1350,7 +1350,7 @@ constructor(child, times = Infinity, name = 'repeat')
 tick(ctx)
 ```
 
-<sub>src/bt.js:119</sub>
+<sub>src/bt.js:124</sub>
 
 ### `class Retry`
 
@@ -1372,7 +1372,7 @@ constructor(child, times = 3, name = 'retry')
 tick(ctx)
 ```
 
-<sub>src/bt.js:132</sub>
+<sub>src/bt.js:137</sub>
 
 ### `class Selector`
 
@@ -1395,7 +1395,7 @@ constructor(children, { memory = false, name = 'selector' } = {})
 tick(ctx)
 ```
 
-<sub>src/bt.js:78</sub>
+<sub>src/bt.js:83</sub>
 
 ### `class Sequence`
 
@@ -1417,7 +1417,7 @@ constructor(children, { memory = true, name = 'sequence' } = {})
 tick(ctx)
 ```
 
-<sub>src/bt.js:60</sub>
+<sub>src/bt.js:65</sub>
 
 ### `class SteeringAgent`
 
@@ -1455,7 +1455,7 @@ constructor(child, name = 'always')
 tick(ctx)
 ```
 
-<sub>src/bt.js:113</sub>
+<sub>src/bt.js:118</sub>
 
 ### `class Timeout`
 
@@ -1477,7 +1477,7 @@ constructor(child, seconds, name = 'timeout')
 tick(ctx)
 ```
 
-<sub>src/bt.js:158</sub>
+<sub>src/bt.js:163</sub>
 
 ### `class Wait`
 
@@ -1499,7 +1499,7 @@ constructor(seconds, name = 'wait')
 tick(ctx)
 ```
 
-<sub>src/bt.js:49</sub>
+<sub>src/bt.js:54</sub>
 
 ## Constants
 
@@ -1521,10 +1521,11 @@ Value: `Object.freeze({ dx: DX, dz: DZ })`
 const FAILURE
 ```
 
-What a behaviour-tree node reports when it is ticked: `SUCCESS` (1), `FAILURE` (2), or `RUNNING` (3, still working: it is ticked
-again next time and carries on).
+The node could not do what it was asked.
 
-<sub>src/bt.js:10</sub>
+Value: `2`
+
+<sub>src/bt.js:13</sub>
 
 ### `RUNNING`
 
@@ -1532,10 +1533,11 @@ again next time and carries on).
 const RUNNING
 ```
 
-What a behaviour-tree node reports when it is ticked: `SUCCESS` (1), `FAILURE` (2), or `RUNNING` (3, still working: it is ticked
-again next time and carries on).
+The node is still working: tick it again next time.
 
-<sub>src/bt.js:10</sub>
+Value: `3`
+
+<sub>src/bt.js:15</sub>
 
 ### `STATUS_NAMES`
 
@@ -1547,7 +1549,7 @@ The status numbers as readable names (`1: "success"`), for logs and debug views.
 
 Value: `{ 1: 'success', 2: 'failure', 3: 'running' }`
 
-<sub>src/bt.js:12</sub>
+<sub>src/bt.js:17</sub>
 
 ### `SUCCESS`
 
@@ -1555,12 +1557,11 @@ Value: `{ 1: 'success', 2: 'failure', 3: 'running' }`
 const SUCCESS
 ```
 
-What a behaviour-tree node reports when it is ticked: `SUCCESS` (1), `FAILURE` (2), or `RUNNING` (3, still working: it is ticked
-again next time and carries on).
+The node did what it was asked (see above).
 
-Value: `1, FAILURE = 2, RUNNING = 3`
+Value: `1`
 
-<sub>src/bt.js:10</sub>
+<sub>src/bt.js:11</sub>
 
 ### `bt`
 
@@ -1572,7 +1573,7 @@ Short builders: `bt.sequence(bt.condition(canSee), bt.action(shoot))`.
 
 Value: `{`
 
-<sub>src/bt.js:241</sub>
+<sub>src/bt.js:246</sub>
 
 ## Types
 

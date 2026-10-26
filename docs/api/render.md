@@ -21,9 +21,9 @@ Version 0.1.0. The package's own README ([packages/render](../../packages/render
 | [`Camera3D`](#class-camera3d) | class | A perspective camera for first- and third-person views. |
 | [`Canvas2DRenderer`](#class-canvas2drenderer) | class | Last-resort backend: draws each sprite with drawImage. |
 | [`DrawList3D`](#class-drawlist3d) | class | The meshes to draw this frame, grouped by mesh so each one becomes a single instanced draw call. |
-| [`FLIP_D`](#flip_d) | constant | Tiled's flags in the top bits of a tile number: mirrored left to right, top to bottom, and across the diagonal (applied in that order: diagonal, then horizontal, then vertical). |
+| [`FLIP_D`](#flip_d) | constant | The flag for a tile mirrored across the diagonal. |
 | [`FLIP_H`](#flip_h) | constant | Tiled's flags in the top bits of a tile number: mirrored left to right, top to bottom, and across the diagonal (applied in that order: diagonal, then horizontal, then vertical). |
-| [`FLIP_V`](#flip_v) | constant | Tiled's flags in the top bits of a tile number: mirrored left to right, top to bottom, and across the diagonal (applied in that order: diagonal, then horizontal, then vertical). |
+| [`FLIP_V`](#flip_v) | constant | The flag for a tile mirrored top to bottom. |
 | [`Filter`](#filter) | constant | The filter descriptions. |
 | [`Font`](#class-font) | class | Text as ordinary sprites. |
 | [`FontFamily`](#class-fontfamily) | class | Fonts that make their bold and italic forms on demand, all sharing one atlas. |
@@ -936,7 +936,7 @@ Add a tile map to a sprite batch, for the chunks the camera sees.
 
 **Returns** `number` — the number of tiles added
 
-<sub>src/tilemap.js:278</sub>
+<sub>src/tilemap.js:282</sub>
 
 ### `environmentBrdf`
 
@@ -2386,7 +2386,7 @@ layer offsets, parallax, opacity and tint, and flipped tiles are read. Object la
 
 **Returns** `{map: TileMap, warnings: string[], layers: Record<string, TileLayer>}`
 
-<sub>src/tilemap.js:344</sub>
+<sub>src/tilemap.js:348</sub>
 
 ### `tileOrientation`
 
@@ -2396,7 +2396,7 @@ function tileOrientation(gid)
 
 The turn (in quarter turns clockwise) and mirror that draw a tile with these flip flags; exported for tests.
 
-<sub>src/tilemap.js:49</sub>
+<sub>src/tilemap.js:53</sub>
 
 ### `toPremultiplied`
 
@@ -4936,7 +4936,7 @@ bounds()
 
 The smallest rectangle of tiles holding every tile, as `{x, y, w, h}`, or null when the layer is empty.
 
-<sub>src/tilemap.js:121</sub>
+<sub>src/tilemap.js:125</sub>
 
 ### `class TileMap`
 
@@ -4988,7 +4988,7 @@ worldToTile(x, y)
 
 The tile position containing a world position.
 
-<sub>src/tilemap.js:223</sub>
+<sub>src/tilemap.js:227</sub>
 
 ### `class TileSet`
 
@@ -5052,7 +5052,7 @@ spriteOf(id)
 
 **Returns** `import('./atlas.js').Sprite`
 
-<sub>src/tilemap.js:57</sub>
+<sub>src/tilemap.js:61</sub>
 
 ### `class VideoSprite`
 
@@ -5461,7 +5461,7 @@ Tiles along one side of a chunk.
 
 Value: `16`
 
-<sub>src/tilemap.js:18</sub>
+<sub>src/tilemap.js:22</sub>
 
 ### `FLIP_D`
 
@@ -5469,9 +5469,11 @@ Value: `16`
 const FLIP_D
 ```
 
-Tiled's flags in the top bits of a tile number: mirrored left to right, top to bottom, and across the diagonal (applied in that order: diagonal, then horizontal, then vertical).
+The flag for a tile mirrored across the diagonal.
 
-<sub>src/tilemap.js:15</sub>
+Value: `0x20000000`
+
+<sub>src/tilemap.js:19</sub>
 
 ### `FLIP_H`
 
@@ -5481,7 +5483,7 @@ const FLIP_H
 
 Tiled's flags in the top bits of a tile number: mirrored left to right, top to bottom, and across the diagonal (applied in that order: diagonal, then horizontal, then vertical).
 
-Value: `0x80000000, FLIP_V = 0x40000000, FLIP_D = 0x20000000`
+Value: `0x80000000`
 
 <sub>src/tilemap.js:15</sub>
 
@@ -5491,9 +5493,11 @@ Value: `0x80000000, FLIP_V = 0x40000000, FLIP_D = 0x20000000`
 const FLIP_V
 ```
 
-Tiled's flags in the top bits of a tile number: mirrored left to right, top to bottom, and across the diagonal (applied in that order: diagonal, then horizontal, then vertical).
+The flag for a tile mirrored top to bottom.
 
-<sub>src/tilemap.js:15</sub>
+Value: `0x40000000`
+
+<sub>src/tilemap.js:17</sub>
 
 ### `Filter`
 

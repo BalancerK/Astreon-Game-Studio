@@ -12,7 +12,11 @@ import { INSTANCE_WORDS, packTint } from './batch.js';
  */
 
 /** Tiled's flags in the top bits of a tile number: mirrored left to right, top to bottom, and across the diagonal (applied in that order: diagonal, then horizontal, then vertical). */
-export const FLIP_H = 0x80000000, FLIP_V = 0x40000000, FLIP_D = 0x20000000;
+export const FLIP_H = 0x80000000;
+/** The flag for a tile mirrored top to bottom. */
+export const FLIP_V = 0x40000000;
+/** The flag for a tile mirrored across the diagonal. */
+export const FLIP_D = 0x20000000;
 const FLAGS = 0xe0000000, ID = 0x1fffffff;
 /** Tiles along one side of a chunk. */
 export const CHUNK = 16;

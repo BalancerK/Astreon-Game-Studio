@@ -4,7 +4,12 @@
 // its radii, which turns it into a unit sphere (Fauerby, "Improved Collision detection and Response").
 
 /** Contact kinds reported by `sweepSphereVsTriangle`. */
-export const CONTACT_FACE = 0, CONTACT_EDGE = 1, CONTACT_VERTEX = 2;
+/** The sphere met the inside of a triangle. */
+export const CONTACT_FACE = 0;
+/** The sphere met one of the triangle's edges. */
+export const CONTACT_EDGE = 1;
+/** The sphere met one of the triangle's corners. */
+export const CONTACT_VERTEX = 2;
 
 /**
  * @typedef {Object} SphereHit

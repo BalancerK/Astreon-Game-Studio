@@ -4,7 +4,10 @@
 export const SUITS = ['spades', 'hearts', 'diamonds', 'clubs'];
 export const SUIT_SYMBOLS = ['♠', '♥', '♦', '♣'];
 export const RANK_LABELS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-export const EIGHT = 7, TWO = 1, JACK = 10, QUEEN = 11;
+export const EIGHT = 7;
+export const TWO = 1;
+export const JACK = 10;
+export const QUEEN = 11;
 
 export const suitOf = (card) => Math.floor(card / 13);
 export const rankOf = (card) => card % 13;

@@ -31,7 +31,7 @@
 <p><strong>Parameters</strong></p>
 <div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>entry</code></td><td><code>string</code></td><td>Path to the entry file.</td></tr><tr><td><code>o</code> (optional)</td><td><code>object</code></td><td></td></tr><tr><td><code>o.root</code> (optional)</td><td><code>string</code></td><td>Module ids are paths relative to this (default: the entry's folder).</td></tr><tr><td><code>o.minify</code> (optional)</td><td><code>boolean</code></td><td></td></tr><tr><td><code>o.alias</code> (optional)</td><td><code>Record&lt;string, string&gt;</code></td><td>Replace the start of a specifier: <code>{ '@game': '/abs/path/src' }</code>.</td></tr><tr><td><code>o.define</code> (optional)</td><td><code>Record&lt;string, string&gt;</code></td><td>Replace plain identifiers with literal text: <code>{ DEBUG: 'false' }</code> (code only, never inside strings).</td></tr></tbody></table></div>
 <p><strong>Returns</strong> <code>{code: string, modules: Array&lt;{id: string, file: string, bytes: number}&gt;}</code> — modules in the order they run</p>
-<p><sub>src/bundle.js:137</sub></p>
+<p><sub>src/bundle.js:155</sub></p>
 <h3 id="codetest"><code>codeTest</code><a class="anchor" href="#codetest" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">codeTest</span>(segments)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>A function that says whether an offset is code (not inside a comment, string, regular expression or the text of a template).</p>

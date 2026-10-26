@@ -7,7 +7,12 @@
  * What a behaviour-tree node reports when it is ticked: `SUCCESS` (1), `FAILURE` (2), or `RUNNING` (3, still working: it is ticked
  * again next time and carries on).
  */
-export const SUCCESS = 1, FAILURE = 2, RUNNING = 3;
+/** The node did what it was asked (see above). */
+export const SUCCESS = 1;
+/** The node could not do what it was asked. */
+export const FAILURE = 2;
+/** The node is still working: tick it again next time. */
+export const RUNNING = 3;
 /** The status numbers as readable names (`1: "success"`), for logs and debug views. */
 export const STATUS_NAMES = { 1: 'success', 2: 'failure', 3: 'running' };
 

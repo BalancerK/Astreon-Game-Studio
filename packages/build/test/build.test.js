@@ -122,7 +122,7 @@ test('import-looking text in comments, strings and templates is left alone', () 
 test('mistakes are reported with the file: cycles, export let, missing files, destructured exports, top-level await outside the entry', () => {
   const p = project({
     'cycle-a.js': "import './cycle-b.js';\nexport const a = 1;", 'cycle-b.js': "import './cycle-a.js';\nexport const b = 1;",
-    'let.js': 'export let counter = 0;', 'missing.js': "import './nowhere.js';", 'destructure.js': 'export const { x, y } = { x: 1, y: 2 };',
+    'let.js': 'export let counter = 0;', 'missing.js': "import './nowhere.js';", 'destructure.js': 'export const { x, y } = { x: 1, y: 2 };', 'several.js': 'export const a = 1, b = 2;', 'several2.js': 'export const a = [1, 2],\n  b = 3;', 'fine.js': ['export const list = [1, 2, 3];', 'export const note = "a, b = c";', 'export const pair = (x, y) => x + y;', 'export const text = `a, b = c`;', 'export const o = { a: 1, b: 2 };', 'export const two = f(1, 2);', 'function f(a, b) { return a + b; }'].join('\n'),
     'tla-dep.js': 'await Promise.resolve();\nexport const t = 1;', 'tla-main.js': "import './tla-dep.js';",
     'tla-entry.js': "const v = await Promise.resolve(7);\nout.v = v;\nexport const unused = 1;",
     'bare.js': "import 'no-such-package';",
@@ -131,6 +131,8 @@ test('mistakes are reported with the file: cycles, export let, missing files, de
     const err = (f, re) => assert.throws(() => bundle(join(p.root, f)), (e) => e instanceof BundleError && re.test(e.message), f);
     err('cycle-a.js', /circular import: cycle-a\.js -> cycle-b\.js -> cycle-a\.js/);
     err('let.js', /export let counter.*stale/); err('missing.js', /cannot find "\.\/nowhere\.js"/); err('destructure.js', /not supported; export each name/);
+    err('several.js', /would export only a: write each exported name/); err('several2.js', /would export only a/);
+    assert.doesNotThrow(() => bundle(join(p.root, 'fine.js')), 'commas inside brackets, strings and arrow functions are not several names');
     err('tla-main.js', /only supported in the entry module/); err('bare.js', /cannot find the package "no-such-package"/);
     // the entry module may await
     const code = bundle(join(p.root, 'tla-entry.js')).code;

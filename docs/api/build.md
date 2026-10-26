@@ -72,7 +72,7 @@ Bundle an entry module and everything it imports.
 
 **Returns** `{code: string, modules: Array<{id: string, file: string, bytes: number}>}` — modules in the order they run
 
-<sub>src/bundle.js:137</sub>
+<sub>src/bundle.js:155</sub>
 
 ### `codeTest`
 

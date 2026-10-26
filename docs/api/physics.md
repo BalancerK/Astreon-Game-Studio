@@ -14,9 +14,9 @@ Version 0.1.0. The package's own README ([packages/physics](../../packages/physi
 |---|---|---|
 | [`BallJoint`](#class-balljoint) | class | A ball-and-socket: the two bodies share a point and rotate freely about it (a shoulder, a rope link). |
 | [`Body2D`](#class-body2d) | class | A 2D simulated object: a circle or convex polygon with mass, friction, bounciness and damping, of type `dynamic` (simulated), `kinematic` (moved only by the velocity you give it, pushes others) or `static` (never moves). |
-| [`CONTACT_EDGE`](#contact_edge) | constant | Contact kinds reported by `sweepSphereVsTriangle`. |
-| [`CONTACT_FACE`](#contact_face) | constant | Contact kinds reported by `sweepSphereVsTriangle`. |
-| [`CONTACT_VERTEX`](#contact_vertex) | constant | Contact kinds reported by `sweepSphereVsTriangle`. |
+| [`CONTACT_EDGE`](#contact_edge) | constant | The sphere met one of the triangle's edges. |
+| [`CONTACT_FACE`](#contact_face) | constant | The sphere met the inside of a triangle. |
+| [`CONTACT_VERTEX`](#contact_vertex) | constant | The sphere met one of the triangle's corners. |
 | [`CharacterController`](#class-charactercontroller) | class | A first- or third-person character body: walks on slopes, climbs steps, falls, jumps, stands still without jitter and slides down surfaces that are too steep. |
 | [`ConeJoint`](#class-conejoint) | class | A ball-and-socket whose swing is limited: the two bodies share a point, and the angle between `axis` (a direction fixed in each body, taken from the world direction you pass at creation) as seen on body a and on body b may not exceed `maxSwing` radians. |
 | [`DistanceJoint`](#class-distancejoint) | class | A distance joint between two points: a rod (fixed `length`), a rope (`min`/`max` range) or a spring (`frequency` in Hz and `damping` ratio, soft so it stretches). |
@@ -141,7 +141,7 @@ Closest point on triangle (a, b, c) to point p (Ericson, Real-Time Collision Det
 
 **Returns** `number` — Squared distance from p to the triangle.
 
-<sub>src/sweep3d.js:29</sub>
+<sub>src/sweep3d.js:34</sub>
 
 ### `collide`
 
@@ -383,7 +383,7 @@ Ray against a triangle (Moeller-Trumbore), two-sided.
 
 **Returns** `number` — Distance along the (unit or not) direction as a multiple of it, or -1 for a miss. Only hits in (0, maxT] count.
 
-<sub>src/sweep3d.js:193</sub>
+<sub>src/sweep3d.js:198</sub>
 
 ### `resetBodyIds`
 
@@ -507,7 +507,7 @@ toward it (moving away or sliding along is not a hit, so a resting sphere is nev
 
 **Returns** `boolean`
 
-<sub>src/sweep3d.js:96</sub>
+<sub>src/sweep3d.js:101</sub>
 
 ### `volume`
 
@@ -2181,9 +2181,11 @@ Put the state back (the same bodies and joints must be in the world, matched by 
 const CONTACT_EDGE
 ```
 
-Contact kinds reported by `sweepSphereVsTriangle`.
+The sphere met one of the triangle's edges.
 
-<sub>src/sweep3d.js:7</sub>
+Value: `1`
+
+<sub>src/sweep3d.js:10</sub>
 
 ### `CONTACT_FACE`
 
@@ -2191,11 +2193,11 @@ Contact kinds reported by `sweepSphereVsTriangle`.
 const CONTACT_FACE
 ```
 
-Contact kinds reported by `sweepSphereVsTriangle`.
+The sphere met the inside of a triangle.
 
-Value: `0, CONTACT_EDGE = 1, CONTACT_VERTEX = 2`
+Value: `0`
 
-<sub>src/sweep3d.js:7</sub>
+<sub>src/sweep3d.js:8</sub>
 
 ### `CONTACT_VERTEX`
 
@@ -2203,9 +2205,11 @@ Value: `0, CONTACT_EDGE = 1, CONTACT_VERTEX = 2`
 const CONTACT_VERTEX
 ```
 
-Contact kinds reported by `sweepSphereVsTriangle`.
+The sphere met one of the triangle's corners.
 
-<sub>src/sweep3d.js:7</sub>
+Value: `2`
+
+<sub>src/sweep3d.js:12</sub>
 
 ### `MAX_POLYGON_VERTICES`
 

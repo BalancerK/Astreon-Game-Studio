@@ -4,7 +4,7 @@
 // What it supports: import / export in every ordinary form (default, named, `as`, namespace, `export … from`, `export *`), literal
 
 // What it refuses, with a message that names the file: circular imports, `export let/var` (imports are read when the module starts, so a
-// binding that changes later would go stale), destructuring exports, and top-level `await` outside the entry module.
+// binding that changes later would go stale), destructuring exports, several names in one `export const a = 1, b = 2;` (only the first would be exported), and top-level `await` outside the entry module.
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { dirname, join, resolve, relative, sep } from 'node:path';
 import { scan, codeTest } from './lexer.js';
@@ -72,6 +72,23 @@ export function transformModule(src, file, resolveId, { id = file } = {}) {
   const bad = (m) => new BundleError(`${file}: ${m}`);
   const dep = (spec) => { const target = resolveId(spec, file); if (!deps.includes(target)) deps.push(target); return `__r(${JSON.stringify(resolveId.idOf(target))})`; };
   const each = (re, fn) => { re.lastIndex = 0; for (let m; (m = re.exec(src));) if (isCode(m.index)) fn(m); };
+  /** Does the declaration that starts at `from` (just after the first name) go on to declare another name: `const a = 1, b = 2`? Looks only at code (not strings or comments), to the end of the statement. */
+  const declaresMore = (from) => {
+    let depth = 0, last = '';
+    for (let i = from; i < src.length; i++) {
+      if (!isCode(i)) continue;
+      const ch = src[i];
+      if ('([{'.includes(ch)) depth++;
+      else if (')]}'.includes(ch)) depth--;
+      else if (depth === 0) {
+        if (ch === ';') return false;
+        if (ch === ',') return /^\s*[A-Za-z_$][\w$]*\s*[=,;\n]/.test(src.slice(i + 1));
+        if (ch === '\n' && last && !',=+-*/%&|^?:<>!~.'.includes(last)) return false;
+      }
+      if (!/\s/.test(ch)) last = ch;
+    }
+    return false;
+  };
   const lines = (text) => '\n'.repeat((text.match(/\n/g) ?? []).length); // keep line numbers: stack traces point at the original lines
 
   each(RE.importFrom, (m) => {
@@ -104,6 +121,7 @@ export function transformModule(src, file, resolveId, { id = file } = {}) {
     const [all, kind, name] = m;
     if (!name || name === '{' || name === '[') throw bad('`export const { … }` / `export const [ … ]` is not supported; export each name on its own');
     if (kind === 'let' || kind === 'var') throw bad(`\`export ${kind} ${name}\` is not supported: importers read the value once, so a binding that changes later would go stale (use const, or export a function or an object)`);
+    if (kind === 'const' && declaresMore(m.index + m[0].length)) throw bad(`\`export const ${name} = …, …\` would export only ${name}: write each exported name as its own \`export const\``);
     getters.push([name, name]);
     edits.push([m.index, m.index + m[0].indexOf(kind), '']); // keep the declaration itself, drop only `export `
   });
