@@ -129,7 +129,7 @@ export class GPUPost {
     const p = resolvePostOptions(options, camera);
     this.setup(width, height, p);
     const { device } = this;
-    writePostUniforms(this.uniforms, p);
+    writePostUniforms(this.uniforms, p, width / Math.max(1, height));
     device.queue.writeBuffer(this.gradeBuffer, 0, this.uniforms);
     writeFxUniforms(this.fxUniforms, p, camera, width, height);
     device.queue.writeBuffer(this.fxBuffer, 0, this.fxUniforms);

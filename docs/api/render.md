@@ -393,7 +393,7 @@ of the `focus`, then growing with `aperture` times the distance from the focus r
 | `distance` | `number` |  |
 | `dof` | `{focus: number, range?: number, aperture?: number, maxBlur?: number}` |  |
 
-<sub>src/post.js:100</sub>
+<sub>src/post.js:113</sub>
 
 ### `cleanMaterial`
 
@@ -1906,7 +1906,7 @@ Fill in defaults and check ranges.
 | `o` (optional) | `PostOptions \| true` |  |
 | `camera` (optional) | `{ortho?: number}` | An orthographic camera has no use for the depth effects: they are turned off. |
 
-<sub>src/post.js:35</sub>
+<sub>src/post.js:40</sub>
 
 ### `retargetClip`
 
@@ -6389,6 +6389,8 @@ Type: `object`
 | `dither` (optional) | `number` | Noise of this many 1/255 steps, hiding banding in smooth gradients (1; 0 turns it off). |
 | `ao` (optional) | `boolean \| {radius?: number, intensity?: number, bias?: number, power?: number, samples?: number, scale?: number}` | Ambient occlusion (off unless given): creases, contact points and the undersides of things get darker, as they would with light bouncing around. `radius` is how far, in world units, it looks for things in the way (0.5), `intensity` 0..1 how dark it goes (1), `power` how sharply (1.5), `bias` the depth difference ignored so that flat surfaces do not shade themselves (0.03), `samples` the quality (12; 4 to 32), `scale` the size of the working image as a fraction of the screen (1; 0.5 is four times cheaper and a little softer). It darkens the lit picture (not only the ambient light), so keep it subtle on bright scenes. |
 | `dof` (optional) | `boolean \| {focus?: number, range?: number, aperture?: number, maxBlur?: number, taps?: number}` | Depth of field (off unless given): things away from the `focus` distance (world units from the camera, 10) blur. `range` is the depth either side of the focus that stays sharp (0), `aperture` how fast the blur grows with the distance from the focus (1), `maxBlur` the largest blur radius in pixels (8), `taps` the quality (24; 8 to 64). |
+| `heat` (optional) | `{x: number, y: number, radius: number, strength?: number}[]` | Heat haze (off unless given): the picture shimmers and wobbles round up to 16 hot places, such as an exhaust, a fire or a blast. `x` and `y` are where the place is on the screen, 0 to 1 from the left and from the top; `radius` how far the haze reaches, as a share of the screen's height; `strength` how far the picture is pushed at the middle, as a share of the screen's height (0.004, a few pixels, if left out). The haze fades smoothly to nothing at the edge of the radius. It is a distortion of the finished scene (nothing is hidden behind it, and a hot place behind a wall still shimmers: the caller decides which places to give). |
+| `heatTime` (optional) | `number` | The clock of the shimmer, in seconds (0): give the time of the game so that the haze moves. |
 | `fxaa` (optional) | `boolean` | Fast approximate anti-aliasing of the finished picture (off). It smooths the edges that multisampling (the renderer's `antialias`) cannot, such as the edges inside textures and of tone-mapped highlights, and works with `antialias: false`. It softens fine detail slightly. |
 
 ### `RichLayout`

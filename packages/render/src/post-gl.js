@@ -190,7 +190,7 @@ export class GLPost {
       bloomTex = this.levels[0].tex;
     }
     gl.useProgram(this.comp.program);
-    writePostUniforms(this.uniforms, p);
+    writePostUniforms(this.uniforms, p, this.w / Math.max(1, this.h));
     gl.uniform4fv(this.comp.loc.u_gr, this.uniforms);
     gl.uniform1i(this.comp.loc.u_scene, 0); gl.uniform1i(this.comp.loc.u_bloom, 1); gl.uniform1i(this.comp.loc.u_ao, 2);
     bind(2, this.ao?.a.tex ?? this.black); bind(1, bloomTex); bind(0, colorTex);

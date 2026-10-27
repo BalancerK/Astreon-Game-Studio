@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolvePostOptions, circleOfConfusion, Camera3D } from '../src/index.js';
-import { writePostUniforms, writeFxUniforms, aoSize, postFxWgsl, POST_UNIFORM_FLOATS, FX_UNIFORM_FLOATS } from '../src/post.js';
+import { writePostUniforms, writeFxUniforms, aoSize, postFxWgsl, POST_UNIFORM_FLOATS, FX_UNIFORM_FLOATS, POST_WGSL, POST_GLSL_COMPOSITE } from '../src/post.js';
 
 test('depth effects are off unless asked for, and fill in defaults when they are', () => {
   const off = resolvePostOptions(true);
@@ -58,4 +58,27 @@ test('circle of confusion: nothing at the focus or inside the range, growing awa
 test('the depth shader matches the scene\'s depth texture (multisampled or not)', () => {
   assert.match(postFxWgsl(4), /texture_depth_multisampled_2d/); assert.doesNotMatch(postFxWgsl(4), /DEPTH_TYPE/);
   assert.match(postFxWgsl(1), /var depthTex: texture_depth_2d;/);
+});
+
+test('heat haze: off unless given, up to sixteen places, checked and clamped, and written after the grade block with the count, the clock and the picture shape', () => {
+  assert.deepEqual(resolvePostOptions(true).heat, []);
+  const p = resolvePostOptions({ heat: [{ x: 0.5, y: 0.4, radius: 0.1 }, { x: 0.1, y: 0.9, radius: 0.2, strength: 9 }, { x: NaN, y: 0, radius: 1 }, { x: 0, y: 0, radius: 0 }, null], heatTime: 2.5 });
+  assert.equal(p.heat.length, 2, 'places that are not numbers, or have no reach, are left out');
+  assert.equal(p.heat[0].strength, 0.004); assert.equal(p.heat[1].strength, 0.05, 'a strength is held to a sane size');
+  assert.equal(resolvePostOptions({ heat: Array.from({ length: 40 }, () => ({ x: 0.5, y: 0.5, radius: 0.1 })) }).heat.length, 16);
+  const u = writePostUniforms(new Float32Array(POST_UNIFORM_FLOATS), p, 16 / 9);
+  assert.equal(POST_UNIFORM_FLOATS, 24 + 64);
+  assert.equal(u[21], 2); assert.equal(u[22], 2.5); assert.ok(Math.abs(u[23] - 16 / 9) < 1e-6);
+  assert.deepEqual([...u.slice(24, 28)].map((v) => +v.toFixed(3)), [0.5, 0.4, 0.1, 0.004]);
+  assert.equal(u[24 + 8], 0, 'an unused place is zero');
+  const none = writePostUniforms(new Float32Array(POST_UNIFORM_FLOATS), resolvePostOptions(true));
+  assert.equal(none[21], 0);
+});
+
+test('both shaders read the haze: the same sixteen places and the same push', () => {
+  for (const [name, src] of [['wgsl', POST_WGSL], ['glsl', POST_GLSL_COMPOSITE]]) {
+    assert.ok(/16/.test(src) && /1\.0 - d/.test(src) && /70\.0/.test(src), `${name} has the haze`);
+  }
+  assert.ok(/uniform vec4 u_gr\[22\]/.test(POST_GLSL_COMPOSITE), 'the block holds six vec4s and sixteen places');
+  assert.ok(/heat: array<vec4f, 16>/.test(POST_WGSL));
 });

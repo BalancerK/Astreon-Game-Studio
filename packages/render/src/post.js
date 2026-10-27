@@ -27,6 +27,11 @@ export const TONEMAPS = Object.freeze({ none: 0, reinhard: 1, aces: 2, filmic: 3
  * @property {boolean | {focus?: number, range?: number, aperture?: number, maxBlur?: number, taps?: number}} [dof]
  *   Depth of field (off unless given): things away from the `focus` distance (world units from the camera, 10) blur. `range` is the depth either side of the focus
  *   that stays sharp (0), `aperture` how fast the blur grows with the distance from the focus (1), `maxBlur` the largest blur radius in pixels (8), `taps` the quality (24; 8 to 64).
+ * @property {{x: number, y: number, radius: number, strength?: number}[]} [heat]
+ *   Heat haze (off unless given): the picture shimmers and wobbles round up to 16 hot places, such as an exhaust, a fire or a blast. `x` and `y` are where the place is on the screen, 0 to 1 from the left and from the top;
+ *   `radius` how far the haze reaches, as a share of the screen's height; `strength` how far the picture is pushed at the middle, as a share of the screen's height (0.004, a few pixels, if left out). The haze
+ *   fades smoothly to nothing at the edge of the radius. It is a distortion of the finished scene (nothing is hidden behind it, and a hot place behind a wall still shimmers: the caller decides which places to give).
+ * @property {number} [heatTime] The clock of the shimmer, in seconds (0): give the time of the game so that the haze moves.
  * @property {boolean} [fxaa] Fast approximate anti-aliasing of the finished picture (off). It smooths the edges that multisampling (the renderer's `antialias`) cannot,
  *   such as the edges inside textures and of tone-mapped highlights, and works with `antialias: false`. It softens fine detail slightly.
  */
@@ -50,27 +55,35 @@ export function resolvePostOptions(o = {}, camera = null) {
   const b = o.bloom === false ? null : { threshold: 0.85, knee: 0.5, intensity: 0.5, levels: 5, radius: 1, ...o.bloom };
   if (b) { b.levels = Math.max(1, Math.min(8, Math.round(b.levels))); b.knee = Math.max(1e-3, b.knee); }
   const v = o.vignette ? { strength: 0.4, radius: 0.55, ...o.vignette } : null;
+  const heat = Array.isArray(o.heat) ? o.heat.slice(0, MAX_HEAT).filter((h) => h && Number.isFinite(h.x) && Number.isFinite(h.y) && h.radius > 0).map((h) => ({ x: h.x, y: h.y, radius: h.radius, strength: Number.isFinite(h.strength) ? Math.max(0, Math.min(0.05, h.strength)) : 0.004 })) : [];
   const tonemap = o.tonemap ?? 'aces';
   if (!(tonemap in TONEMAPS)) throw new Error(`unknown tone map "${tonemap}" (use ${Object.keys(TONEMAPS).join(', ')})`);
   return {
     ...depthFx, fxaa: Boolean(o.fxaa), needsDepth: Boolean(depthFx.ao || depthFx.dof),
-    bloom: b, tonemap, vignette: v,
+    bloom: b, tonemap, vignette: v, heat, heatTime: Number.isFinite(o.heatTime) ? o.heatTime : 0,
     exposure: o.exposure ?? 1, contrast: o.contrast ?? 1, saturation: o.saturation ?? 1,
     lift: o.lift ?? [0, 0, 0], gamma: o.gamma ?? [1, 1, 1], gain: o.gain ?? [1, 1, 1], dither: o.dither ?? 1,
   };
 }
 
-/** Floats in the composite uniform block (std140-friendly: six vec4s). */
-export const POST_UNIFORM_FLOATS = 24;
+/** The most hot places the heat haze takes. */
+export const MAX_HEAT = 16;
 
-/** @param {Float32Array} out @param {ReturnType<typeof resolvePostOptions>} p */
-export function writePostUniforms(out, p) {
+/** Floats in the composite uniform block (std140-friendly: six vec4s, then one for each hot place). */
+export const POST_UNIFORM_FLOATS = 24 + MAX_HEAT * 4;
+
+/** @param {Float32Array} out @param {ReturnType<typeof resolvePostOptions>} p @param {number} [aspect] The picture's width over its height (the haze is round on the screen). */
+export function writePostUniforms(out, p, aspect = 1) {
   out[0] = p.exposure; out[1] = p.contrast; out[2] = p.saturation; out[3] = p.bloom ? p.bloom.intensity : 0;
   out[4] = p.vignette ? p.vignette.strength : 0; out[5] = p.vignette ? p.vignette.radius : 1; out[6] = TONEMAPS[p.tonemap]; out[7] = p.dither;
   out[8] = p.lift[0]; out[9] = p.lift[1]; out[10] = p.lift[2]; out[11] = 0;
   out[12] = p.gamma[0]; out[13] = p.gamma[1]; out[14] = p.gamma[2]; out[15] = 0;
   out[16] = p.gain[0]; out[17] = p.gain[1]; out[18] = p.gain[2]; out[19] = 0;
-  out[20] = p.ao ? 1 : 0; out[21] = out[22] = out[23] = 0;
+  out[20] = p.ao ? 1 : 0; out[21] = p.heat.length; out[22] = p.heatTime; out[23] = aspect;
+  for (let k = 0; k < MAX_HEAT; k++) {
+    const h = p.heat[k], o = 24 + k * 4;
+    out[o] = h ? h.x : 0; out[o + 1] = h ? h.y : 0; out[o + 2] = h ? h.radius : 0; out[o + 3] = h ? h.strength : 0;
+  }
   return out;
 }
 
@@ -158,7 +171,7 @@ fn bloomUp(i: FsOut) -> @location(0) vec4f {
   return vec4f((e * 4.0 + (b + d + f + h) * 2.0 + (a + c + g + k)) / 16.0, 1.0);
 }
 
-struct Grade { p0: vec4f, p1: vec4f, lift: vec4f, gamma: vec4f, gain: vec4f, spare: vec4f };
+struct Grade { p0: vec4f, p1: vec4f, lift: vec4f, gamma: vec4f, gain: vec4f, spare: vec4f, heat: array<vec4f, 16> };
 @group(0) @binding(0) var scene: texture_2d<f32>;
 @group(0) @binding(1) var bloomTex: texture_2d<f32>;
 @group(0) @binding(2) var csmp: sampler;
@@ -172,9 +185,22 @@ fn filmic(c: vec3f) -> vec3f { return clamp(hable(c * 2.0) / hable(vec3f(11.2)),
 
 @fragment
 fn composite(i: FsOut) -> @location(0) vec4f {
-  var c = textureSampleLevel(scene, csmp, i.uv, 0.0).rgb;
-  if (gr.spare.x > 0.5) { c = c * textureSampleLevel(aoTex, csmp, i.uv, 0.0).r; }
-  c = c + textureSampleLevel(bloomTex, csmp, i.uv, 0.0).rgb * gr.p0.w;
+  var uv = i.uv;
+  let nh = i32(gr.spare.y + 0.5);
+  for (var k = 0; k < 16; k = k + 1) {                       // heat haze: the picture is pushed about, in waves that run up the screen, round each hot place
+    if (k >= nh) { break; }
+    let h = gr.heat[k];
+    let d = length((uv - h.xy) * vec2f(gr.spare.w, 1.0)) / max(h.z, 0.0001);
+    if (d < 1.0) {
+      let f = (1.0 - d) * (1.0 - d);
+      let t = gr.spare.z;
+      let w = vec2f(sin(uv.y * 70.0 + t * 7.0 + f * 3.0) + 0.5 * sin(uv.y * 160.0 - t * 11.0), cos(uv.x * 60.0 + t * 6.0) + 0.5 * sin(uv.x * 140.0 + t * 9.0));
+      uv = clamp(uv + w * h.w * f * vec2f(1.0 / gr.spare.w, 1.0), vec2f(0.0), vec2f(1.0));
+    }
+  }
+  var c = textureSampleLevel(scene, csmp, uv, 0.0).rgb;
+  if (gr.spare.x > 0.5) { c = c * textureSampleLevel(aoTex, csmp, uv, 0.0).r; }
+  c = c + textureSampleLevel(bloomTex, csmp, uv, 0.0).rgb * gr.p0.w;
   c = c * gr.p0.x;
   let tm = i32(gr.p1.z + 0.5);
   if (tm == 1) { c = reinhard(c); } else if (tm == 2) { c = aces(c); } else if (tm == 3) { c = filmic(c); } else { c = clamp(c, vec3f(0.0), vec3f(1.0)); }
@@ -243,7 +269,7 @@ precision highp float;
 uniform sampler2D u_scene;
 uniform sampler2D u_bloom;
 uniform sampler2D u_ao;
-uniform vec4 u_gr[6];
+uniform vec4 u_gr[22];
 in vec2 v_uv;
 out vec4 o;
 vec3 reinhard(vec3 c) { return c / (vec3(1.0) + c); }
@@ -251,9 +277,21 @@ vec3 aces(vec3 c) { return clamp((c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59
 vec3 hable(vec3 x) { return ((x * (0.15 * x + 0.05) + 0.004) / (x * (0.15 * x + 0.5) + 0.06)) - 0.02 / 0.3; }
 vec3 filmic(vec3 c) { return clamp(hable(c * 2.0) / hable(vec3(11.2)), 0.0, 1.0); }
 void main() {
-  vec3 c = textureLod(u_scene, v_uv, 0.0).rgb;
-  if (u_gr[5].x > 0.5) c *= textureLod(u_ao, v_uv, 0.0).r;
-  c += textureLod(u_bloom, v_uv, 0.0).rgb * u_gr[0].w;
+  vec2 uv = v_uv;
+  int nh = int(u_gr[5].y + 0.5);
+  for (int k = 0; k < 16; k++) {                             // heat haze: the picture is pushed about, in waves that run up the screen, round each hot place
+    if (k >= nh) break;
+    vec4 h = u_gr[6 + k];
+    float d = length((uv - h.xy) * vec2(u_gr[5].w, 1.0)) / max(h.z, 0.0001);
+    if (d < 1.0) {
+      float f = (1.0 - d) * (1.0 - d), t = u_gr[5].z;
+      vec2 w = vec2(sin(uv.y * 70.0 + t * 7.0 + f * 3.0) + 0.5 * sin(uv.y * 160.0 - t * 11.0), cos(uv.x * 60.0 + t * 6.0) + 0.5 * sin(uv.x * 140.0 + t * 9.0));
+      uv = clamp(uv + w * h.w * f * vec2(1.0 / u_gr[5].w, 1.0), 0.0, 1.0);
+    }
+  }
+  vec3 c = textureLod(u_scene, uv, 0.0).rgb;
+  if (u_gr[5].x > 0.5) c *= textureLod(u_ao, uv, 0.0).r;
+  c += textureLod(u_bloom, uv, 0.0).rgb * u_gr[0].w;
   c *= u_gr[0].x;
   int tm = int(u_gr[1].z + 0.5);
   if (tm == 1) c = reinhard(c); else if (tm == 2) c = aces(c); else if (tm == 3) c = filmic(c); else c = clamp(c, 0.0, 1.0);
