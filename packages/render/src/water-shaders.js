@@ -59,7 +59,7 @@ fn waterShade(world: vec3f, depth: f32, mat: vec4f) -> vec4f {
   let rip = waterRipple(world.xz, t) * st3.w;
   let n = normalize(vec3f(-wv.y - rip.x, 1.0, -wv.z - rip.y));
   let v = normalize(scene.camera.xyz - world);
-  let fres = 0.02 + 0.98 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
+  let fres = 0.06 + 0.94 * pow(1.0 - max(dot(n, v), 0.0), 4.0);
   var r = reflect(-v, n);
   r.y = abs(r.y);
   let mode = ${block(String(GLOBAL_AT))}.x;
@@ -134,7 +134,7 @@ vec4 waterShade(vec3 world, float depth, vec4 mat) {
   vec2 rip = waterRipple(world.xz, t) * st3.w;
   vec3 n = normalize(vec3(-wv.y - rip.x, 1.0, -wv.z - rip.y));
   vec3 v = normalize(scene.camera.xyz - world);
-  float fres = 0.02 + 0.98 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
+  float fres = 0.06 + 0.94 * pow(1.0 - max(dot(n, v), 0.0), 4.0);
   vec3 r = reflect(-v, n);
   r.y = abs(r.y);
   float mode = ${block(String(GLOBAL_AT))}.x;
