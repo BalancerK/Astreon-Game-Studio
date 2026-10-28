@@ -61,14 +61,14 @@ export class GPUPost {
     for (const x of this.free) x.destroy();
     this.levels = []; this.free = [];
     this.compositeGroup = null; this.depth = null;
-    this.ao = this.dofTex = this.ldr = null;
+    this.ao = this.dofTex = this.ssrTex = this.ldr = null;
   }
 
   /** (Re)build the targets for this canvas size and these effects. */
   setup(w, h, p) {
     const bloom = p.bloom;
     const want = bloom ? bloomLevels(w, h, bloom.levels) : [];
-    const key = [w, h, want.length, p.ao ? p.ao.scale : 0, p.dof ? 1 : 0, p.fxaa ? 1 : 0].join(',');
+    const key = [w, h, want.length, p.ao ? p.ao.scale : 0, p.dof ? 1 : 0, p.ssr ? 1 : 0, p.fxaa ? 1 : 0].join(',');
     if (key === this.key && this.scene) return;
     this.#free();
     this.key = key;
@@ -78,11 +78,12 @@ export class GPUPost {
     const target = (tw, th, format) => { const tex = device.createTexture({ size: [tw, th], format, usage }); this.free.push(tex); return { tex, view: tex.createView(), w: tw, h: th }; };
     this.scene = device.createTexture({ size: [w, h], format: HDR_FORMAT, usage });
     this.sceneView = this.scene.createView();
+    this.ssrTex = p.ssr ? target(w, h, HDR_FORMAT) : null;                         // the scene with its reflections, which depth of field, bloom and the composite read
     this.dofTex = p.dof ? target(w, h, HDR_FORMAT) : null;                         // the scene after depth of field, which bloom and the composite read
     this.ldr = p.fxaa ? target(w, h, this.canvasFormat) : null;                    // the finished picture, before FXAA
     if (p.ao) { const s = aoSize(w, h, p.ao); this.ao = { a: target(s.w, s.h, AO_FORMAT), b: target(s.w, s.h, AO_FORMAT) }; }
     const uni = () => device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-    const colorView = this.dofTex?.view ?? this.sceneView;
+    const colorView = this.dofTex?.view ?? this.ssrTex?.view ?? this.sceneView;
     this.levels = want.map((s) => {
       const tex = device.createTexture({ size: [s.w, s.h], format: HDR_FORMAT, usage });
       return { tex, view: tex.createView(), w: s.w, h: s.h, bp: uni(), bq: uni(), bu: uni(), downGroup: null, upGroup: null };
@@ -121,7 +122,8 @@ export class GPUPost {
       this.aoBlurH = device.createBindGroup({ layout: blur, entries: [fx, dv, { binding: 2, resource: this.ao.a.view }, { binding: 4, resource: { buffer: dir(1, 0) } }] });
       this.aoBlurV = device.createBindGroup({ layout: blur, entries: [fx, dv, { binding: 2, resource: this.ao.b.view }, { binding: 4, resource: { buffer: dir(0, 1) } }] });
     }
-    if (p.dof) this.dofGroup = device.createBindGroup({ layout: this.#fx('dof', HDR_FORMAT).getBindGroupLayout(0), entries: [fx, dv, { binding: 2, resource: this.sceneView }] });
+    if (p.ssr) this.ssrGroup = device.createBindGroup({ layout: this.#fx('ssr', HDR_FORMAT).getBindGroupLayout(0), entries: [fx, dv, { binding: 2, resource: this.sceneView }] });
+    if (p.dof) this.dofGroup = device.createBindGroup({ layout: this.#fx('dof', HDR_FORMAT).getBindGroupLayout(0), entries: [fx, dv, { binding: 2, resource: this.ssrTex?.view ?? this.sceneView }] });
   }
 
   /** Prepare for a frame: targets, and every uniform the later passes read. Returns the resolved options. */
@@ -157,6 +159,7 @@ export class GPUPost {
       draw(this.ao.b.view, this.#fx('aoBlur', AO_FORMAT), this.aoBlurH);
       draw(this.ao.a.view, this.#fx('aoBlur', AO_FORMAT), this.aoBlurV);
     }
+    if (p.ssr) draw(this.ssrTex.view, this.#fx('ssr', HDR_FORMAT), this.ssrGroup);
     if (p.dof) draw(this.dofTex.view, this.#fx('dof', HDR_FORMAT), this.dofGroup);
     const lv = this.levels;
     for (let i = 0; i < lv.length; i++) draw(lv[i].view, this.downPipeline, lv[i].downGroup);

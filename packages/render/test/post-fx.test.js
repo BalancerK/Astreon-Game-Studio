@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolvePostOptions, circleOfConfusion, Camera3D } from '../src/index.js';
-import { writePostUniforms, writeFxUniforms, aoSize, postFxWgsl, POST_UNIFORM_FLOATS, FX_UNIFORM_FLOATS, POST_WGSL, POST_GLSL_COMPOSITE } from '../src/post.js';
+import { writePostUniforms, writeFxUniforms, aoSize, postFxWgsl, POST_UNIFORM_FLOATS, FX_UNIFORM_FLOATS, POST_WGSL, POST_GLSL_COMPOSITE, POST_GLSL_SSR } from '../src/post.js';
 
 test('depth effects are off unless asked for, and fill in defaults when they are', () => {
   const off = resolvePostOptions(true);
@@ -37,7 +37,8 @@ test('the composite is told whether occlusion is on; the effects block holds cam
   const f = (a) => Array.from(a, (v) => +v.toFixed(4));
   assert.deepEqual(f(u.slice(0, 2)), [0.2, 500]); assert.ok(Math.abs(u[3] - 1 / Math.tan(0.5)) < 1e-4, 'the vertical projection scale');
   assert.ok(Math.abs(u[2] - u[3] / (320 / 180)) < 1e-4, 'the horizontal one is smaller by the aspect');
-  assert.deepEqual(f(u.slice(4, 12)), [2, 0.1, 0.5, 2, 7, 1, 5, 2]); assert.deepEqual(f(u.slice(12)), [320, 180, 16, 32]);
+  assert.deepEqual(f(u.slice(4, 12)), [2, 0.1, 0.5, 2, 7, 1, 5, 2]); assert.deepEqual(f(u.slice(12, 16)), [320, 180, 16, 32]);
+  assert.deepEqual(f(u.slice(16, 20)), [0, 0, 0, 0], 'no reflections unless asked for');
 });
 
 test('the occlusion image is a fraction of the screen, never under 2 pixels', () => {
@@ -81,4 +82,23 @@ test('both shaders read the haze: the same sixteen places and the same push', ()
   }
   assert.ok(/uniform vec4 u_gr\[22\]/.test(POST_GLSL_COMPOSITE), 'the block holds six vec4s and sixteen places');
   assert.ok(/heat: array<vec4f, 16>/.test(POST_WGSL));
+});
+
+test('screen-space reflections: off unless given, checked and clamped, and written after the other settings with the up direction in view space and the height band', () => {
+  assert.equal(resolvePostOptions({}).ssr, null);
+  assert.equal(resolvePostOptions({ ssr: true }, { ortho: 5 }).ssr, null, 'an orthographic camera has none');
+  const o = resolvePostOptions({ ssr: { strength: 2, steps: 500, below: 1.5 } });
+  assert.equal(o.ssr.strength, 1); assert.equal(o.ssr.steps, 64); assert.equal(o.ssr.distance, 80); assert.equal(o.needsDepth, true, 'it reads the depth');
+  assert.throws(() => resolvePostOptions({ ssr: { distance: 0 } }), /distance/);
+  const cam = new Camera3D({ near: 0.2, far: 500, fovY: 1, viewW: 320, viewH: 180 }); cam.x = 1; cam.y = 7; cam.z = 3; cam.update();
+  const u = writeFxUniforms(new Float32Array(FX_UNIFORM_FLOATS), o, cam, 320, 180);
+  assert.deepEqual(Array.from(u.slice(16, 20), (v) => +v.toFixed(3)), [1, 80, 64, 1.5]);
+  assert.ok(Math.abs(Math.hypot(u[20], u[21], u[22]) - 1) < 1e-6, 'the up direction is a unit vector');
+  assert.ok(Math.abs(u[21] - 1) < 1e-6, 'looking level, the up of the world is the up of the screen');
+  assert.equal(u[24], 7); assert.equal(u[25], 1.5); assert.ok(u[26] < -1e8, 'no lower bound unless given');
+});
+
+test('both shaders have the reflection pass, and read the same block', () => {
+  assert.match(postFxWgsl(1), /fn ssr\(/); assert.match(postFxWgsl(1), /e: vec4f, f: vec4f, g: vec4f/);
+  assert.match(POST_GLSL_SSR, /u_fx\[6\]/); assert.match(POST_GLSL_SSR, /void main/);
 });

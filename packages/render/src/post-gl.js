@@ -1,6 +1,6 @@
 import {
   resolvePostOptions, writePostUniforms, writeFxUniforms, aoSize, bloomLevels, POST_UNIFORM_FLOATS, FX_UNIFORM_FLOATS,
-  POST_GLSL_VERT, POST_GLSL_DOWN, POST_GLSL_UP, POST_GLSL_COMPOSITE, POST_GLSL_AO, POST_GLSL_AOBLUR, POST_GLSL_DOF, POST_GLSL_FXAA,
+  POST_GLSL_VERT, POST_GLSL_DOWN, POST_GLSL_UP, POST_GLSL_COMPOSITE, POST_GLSL_AO, POST_GLSL_AOBLUR, POST_GLSL_DOF, POST_GLSL_SSR, POST_GLSL_FXAA,
 } from './post.js';
 
 /**
@@ -74,13 +74,13 @@ export class GLPost {
     if (this.sceneFbo) { gl.deleteFramebuffer(this.sceneFbo); gl.deleteTexture(this.sceneTex); this.sceneFbo = this.sceneTex = null; }
     if (this.depthTex) { gl.deleteTexture(this.depthTex); this.depthTex = null; }
     if (this.msaaFbo) { gl.deleteFramebuffer(this.msaaFbo); gl.deleteRenderbuffer(this.msaaColor); gl.deleteRenderbuffer(this.msaaDepth); this.msaaFbo = null; }
-    this.ao = this.dofTarget = this.ldr = null;
+    this.ao = this.dofTarget = this.ssrTarget = this.ldr = null;
   }
 
   #size(w, h, p) {
     const { gl } = this;
     const want = p.bloom ? bloomLevels(w, h, p.bloom.levels) : [];
-    const key = [w, h, want.length, p.ao ? p.ao.scale : 0, p.dof ? 1 : 0, p.fxaa ? 1 : 0, p.needsDepth ? 1 : 0].join(',');
+    const key = [w, h, want.length, p.ao ? p.ao.scale : 0, p.dof ? 1 : 0, p.ssr ? 1 : 0, p.fxaa ? 1 : 0, p.needsDepth ? 1 : 0].join(',');
     if (key === this.key && this.sceneFbo) return;
     this.#free();
     this.key = key;
@@ -112,6 +112,7 @@ export class GLPost {
     for (const s of want) this.levels.push(this.#texture(s.w, s.h));
     const extra = (tw, th, format) => { const t = this.#texture(tw, th, format); this.extra.push(t); return t; };
     if (p.ao) { const s = aoSize(w, h, p.ao); this.ao = { a: extra(s.w, s.h, gl.R8), b: extra(s.w, s.h, gl.R8) }; }
+    if (p.ssr) this.ssrTarget = extra(w, h, gl.RGBA16F);
     if (p.dof) this.dofTarget = extra(w, h, gl.RGBA16F);
     if (p.fxaa) this.ldr = extra(w, h, gl.RGBA8);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -153,13 +154,18 @@ export class GLPost {
         bind(0, this.ao.a.tex); gl.uniform2f(blur.u_dir, 1, 0); full(this.ao.b.fbo, this.ao.b.w, this.ao.b.h);
         bind(0, this.ao.b.tex); gl.uniform2f(blur.u_dir, 0, 1); full(this.ao.a.fbo, this.ao.a.w, this.ao.a.h);
       }
+      if (p.ssr) {
+        const ssr = fxProgram('ssr', POST_GLSL_SSR, ['u_src']);
+        gl.uniform1i(ssr.u_src, 0); bind(0, this.sceneTex);
+        full(this.ssrTarget.fbo, this.w, this.h);
+      }
       if (p.dof) {
         const dof = fxProgram('dof', POST_GLSL_DOF, ['u_src']);
-        gl.uniform1i(dof.u_src, 0); bind(0, this.sceneTex);
+        gl.uniform1i(dof.u_src, 0); bind(0, this.ssrTarget?.tex ?? this.sceneTex);
         full(this.dofTarget.fbo, this.w, this.h);
       }
     }
-    const colorTex = this.dofTarget?.tex ?? this.sceneTex;   // what bloom and the composite read
+    const colorTex = this.dofTarget?.tex ?? this.ssrTarget?.tex ?? this.sceneTex;   // what bloom and the composite read
     let bloomTex = this.black;
     if (p.bloom && this.levels.length > 0) {
       let src = { tex: colorTex, w: this.w, h: this.h };

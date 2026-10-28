@@ -24,6 +24,12 @@ export const TONEMAPS = Object.freeze({ none: 0, reinhard: 1, aces: 2, filmic: 3
  *   `radius` is how far, in world units, it looks for things in the way (0.5), `intensity` 0..1 how dark it goes (1), `power` how sharply (1.5), `bias` the
  *   depth difference ignored so that flat surfaces do not shade themselves (0.03), `samples` the quality (12; 4 to 32), `scale` the size of the working image
  *   as a fraction of the screen (1; 0.5 is four times cheaper and a little softer). It darkens the lit picture (not only the ambient light), so keep it subtle on bright scenes.
+ * @property {boolean | {strength?: number, distance?: number, steps?: number, thickness?: number, minUp?: number, below?: number, above?: number}} [ssr]
+ *   Screen-space reflections (off unless given): surfaces that face up (a sea, a wet floor, a roof) show what is on the screen above them, found by marching a ray from each pixel through the depth buffer.
+ *   `strength` 0..1 how much of the reflection is mixed in at the most (0.6; it is weaker where the surface is seen head on and strongest at a grazing angle, as a real one is), `distance` how far the ray goes,
+ *   in world units (80), `steps` the quality (32; 8 to 64), `thickness` how far behind a surface the ray may go and still count as hitting it (1.5), `minUp` how level a surface must be to reflect, as the
+ *   cosine of its angle from straight up (0.85), and `below` and `above` the heights (world y) between which things reflect (everywhere): a sea is `below: 1`. Only what is on the screen can be reflected, and a
+ *   reflection that would leave it fades at the edges. There is no roughness here, so it suits smooth surfaces: limit it with `below` or `above` to the ones that are.
  * @property {boolean | {focus?: number, range?: number, aperture?: number, maxBlur?: number, taps?: number}} [dof]
  *   Depth of field (off unless given): things away from the `focus` distance (world units from the camera, 10) blur. `range` is the depth either side of the focus
  *   that stays sharp (0), `aperture` how fast the blur grows with the distance from the focus (1), `maxBlur` the largest blur radius in pixels (8), `taps` the quality (24; 8 to 64).
@@ -45,13 +51,18 @@ export function resolvePostOptions(o = {}, camera = null) {
     ao.samples = Math.max(4, Math.min(32, Math.round(ao.samples))); ao.scale = Math.max(0.25, Math.min(1, ao.scale)); ao.intensity = Math.max(0, Math.min(1, ao.intensity));
     ao.power = Math.max(0.1, ao.power); ao.bias = Math.max(0, ao.bias);
   }
+  const ssr = o.ssr ? { strength: 0.6, distance: 80, steps: 32, thickness: 1.5, minUp: 0.85, below: Infinity, above: -Infinity, ...(o.ssr === true ? {} : o.ssr) } : null;
+  if (ssr) {
+    if (!(ssr.distance > 0)) throw new Error(`ssr.distance must be above 0 (got ${ssr.distance})`);
+    ssr.steps = Math.max(8, Math.min(64, Math.round(ssr.steps))); ssr.strength = Math.max(0, Math.min(1, ssr.strength)); ssr.thickness = Math.max(0.01, ssr.thickness); ssr.minUp = Math.max(0, Math.min(0.999, ssr.minUp));
+  }
   const dof = o.dof ? { focus: 10, range: 0, aperture: 1, maxBlur: 8, taps: 24, ...(o.dof === true ? {} : o.dof) } : null;
   if (dof) {
     if (!(dof.focus > 0)) throw new Error(`dof.focus must be above 0 (got ${dof.focus})`);
     dof.taps = Math.max(8, Math.min(64, Math.round(dof.taps))); dof.maxBlur = Math.max(0, Math.min(32, dof.maxBlur)); dof.range = Math.max(0, dof.range); dof.aperture = Math.max(0, dof.aperture);
   }
   const depthOk = !(camera && camera.ortho > 0);
-  const depthFx = { ao: depthOk ? ao : null, dof: depthOk ? dof : null };
+  const depthFx = { ao: depthOk ? ao : null, dof: depthOk ? dof : null, ssr: depthOk ? ssr : null };
   const b = o.bloom === false ? null : { threshold: 0.85, knee: 0.5, intensity: 0.5, levels: 5, radius: 1, ...o.bloom };
   if (b) { b.levels = Math.max(1, Math.min(8, Math.round(b.levels))); b.knee = Math.max(1e-3, b.knee); }
   const v = o.vignette ? { strength: 0.4, radius: 0.55, ...o.vignette } : null;
@@ -59,7 +70,7 @@ export function resolvePostOptions(o = {}, camera = null) {
   const tonemap = o.tonemap ?? 'aces';
   if (!(tonemap in TONEMAPS)) throw new Error(`unknown tone map "${tonemap}" (use ${Object.keys(TONEMAPS).join(', ')})`);
   return {
-    ...depthFx, fxaa: Boolean(o.fxaa), needsDepth: Boolean(depthFx.ao || depthFx.dof),
+    ...depthFx, fxaa: Boolean(o.fxaa), needsDepth: Boolean(depthFx.ao || depthFx.dof || depthFx.ssr),
     bloom: b, tonemap, vignette: v, heat, heatTime: Number.isFinite(o.heatTime) ? o.heatTime : 0,
     exposure: o.exposure ?? 1, contrast: o.contrast ?? 1, saturation: o.saturation ?? 1,
     lift: o.lift ?? [0, 0, 0], gamma: o.gamma ?? [1, 1, 1], gain: o.gain ?? [1, 1, 1], dither: o.dither ?? 1,
@@ -87,16 +98,20 @@ export function writePostUniforms(out, p, aspect = 1) {
   return out;
 }
 
-/** Floats in the block the depth effects read: four vec4s (camera, occlusion, focus, sizes). */
-export const FX_UNIFORM_FLOATS = 16;
+/** Floats in the block the depth effects read: seven vec4s (camera, occlusion, focus, sizes, reflections, the up direction, heights). */
+export const FX_UNIFORM_FLOATS = 28;
 
 /** Fill the depth-effects block: near, far and the two projection scales (to rebuild positions from depth), the occlusion and focus settings, and the picture size. */
 export function writeFxUniforms(out, p, camera, width, height) {
-  const a = p.ao, d = p.dof;
+  const a = p.ao, d = p.dof, r = p.ssr;
   out[0] = camera.near; out[1] = camera.far; out[2] = camera.proj[0]; out[3] = camera.proj[5];
   out[4] = a ? a.radius : 0; out[5] = a ? a.bias : 0; out[6] = a ? a.intensity : 0; out[7] = a ? a.power : 1;
   out[8] = d ? d.focus : 0; out[9] = d ? d.range : 0; out[10] = d ? d.maxBlur : 0; out[11] = d ? d.aperture : 0;
   out[12] = width; out[13] = height; out[14] = a ? a.samples : 0; out[15] = d ? d.taps : 0;
+  out[16] = r ? r.strength : 0; out[17] = r ? r.distance : 0; out[18] = r ? r.steps : 0; out[19] = r ? r.thickness : 0;
+  const v = camera.view;                                                                                 // the world's up, in the camera's view space: the second column of the view matrix
+  out[20] = v ? v[4] : 0; out[21] = v ? v[5] : 1; out[22] = v ? v[6] : 0; out[23] = r ? r.minUp : 0;
+  out[24] = camera.y ?? 0; out[25] = r && Number.isFinite(r.below) ? r.below : 1e9; out[26] = r && Number.isFinite(r.above) ? r.above : -1e9; out[27] = 0;
   return out;
 }
 
@@ -321,8 +336,8 @@ fn fsVert(@builtin(vertex_index) vi: u32) -> FsOut {
   return o;
 }
 
-struct Fx { a: vec4f, b: vec4f, c: vec4f, d: vec4f };
-@group(0) @binding(0) var<uniform> fx: Fx;          // a: near, far, projection x and y scales. b: ao radius, bias, intensity, power. c: focus, range, max blur, aperture. d: width, height, ao samples, dof taps
+struct Fx { a: vec4f, b: vec4f, c: vec4f, d: vec4f, e: vec4f, f: vec4f, g: vec4f };
+@group(0) @binding(0) var<uniform> fx: Fx;          // a: near, far, projection x and y scales. b: ao radius, bias, intensity, power. c: focus, range, max blur, aperture. d: width, height, ao samples, dof taps. e: reflection strength, distance, steps, thickness. f: up in view space, minUp. g: camera height, below, above
 @group(0) @binding(1) var depthTex: DEPTH_TYPE;
 @group(0) @binding(2) var src: texture_2d<f32>;
 @group(0) @binding(3) var smp: sampler;
@@ -420,6 +435,68 @@ fn dof(i: FsOut) -> @location(0) vec4f {
 fn lumaOf(c: vec3f) -> f32 { return dot(c, vec3f(0.299, 0.587, 0.114)); }
 
 @fragment
+fn ssr(i: FsOut) -> @location(0) vec4f {
+  let fp = vec2i(i.uv * fx.d.xy);
+  let base = textureLoad(src, fp, 0);
+  let v = depthAt(fp);
+  if (v >= fx.a.y * 0.999) { return base; }
+  let P = viewAt(fp, v);
+  let vl = depthAt(fp + vec2i(-1, 0)); let vr = depthAt(fp + vec2i(1, 0));
+  let vu = depthAt(fp + vec2i(0, -1)); let vd = depthAt(fp + vec2i(0, 1));
+  var dx = P - viewAt(fp + vec2i(-1, 0), vl);
+  if (abs(vr - v) < abs(v - vl)) { dx = viewAt(fp + vec2i(1, 0), vr) - P; }
+  var dy = P - viewAt(fp + vec2i(0, -1), vu);
+  if (abs(vd - v) < abs(v - vu)) { dy = viewAt(fp + vec2i(0, 1), vd) - P; }
+  var N = cross(dx, dy);
+  if (length(N) < 1e-9) { N = -P; }
+  N = normalize(N);
+  if (dot(N, P) > 0.0) { N = -N; }
+  let height = fx.g.x + dot(P, fx.f.xyz);
+  let mask = smoothstep(fx.f.w, 1.0, dot(N, fx.f.xyz)) * (1.0 - smoothstep(fx.g.y - 1.0, fx.g.y, height)) * smoothstep(fx.g.z - 1.0, fx.g.z, height);
+  if (mask <= 0.001) { return base; }
+  let V = normalize(P);
+  let R = reflect(V, N);
+  if (R.z > -0.02) { return base; }
+  let fres = pow(1.0 - clamp(dot(N, -V), 0.0, 1.0), 4.0);
+  let steps = i32(fx.e.z);
+  let jitter = ign(i.pos.xy);
+  var found = false; var uvHit = vec2f(0.0); var tHit = 0.0;
+  var tPrev = 0.0;
+  for (var k = 0; k < steps; k++) {
+    let t = fx.e.y * pow((f32(k) + jitter) / f32(steps), 1.7);
+    let Q = P + N * (0.03 * v + 0.05) + R * t;
+    let qv = -Q.z;
+    if (qv <= fx.a.x) { break; }
+    let quv = vec2f(Q.x / qv * fx.a.z * 0.5 + 0.5, 0.5 - Q.y / qv * fx.a.w * 0.5);
+    if (quv.x < 0.0 || quv.x >= 1.0 || quv.y < 0.0 || quv.y >= 1.0) { break; }
+    let sd = depthAt(vec2i(quv * fx.d.xy));
+    let diff = qv - sd;
+    if (diff > 0.0 && diff < fx.e.w * (1.0 + qv * 0.03)) {
+      var lo = tPrev; var hi = t;
+      for (var r = 0; r < 4; r++) {
+        let mid = 0.5 * (lo + hi);
+        let M = P + N * (0.03 * v + 0.05) + R * mid;
+        let mv = -M.z;
+        let muv = vec2f(M.x / mv * fx.a.z * 0.5 + 0.5, 0.5 - M.y / mv * fx.a.w * 0.5);
+        if (mv - depthAt(vec2i(muv * fx.d.xy)) > 0.0) { hi = mid; } else { lo = mid; }
+      }
+      let H = P + N * (0.03 * v + 0.05) + R * hi;
+      let hv = -H.z;
+      uvHit = vec2f(H.x / hv * fx.a.z * 0.5 + 0.5, 0.5 - H.y / hv * fx.a.w * 0.5);
+      tHit = hi; found = true; break;
+    }
+    tPrev = t;
+  }
+  if (!found) { return base; }
+  let edge = min(min(uvHit.x, 1.0 - uvHit.x), min(uvHit.y, 1.0 - uvHit.y));
+  let fade = smoothstep(0.0, 0.08, edge) * (1.0 - (tHit / fx.e.y) * (tHit / fx.e.y));
+  let refl = textureLoad(src, vec2i(clamp(uvHit, vec2f(0.0), vec2f(0.9999)) * fx.d.xy), 0).rgb;
+  let w = clamp(fx.e.x * mask * fade * (0.25 + 0.75 * fres), 0.0, 1.0);
+  return vec4f(mix(base.rgb, refl, w), base.a);
+}
+
+
+@fragment
 fn fxaa(i: FsOut) -> @location(0) vec4f {
   let t = 1.0 / fx.d.xy;
   let m = textureSampleLevel(src, smp, i.uv, 0.0).rgb;
@@ -443,7 +520,7 @@ export const postFxWgsl = (samples) => FX_WGSL.replace('DEPTH_TYPE', samples > 1
 const FX_GLSL_HEAD = `#version 300 es
 precision highp float;
 precision highp sampler2D;
-uniform vec4 u_fx[4];
+uniform vec4 u_fx[7];
 in vec2 v_uv;
 out vec4 o;
 `;
@@ -538,6 +615,67 @@ void main() {
     sum += texelFetch(u_src, q, 0).rgb * w; wsum += w;
   }
   o = vec4(sum / wsum, 1.0);
+}`;
+
+export const POST_GLSL_SSR = `${FX_GLSL_HEAD}${FX_GLSL_DEPTH}
+uniform sampler2D u_src;
+void main() {
+  ivec2 fp = ivec2(v_uv * u_fx[3].xy);
+  vec4 base = texelFetch(u_src, fp, 0);
+  float v = depthAt(fp);
+  if (v >= u_fx[0].y * 0.999) { o = base; return; }
+  vec3 P = viewAt(fp, v);
+  float vl = depthAt(fp + ivec2(-1, 0)), vr = depthAt(fp + ivec2(1, 0)), vu = depthAt(fp + ivec2(0, -1)), vd = depthAt(fp + ivec2(0, 1));
+  vec3 dx = P - viewAt(fp + ivec2(-1, 0), vl);
+  if (abs(vr - v) < abs(v - vl)) dx = viewAt(fp + ivec2(1, 0), vr) - P;
+  vec3 dy = P - viewAt(fp + ivec2(0, -1), vu);
+  if (abs(vd - v) < abs(v - vu)) dy = viewAt(fp + ivec2(0, 1), vd) - P;
+  vec3 N = cross(dx, dy);
+  if (length(N) < 1e-9) N = -P;
+  N = normalize(N);
+  if (dot(N, P) > 0.0) N = -N;
+  float height = u_fx[6].x + dot(P, u_fx[5].xyz);
+  float mask = smoothstep(u_fx[5].w, 1.0, dot(N, u_fx[5].xyz)) * (1.0 - smoothstep(u_fx[6].y - 1.0, u_fx[6].y, height)) * smoothstep(u_fx[6].z - 1.0, u_fx[6].z, height);
+  if (mask <= 0.001) { o = base; return; }
+  vec3 V = normalize(P);
+  vec3 R = reflect(V, N);
+  if (R.z > -0.02) { o = base; return; }
+  float fres = pow(1.0 - clamp(dot(N, -V), 0.0, 1.0), 4.0);
+  int steps = int(u_fx[4].z);
+  float jitter = ign(gl_FragCoord.xy);
+  bool found = false; vec2 uvHit = vec2(0.0); float tHit = 0.0, tPrev = 0.0;
+  for (int k = 0; k < 64; k++) {
+    if (k >= steps) break;
+    float t = u_fx[4].y * pow((float(k) + jitter) / float(steps), 1.7);
+    vec3 Q = P + N * (0.03 * v + 0.05) + R * t;
+    float qv = -Q.z;
+    if (qv <= u_fx[0].x) break;
+    vec2 quv = vec2(Q.x / qv * u_fx[0].z * 0.5 + 0.5, Q.y / qv * u_fx[0].w * 0.5 + 0.5);
+    if (quv.x < 0.0 || quv.x >= 1.0 || quv.y < 0.0 || quv.y >= 1.0) break;
+    float sd = depthAt(ivec2(quv * u_fx[3].xy));
+    float diff = qv - sd;
+    if (diff > 0.0 && diff < u_fx[4].w * (1.0 + qv * 0.03)) {
+      float lo = tPrev, hi = t;
+      for (int r = 0; r < 4; r++) {
+        float mid = 0.5 * (lo + hi);
+        vec3 M = P + N * (0.03 * v + 0.05) + R * mid;
+        float mv = -M.z;
+        vec2 muv = vec2(M.x / mv * u_fx[0].z * 0.5 + 0.5, M.y / mv * u_fx[0].w * 0.5 + 0.5);
+        if (mv - depthAt(ivec2(muv * u_fx[3].xy)) > 0.0) hi = mid; else lo = mid;
+      }
+      vec3 H = P + N * (0.03 * v + 0.05) + R * hi;
+      float hv = -H.z;
+      uvHit = vec2(H.x / hv * u_fx[0].z * 0.5 + 0.5, H.y / hv * u_fx[0].w * 0.5 + 0.5);
+      tHit = hi; found = true; break;
+    }
+    tPrev = t;
+  }
+  if (!found) { o = base; return; }
+  float edge = min(min(uvHit.x, 1.0 - uvHit.x), min(uvHit.y, 1.0 - uvHit.y));
+  float fade = smoothstep(0.0, 0.08, edge) * (1.0 - (tHit / u_fx[4].y) * (tHit / u_fx[4].y));
+  vec3 refl = texelFetch(u_src, ivec2(clamp(uvHit, vec2(0.0), vec2(0.9999)) * u_fx[3].xy), 0).rgb;
+  float w = clamp(u_fx[4].x * mask * fade * (0.25 + 0.75 * fres), 0.0, 1.0);
+  o = vec4(mix(base.rgb, refl, w), base.a);
 }`;
 
 export const POST_GLSL_FXAA = `${FX_GLSL_HEAD}
