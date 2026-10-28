@@ -41,6 +41,10 @@ export function createLighting() {
     fogColor: [0.62, 0.7, 0.8],
     /** Exponential-squared fog density: 0 = none; 0.01 fades things out by about 150 units. */
     fogDensity: 0,
+    /** Height fog, added to the fog above and in the same colour: a haze that is thickest at `fogHeightBase` and below and thins going up, by `fogHeightFalloff` per metre (0.02 halves it every 35 m). `fogHeightDensity` is how thick it is at the base: 0 = none; 0.004 hides things about 250 m off in it. It is summed along the whole line of sight, so a camera above it sees it as a layer lying in the low ground, and one inside it is wrapped in it. */
+    fogHeightDensity: 0,
+    fogHeightFalloff: 0.02,
+    fogHeightBase: 0,
     /**
      * Lamps, muzzle flashes, fires, torches and panels: `{x, y, z, radius, color: [r, g, b], intensity}`. Light reaches `radius` metres and fades smoothly
      * to nothing there ((1 - (d / radius)^2)^2); it lights surfaces facing it (diffuse and specular). The first 32 are used (see `nearestLights`). Three kinds:

@@ -464,6 +464,12 @@ ${water ? `  if (v_material.y > 3.5) {
   }
   float d = length(toCam) * scene.fog.a;
   rgb = mix(rgb, scene.fog.rgb, 1.0 - exp(-d * d));
+  if (scene.sky.w > 0.0) {                                       // height fog: thicker low down, thinning upward, summed along the ray to the camera (see \`fogHeightDensity\`)
+    float k = max(scene.ground.w, 1e-4), dist = length(toCam), ky = clamp(-k * toCam.y, -60.0, 60.0);
+    float atCam = exp(clamp(-k * (scene.camera.y - scene.camera.w), -60.0, 60.0));
+    float along = abs(ky) < 1e-3 ? 1.0 : (1.0 - exp(-ky)) / ky;
+    rgb = mix(rgb, scene.fog.rgb, 1.0 - exp(-scene.sky.w * atCam * dist * along));
+  }
   o = vec4(rgb * alpha, alpha); // premultiplied alpha, matching the blend function below
 }`;
 

@@ -1061,7 +1061,7 @@ list.<span class="tk-f">addLod</span>(tree, model);</code></pre><button class="c
 <h4 id="drawlist3daddtransform"><code>DrawList3D.addTransform</code><a class="anchor" href="#drawlist3daddtransform" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">addTransform</span>(mesh, x, y, z, rotation, sx = <span class="tk-n">1</span>, sy = sx, sz = sx, r = <span class="tk-n">1</span>, g = <span class="tk-n">1</span>, b = <span class="tk-n">1</span>, a = <span class="tk-n">1</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Add an instance from a position, an optional rotation quaternion [x, y, z, w] and a scale.</p>
-<p><sub>src/drawlist.js:67</sub></p>
+<p><sub>src/drawlist.js:71</sub></p>
 <h3 id="class-font"><code>class Font</code><a class="anchor" href="#class-font" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> Font</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Text as ordinary sprites. Each glyph is drawn once, in white, into the shared atlas by the browser's own text engine (any installed or web font, emoji, accents, CJK), then drawn like any other sprite and coloured by the tint. So text costs no extra draw call, works identically in all three backends, and sorts with everything else.</p>
@@ -1686,7 +1686,7 @@ rich.<span class="tk-f">draw</span>(batch, layout, <span class="tk-n">20</span>,
 <div class="code"><pre><code class="lang-js"><span class="tk-f">render</span>({ camera, list, clear = [<span class="tk-n">0.55</span>, <span class="tk-n">0.65</span>, <span class="tk-n">0.78</span>, <span class="tk-n">1</span>], lighting, shadows, localShadows, particles, post })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <h4 id="webgl2renderer3ddestroy"><code>WebGL2Renderer3D.destroy</code><a class="anchor" href="#webgl2renderer3ddestroy" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">destroy</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/webgl3d.js:564</sub></p>
+<p><sub>src/webgl3d.js:570</sub></p>
 <h3 id="class-webgpurenderer"><code>class WebGPURenderer</code><a class="anchor" href="#class-webgpurenderer" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> WebGPURenderer</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
 <p>Same instance buffer and one draw call, through WebGPU. Create with <code>WebGPURenderer.create</code>.</p>
@@ -1739,7 +1739,7 @@ rich.<span class="tk-f">draw</span>(batch, layout, <span class="tk-n">20</span>,
 <div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>frame</code></td><td><code>object</code></td><td></td></tr><tr><td><code>frame.camera</code></td><td><code>import('./camera3d.js').Camera3D</code></td><td></td></tr><tr><td><code>frame.list</code></td><td><code>import('./drawlist.js').DrawList3D</code></td><td></td></tr><tr><td><code>frame.clear</code> (optional)</td><td><code>number[]</code></td><td>RGBA 0..1</td></tr><tr><td><code>frame.lighting</code> (optional)</td><td><code>Partial&lt;ReturnType&lt;typeof createLighting&gt;&gt;</code></td><td></td></tr></tbody></table></div>
 <h4 id="webgpurenderer3ddestroy"><code>WebGPURenderer3D.destroy</code><a class="anchor" href="#webgpurenderer3ddestroy" aria-label="Link to this section">#</a></h4>
 <div class="code"><pre><code class="lang-js"><span class="tk-f">destroy</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
-<p><sub>src/webgpu3d.js:569</sub></p>
+<p><sub>src/webgpu3d.js:577</sub></p>
 <h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
 <h3 id="chunk"><code>CHUNK</code><a class="anchor" href="#chunk" aria-label="Link to this section">#</a></h3>
 <div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> CHUNK</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>

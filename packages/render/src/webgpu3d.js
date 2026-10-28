@@ -463,6 +463,14 @@ fn fs(i: VOut) -> @location(0) vec4f {
   }
   let d = length(toCam) * scene.fog.a;
   rgb = mix(rgb, scene.fog.rgb, 1.0 - exp(-d * d));
+  if (scene.sky.w > 0.0) {                                       // height fog: thicker low down, thinning upward, summed along the ray to the camera (see \`fogHeightDensity\`)
+    let k = max(scene.ground.w, 1e-4);
+    let dist = length(toCam);
+    let ky = clamp(-k * toCam.y, -60.0, 60.0);
+    let atCam = exp(clamp(-k * (scene.camera.y - scene.camera.w), -60.0, 60.0));
+    let along = select((1.0 - exp(-ky)) / ky, 1.0, abs(ky) < 1e-3);
+    rgb = mix(rgb, scene.fog.rgb, 1.0 - exp(-scene.sky.w * atCam * dist * along));
+  }
   return vec4f(rgb, alpha);
 }
 
@@ -523,10 +531,10 @@ export function writeSceneUniforms(out, camera, lighting, shadow = null, local =
   const ld = L.direction, ll = Math.sqrt(ld[0] * ld[0] + ld[1] * ld[1] + ld[2] * ld[2]) || 1;
   out[16] = ld[0] / ll; out[17] = ld[1] / ll; out[18] = ld[2] / ll; out[19] = 0;
   out[20] = L.color[0]; out[21] = L.color[1]; out[22] = L.color[2]; out[23] = L.specular;
-  out[24] = L.ambientSky[0]; out[25] = L.ambientSky[1]; out[26] = L.ambientSky[2]; out[27] = 0;
-  out[28] = L.ambientGround[0]; out[29] = L.ambientGround[1]; out[30] = L.ambientGround[2]; out[31] = 0;
+  out[24] = L.ambientSky[0]; out[25] = L.ambientSky[1]; out[26] = L.ambientSky[2]; out[27] = L.fogHeightDensity;
+  out[28] = L.ambientGround[0]; out[29] = L.ambientGround[1]; out[30] = L.ambientGround[2]; out[31] = L.fogHeightFalloff;
   out[32] = L.fogColor[0]; out[33] = L.fogColor[1]; out[34] = L.fogColor[2]; out[35] = L.fogDensity;
-  out[36] = camera.x; out[37] = camera.y; out[38] = camera.z; out[39] = 0;
+  out[36] = camera.x; out[37] = camera.y; out[38] = camera.z; out[39] = L.fogHeightBase;
   out.fill(0, CASCADE_AT);
   if (shadow) {
     for (let i = 0; i < 16; i++) out[40 + i] = shadow.matrices[0][i]; // the first cascade's matrix is also the one the depth passes use

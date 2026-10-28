@@ -3345,7 +3345,7 @@ addTransform(mesh, x, y, z, rotation, sx = 1, sy = sx, sz = sx, r = 1, g = 1, b 
 
 Add an instance from a position, an optional rotation quaternion [x, y, z, w] and a scale.
 
-<sub>src/drawlist.js:67</sub>
+<sub>src/drawlist.js:71</sub>
 
 ### `class Font`
 
@@ -5299,7 +5299,7 @@ render({ camera, list, clear = [0.55, 0.65, 0.78, 1], lighting, shadows, localSh
 destroy()
 ```
 
-<sub>src/webgl3d.js:564</sub>
+<sub>src/webgl3d.js:570</sub>
 
 ### `class WebGPURenderer`
 
@@ -5462,7 +5462,7 @@ render({ camera, list, clear = [0.55, 0.65, 0.78, 1], lighting, shadows, localSh
 destroy()
 ```
 
-<sub>src/webgpu3d.js:569</sub>
+<sub>src/webgpu3d.js:577</sub>
 
 ## Constants
 
