@@ -671,16 +671,16 @@ export class WebGPURenderer3D {
     this.materialSet = null;
     this.materialVersion = -1;
     this.shadowMatrix = new Float64Array(16);
-    this.bindGroup = null; this.shadowBindGroups = []; this.shadowSkinBindGroups = [];
+    this.bindGroup = null; this.blendBindGroup = null; this.shadowBindGroups = []; this.shadowSkinBindGroups = [];
   }
 
   /** The pipelines that draw the scene into a target of this format (the canvas's, or half-float HDR when post-processing is on). */
   #buildScenePipelines(format) {
     const { device, samples, module } = this;
     this.sceneFormat = format;
-    this.bindGroup = null; this.skinBindGroup = null;
+    this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null;
     this.particles?.destroy(); this.particles = null;
-    this.pipeline = device.createRenderPipeline({
+    const makePipeline = (depthWrite) => device.createRenderPipeline({
       layout: 'auto',
       vertex: {
         module, entryPoint: 'vs',
@@ -702,9 +702,11 @@ export class WebGPURenderer3D {
         } }],
       },
       primitive: { topology: 'triangle-list', cullMode: 'back', frontFace: 'ccw' },
-      depthStencil: { format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less' },
+      depthStencil: { format: 'depth24plus', depthWriteEnabled: depthWrite, depthCompare: 'less' },
       multisample: { count: samples },
     });
+    this.pipeline = makePipeline(true);
+    this.blendPipeline = makePipeline(false);          // the same, for translucent things: they test the depth but do not write it
     this.skyPipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: { module, entryPoint: 'vsSky' },
@@ -836,7 +838,7 @@ export class WebGPURenderer3D {
     this.envTexture?.destroy();
     this.envTexture = null;
     this.envSource = id;
-    this.bindGroup = null; this.skinBindGroup = null; this.skyBindGroup = null;
+    this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null; this.skyBindGroup = null;
     if (!env) { this.envView = this.dummyEnv.createView({ dimension: 'cube' }); return; }
     this.envTexture = this.device.createTexture({ size: [env.size, env.size, 6], mipLevelCount: env.levels.length, format: 'rgba16float', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST });
     env.levels.forEach((level, mip) => {
@@ -871,7 +873,7 @@ export class WebGPURenderer3D {
   #syncTextures() {
     const set = this.textureSet;
     if (!set) {
-      if (this.texture) { this.texture = null; this.textureSource = null; this.bindGroup = null; this.skinBindGroup = null; }
+      if (this.texture) { this.texture = null; this.textureSource = null; this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null; }
       return;
     }
     if (this.textureSource !== set) { // a different set: a fresh texture array
@@ -882,7 +884,7 @@ export class WebGPURenderer3D {
       this.textureSource = set;
       this.uploadedLayers = 0;
       this.layerVersions = [];
-      this.bindGroup = null; this.skinBindGroup = null;
+      this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null;
     }
     for (; this.uploadedLayers < set.layers.length; this.uploadedLayers++) this.#uploadLayer(set, this.uploadedLayers);
     for (let i = 0; i < this.uploadedLayers; i++) if (this.layerVersions[i] !== set.layers[i].version) this.#uploadLayer(set, i);      // a layer changed by `update` (a video frame)
@@ -911,7 +913,7 @@ export class WebGPURenderer3D {
     this.shadowTexture = this.device.createTexture({ size: [size, size, layers], format: 'depth32float', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
     this.shadowSize = size; this.shadowLayers = layers;
     this.shadowLayerViews = Array.from({ length: layers }, (_, i) => this.shadowTexture.createView({ dimension: '2d', baseArrayLayer: i, arrayLayerCount: 1 }));
-    this.bindGroup = null; this.skinBindGroup = null;
+    this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null;
   }
 
   /** (Re)allocate the maps of point and spot lights when they are first asked for or their size changes. */
@@ -921,7 +923,7 @@ export class WebGPURenderer3D {
     this.localShadowTexture = this.device.createTexture({ size: [size, size, layers], format: 'depth32float', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
     this.localSize = size; this.localLayers = layers;
     this.localLayerViews = Array.from({ length: layers }, (_, i) => this.localShadowTexture.createView({ dimension: '2d', baseArrayLayer: i, arrayLayerCount: 1 }));
-    this.bindGroup = null; this.skinBindGroup = null;
+    this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null;
   }
 
   /** Upload the skinned instances and their palettes; returns what to draw. */
@@ -1011,6 +1013,7 @@ export class WebGPURenderer3D {
     }
     this.#writeEnvironment(camera, lighting);
     this.bindGroup ??= device.createBindGroup({ layout: this.pipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: this.sceneBuffer } }, ...this.#shadowEntries()] });
+    if (list.blended.size > 0) this.blendBindGroup ??= device.createBindGroup({ layout: this.blendPipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: this.sceneBuffer } }, ...this.#shadowEntries()] });
     writeSceneUniforms(this.sceneData, camera, lighting, shadow, local);
     device.queue.writeBuffer(this.sceneBuffer, 0, this.sceneData);
     const cascades = shadow ? shadow.matrices.length : 0, passes = cascades + (local ? local.matrices.length : 0);
@@ -1027,6 +1030,7 @@ export class WebGPURenderer3D {
     // most of a big world is far outside the small box round the camera (the main pass draws the first part; each cascade's depth pass draws its own part, and the maps come out the same).
     let total = 0;
     for (const g of list.groups.values()) total += g.count;
+    for (const g of list.blended.values()) total += g.count;
     const cuts = [];
     let extra = 0;
     const cutting = cascades > 0 && total > 0 && this.cullCascades !== false;
@@ -1052,6 +1056,13 @@ export class WebGPURenderer3D {
       draws.push({ gpu: this.#gpuMesh(mesh), first, count: g.count });
       first += g.count;
     }
+    const blendDraws = [];                                            // the translucent ones follow the solid ones in the buffer (and are in no shadow pass)
+    for (const [mesh, g] of list.blended) {
+      if (g.count === 0) continue;
+      this.staging.set(g.count * INSTANCE3D_FLOATS === g.data.length ? g.data : g.data.subarray(0, g.count * INSTANCE3D_FLOATS), first * INSTANCE3D_FLOATS);
+      blendDraws.push({ gpu: this.#gpuMesh(mesh), first, count: g.count });
+      first += g.count;
+    }
     for (let k = 0; k < total + extra; k += WRITE_CHUNK) {         // in chunks: one very large writeBuffer is much slower than the same bytes in pieces
       const n = Math.min(WRITE_CHUNK, total + extra - k);
       device.queue.writeBuffer(this.instanceBuffer, k * INSTANCE3D_BYTES, this.staging, k * INSTANCE3D_FLOATS, n * INSTANCE3D_FLOATS);
@@ -1062,6 +1073,7 @@ export class WebGPURenderer3D {
     if (particles && particles.count > 0) { this.particles ??= new GPUParticles(device, this.sceneFormat, this.samples); particleCount = this.particles.prepare(particles, camera); }
     const skinDraws = this.#prepareSkinned(list);
     let zeroNeeded = 0; // meshes without texture coordinates read zeros
+    for (const d of blendDraws) if (!d.gpu.ub) zeroNeeded = Math.max(zeroNeeded, d.gpu.vertexCount);
     for (const d of draws) if (!d.gpu.ub) zeroNeeded = Math.max(zeroNeeded, d.gpu.vertexCount);
     for (const d of skinDraws) if (!d.gpu.ub) zeroNeeded = Math.max(zeroNeeded, d.gpu.vertexCount);
     if (zeroNeeded > 0) this.#ensureZeroUv(zeroNeeded);
@@ -1138,6 +1150,17 @@ export class WebGPURenderer3D {
         pass.setVertexBuffer(0, d.gpu.vb);
         pass.setVertexBuffer(2, d.gpu.sb);
         pass.setVertexBuffer(3, d.gpu.ub ?? this.zeroUvBuffer);
+        pass.setIndexBuffer(d.gpu.ib, 'uint32');
+        pass.drawIndexed(d.gpu.indexCount, d.count, 0, 0, d.first);
+      }
+    }
+    if (blendDraws.length > 0) {                                       // translucent things: over the solid scene, before the particles
+      pass.setPipeline(this.blendPipeline);
+      pass.setBindGroup(0, this.blendBindGroup);
+      pass.setVertexBuffer(1, this.instanceBuffer);
+      for (const d of blendDraws) {
+        pass.setVertexBuffer(0, d.gpu.vb);
+        pass.setVertexBuffer(2, d.gpu.ub ?? this.zeroUvBuffer);
         pass.setIndexBuffer(d.gpu.ib, 'uint32');
         pass.drawIndexed(d.gpu.indexCount, d.count, 0, 0, d.first);
       }

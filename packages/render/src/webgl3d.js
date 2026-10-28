@@ -926,8 +926,10 @@ export class WebGL2Renderer3D {
     const { gl } = this;
     let total = 0;
     for (const g of list.groups.values()) total += g.count;
+    for (const g of list.blended.values()) total += g.count;
     const draws = [];
     draws.cuts = [];
+    draws.blended = [];                                                   // the translucent ones: drawn after the solid ones, writing no depth
     if (total === 0) return draws;
     // after the instances of the main pass come those of each sun cascade: only the ones that can touch that cascade's box (the maps come out the same, and far buildings and hillsides are not drawn into a small near map)
     let extra = 0;
@@ -943,9 +945,14 @@ export class WebGL2Renderer3D {
       draws.push({ gpu: this.#gpuMesh(mesh), first, count: g.count, data: g.data });
       first += g.count;
     }
+    for (const [mesh, g] of list.blended) {
+      if (g.count === 0) continue;
+      draws.blended.push({ gpu: this.#gpuMesh(mesh), first, count: g.count, data: g.data });
+      first += g.count;
+    }
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, (total + extra) * INSTANCE3D_BYTES, gl.DYNAMIC_DRAW); // a fresh store each frame: the driver orphans the old one instead of stalling on it
-    for (const d of draws) gl.bufferSubData(gl.ARRAY_BUFFER, d.first * INSTANCE3D_BYTES, d.data, 0, d.count * INSTANCE3D_FLOATS); // straight from the draw list
+    for (const d of [...draws, ...draws.blended]) gl.bufferSubData(gl.ARRAY_BUFFER, d.first * INSTANCE3D_BYTES, d.data, 0, d.count * INSTANCE3D_FLOATS); // straight from the draw list
     if (extra > 0) gl.bufferSubData(gl.ARRAY_BUFFER, total * INSTANCE3D_BYTES, this.cutStaging, 0, extra * INSTANCE3D_FLOATS);
     draws.cuts = cuts.map((parts) => parts.map((p) => ({ gpu: this.#gpuMesh(p.mesh), first: total + p.row, count: p.count })));
     return draws;
@@ -1109,6 +1116,16 @@ export class WebGL2Renderer3D {
       gl.uniform1i(this.skinTexLoc, 2);
       gl.uniform1i(this.skinEnvLoc, 3);
       this.#drawAll(skinned, true);
+    }
+    if (plain.blended.length > 0) {                                       // translucent things: over the solid scene, testing the depth but not writing it, before the particles
+      gl.useProgram(this.prog);
+      gl.uniform1i(this.shadowLoc, 1);
+      gl.uniform1i(this.localLoc, 4);
+      gl.uniform1i(this.texLoc, 2);
+      gl.uniform1i(this.envLoc, 3);
+      gl.depthMask(false);
+      this.#drawAll(plain.blended, false);
+      gl.depthMask(true);
     }
     if (particles && particles.count > 0) { // soft sprites, streaks and decals over the solid scene
       this.particles ??= new GLParticles(gl);

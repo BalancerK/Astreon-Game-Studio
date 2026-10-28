@@ -68,6 +68,9 @@ export class DrawList3D {
   constructor() {
     /** @type {Map<import('./mesh.js').Mesh, {data: Float32Array, count: number}>} */
     this.groups = new Map();
+    /** @type {Map<import('./mesh.js').Mesh, {data: Float32Array, count: number}>} what was added after `setBlended(true)`: drawn after everything solid, blended over it, writing no depth (see `setBlended`). */
+    this.blended = new Map();
+    this.blend = false;
     /** @type {Map<import('./mesh.js').Mesh, {data: Float32Array, palettes: Float32Array, count: number, jointCount: number}>} skinned meshes: per instance a model matrix, colour and palette */
     this.skinned = new Map();
     this.count = 0;
@@ -107,6 +110,17 @@ export class DrawList3D {
     if (!Number.isInteger(layer) || layer < 0) throw new Error(`texture layer must be a whole number from 0 (got ${layer})`);
     if (mapping !== 'uv' && mapping !== 'planar') throw new Error(`mapping must be 'uv' or 'planar' (got ${mapping})`);
     this.material[0] = layer; this.material[1] = mapping === 'uv' ? 1 : 2; this.material[2] = scale;
+  }
+
+  /**
+   * Draw the instances you add next as **translucent**: after everything solid, blended over it by their alpha, and writing no depth, so what is behind a pane of glass, a force field or a
+   * bubble shows through it (and so do the particles, which are drawn after the solid things too: without this, a see-through instance hides them, because it has written the depth in front of
+   * them). They cast no shadow. Instances of the same mesh are drawn in the order they were added; give the far one first when two overlap and the order shows. Skinned instances are not
+   * affected. `clear()` turns it off.
+   * @param {boolean} [on]
+   */
+  setBlended(on = true) {
+    this.blend = !!on;
   }
 
   /**
@@ -222,13 +236,16 @@ export class DrawList3D {
     this.culled = 0; this.occluded = 0; this.tooSmall = 0;
     this.material[0] = -1; this.material[1] = 0; this.material[2] = 1; this.material[3] = 0;
     for (const g of this.groups.values()) g.count = 0;
+    for (const g of this.blended.values()) g.count = 0;
+    this.blend = false;
     for (const g of this.skinned.values()) g.count = 0;
     this.count = 0;
   }
 
   #slot(mesh) {
-    let g = this.groups.get(mesh);
-    if (!g) { g = { data: new Float32Array(INSTANCE3D_FLOATS * 16), count: 0 }; this.groups.set(mesh, g); }
+    const groups = this.blend ? this.blended : this.groups;
+    let g = groups.get(mesh);
+    if (!g) { g = { data: new Float32Array(INSTANCE3D_FLOATS * 16), count: 0 }; groups.set(mesh, g); }
     if ((g.count + 1) * INSTANCE3D_FLOATS > g.data.length) {
       const next = new Float32Array(g.data.length * 2);
       next.set(g.data);

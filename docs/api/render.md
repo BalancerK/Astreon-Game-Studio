@@ -3153,6 +3153,21 @@ The instance colour multiplies the texture, so a white texture shows the colour 
 | `mapping` (optional) | `'uv' \| 'planar'` |  |
 | `scale` (optional) | `number` |  |
 
+#### `DrawList3D.setBlended`
+
+```js
+setBlended(on = true)
+```
+
+Draw the instances you add next as **translucent**: after everything solid, blended over it by their alpha, and writing no depth, so what is behind a pane of glass, a force field or a
+bubble shows through it (and so do the particles, which are drawn after the solid things too: without this, a see-through instance hides them, because it has written the depth in front of
+them). They cast no shadow. Instances of the same mesh are drawn in the order they were added; give the far one first when two overlap and the order shows. Skinned instances are not
+affected. `clear()` turns it off.
+
+| Name | Type | Description |
+|---|---|---|
+| `on` (optional) | `boolean` |  |
+
 #### `DrawList3D.setSurface`
 
 ```js
