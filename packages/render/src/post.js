@@ -24,12 +24,14 @@ export const TONEMAPS = Object.freeze({ none: 0, reinhard: 1, aces: 2, filmic: 3
  *   `radius` is how far, in world units, it looks for things in the way (0.5), `intensity` 0..1 how dark it goes (1), `power` how sharply (1.5), `bias` the
  *   depth difference ignored so that flat surfaces do not shade themselves (0.03), `samples` the quality (12; 4 to 32), `scale` the size of the working image
  *   as a fraction of the screen (1; 0.5 is four times cheaper and a little softer). It darkens the lit picture (not only the ambient light), so keep it subtle on bright scenes.
- * @property {boolean | {strength?: number, distance?: number, steps?: number, thickness?: number, minUp?: number, below?: number, above?: number}} [ssr]
+ * @property {boolean | {strength?: number, distance?: number, steps?: number, thickness?: number, minUp?: number, below?: number, above?: number, glass?: number}} [ssr]
  *   Screen-space reflections (off unless given): surfaces that face up (a sea, a wet floor, a roof) show what is on the screen above them, found by marching a ray from each pixel through the depth buffer.
  *   `strength` 0..1 how much of the reflection is mixed in at the most (0.6; it is weaker where the surface is seen head on and strongest at a grazing angle, as a real one is), `distance` how far the ray goes,
  *   in world units (80), `steps` the quality (32; 8 to 64), `thickness` how far behind a surface the ray may go and still count as hitting it (1.5), `minUp` how level a surface must be to reflect, as the
  *   cosine of its angle from straight up (0.85), and `below` and `above` the heights (world y) between which things reflect (everywhere): a sea is `below: 1`. Only what is on the screen can be reflected, and a
- *   reflection that would leave it fades at the edges. There is no roughness here, so it suits smooth surfaces: limit it with `below` or `above` to the ones that are.
+ *   reflection that would leave it fades at the edges. There is no roughness here, so it suits smooth surfaces: limit it with `below` or `above` to the ones that are. `glass` (0: none) is the strength
+ *   on the meshes the draw list marks with `reflect(mesh)` (glass towers, mirrors): they reflect on any facing and at any height. They are marked in the alpha channel of the scene, which the pass reads: a scene
+ *   cleared to a transparent colour would count everything as marked, so clear to an opaque one.
  * @property {boolean | {focus?: number, range?: number, aperture?: number, maxBlur?: number, taps?: number}} [dof]
  *   Depth of field (off unless given): things away from the `focus` distance (world units from the camera, 10) blur. `range` is the depth either side of the focus
  *   that stays sharp (0), `aperture` how fast the blur grows with the distance from the focus (1), `maxBlur` the largest blur radius in pixels (8), `taps` the quality (24; 8 to 64).
@@ -51,10 +53,10 @@ export function resolvePostOptions(o = {}, camera = null) {
     ao.samples = Math.max(4, Math.min(32, Math.round(ao.samples))); ao.scale = Math.max(0.25, Math.min(1, ao.scale)); ao.intensity = Math.max(0, Math.min(1, ao.intensity));
     ao.power = Math.max(0.1, ao.power); ao.bias = Math.max(0, ao.bias);
   }
-  const ssr = o.ssr ? { strength: 0.6, distance: 80, steps: 32, thickness: 1.5, minUp: 0.85, below: Infinity, above: -Infinity, ...(o.ssr === true ? {} : o.ssr) } : null;
+  const ssr = o.ssr ? { strength: 0.6, distance: 80, steps: 32, thickness: 1.5, minUp: 0.85, below: Infinity, above: -Infinity, glass: 0, ...(o.ssr === true ? {} : o.ssr) } : null;
   if (ssr) {
     if (!(ssr.distance > 0)) throw new Error(`ssr.distance must be above 0 (got ${ssr.distance})`);
-    ssr.steps = Math.max(8, Math.min(64, Math.round(ssr.steps))); ssr.strength = Math.max(0, Math.min(1, ssr.strength)); ssr.thickness = Math.max(0.01, ssr.thickness); ssr.minUp = Math.max(0, Math.min(0.999, ssr.minUp));
+    ssr.steps = Math.max(8, Math.min(64, Math.round(ssr.steps))); ssr.strength = Math.max(0, Math.min(1, ssr.strength)); ssr.thickness = Math.max(0.01, ssr.thickness); ssr.minUp = Math.max(0, Math.min(0.999, ssr.minUp)); ssr.glass = Math.max(0, Math.min(1, ssr.glass));
   }
   const dof = o.dof ? { focus: 10, range: 0, aperture: 1, maxBlur: 8, taps: 24, ...(o.dof === true ? {} : o.dof) } : null;
   if (dof) {
@@ -111,7 +113,7 @@ export function writeFxUniforms(out, p, camera, width, height) {
   out[16] = r ? r.strength : 0; out[17] = r ? r.distance : 0; out[18] = r ? r.steps : 0; out[19] = r ? r.thickness : 0;
   const v = camera.view;                                                                                 // the world's up, in the camera's view space: the second column of the view matrix
   out[20] = v ? v[4] : 0; out[21] = v ? v[5] : 1; out[22] = v ? v[6] : 0; out[23] = r ? r.minUp : 0;
-  out[24] = camera.y ?? 0; out[25] = r && Number.isFinite(r.below) ? r.below : 1e9; out[26] = r && Number.isFinite(r.above) ? r.above : -1e9; out[27] = 0;
+  out[24] = camera.y ?? 0; out[25] = r && Number.isFinite(r.below) ? r.below : 1e9; out[26] = r && Number.isFinite(r.above) ? r.above : -1e9; out[27] = r ? r.glass : 0;
   return out;
 }
 
@@ -337,7 +339,7 @@ fn fsVert(@builtin(vertex_index) vi: u32) -> FsOut {
 }
 
 struct Fx { a: vec4f, b: vec4f, c: vec4f, d: vec4f, e: vec4f, f: vec4f, g: vec4f };
-@group(0) @binding(0) var<uniform> fx: Fx;          // a: near, far, projection x and y scales. b: ao radius, bias, intensity, power. c: focus, range, max blur, aperture. d: width, height, ao samples, dof taps. e: reflection strength, distance, steps, thickness. f: up in view space, minUp. g: camera height, below, above
+@group(0) @binding(0) var<uniform> fx: Fx;          // a: near, far, projection x and y scales. b: ao radius, bias, intensity, power. c: focus, range, max blur, aperture. d: width, height, ao samples, dof taps. e: reflection strength, distance, steps, thickness. f: up in view space, minUp. g: camera height, below, above, glass strength
 @group(0) @binding(1) var depthTex: DEPTH_TYPE;
 @group(0) @binding(2) var src: texture_2d<f32>;
 @group(0) @binding(3) var smp: sampler;
@@ -452,11 +454,13 @@ fn ssr(i: FsOut) -> @location(0) vec4f {
   N = normalize(N);
   if (dot(N, P) > 0.0) { N = -N; }
   let height = fx.g.x + dot(P, fx.f.xyz);
-  let mask = smoothstep(fx.f.w, 1.0, dot(N, fx.f.xyz)) * (1.0 - smoothstep(fx.g.y - 1.0, fx.g.y, height)) * smoothstep(fx.g.z - 1.0, fx.g.z, height);
-  if (mask <= 0.001) { return base; }
+  let gm = clamp(1.0 - base.a, 0.0, 1.0);                                      // a reflective surface was marked by leaving its alpha short of 1
+  let level = smoothstep(fx.f.w, 1.0, dot(N, fx.f.xyz)) * (1.0 - smoothstep(fx.g.y - 1.0, fx.g.y, height)) * smoothstep(fx.g.z - 1.0, fx.g.z, height);
+  let strength = max(fx.e.x * level, fx.g.w * gm);
+  if (strength <= 0.001) { return base; }
   let V = normalize(P);
   let R = reflect(V, N);
-  if (R.z > -0.02) { return base; }
+  if (R.z > -0.02 && gm < 0.5) { return base; }                                // a ray coming back at the camera has nothing on the screen to find (a wall of glass does: what stands in front of it)
   let fres = pow(1.0 - clamp(dot(N, -V), 0.0, 1.0), 4.0);
   let steps = i32(fx.e.z);
   let jitter = ign(i.pos.xy);
@@ -491,8 +495,9 @@ fn ssr(i: FsOut) -> @location(0) vec4f {
   let edge = min(min(uvHit.x, 1.0 - uvHit.x), min(uvHit.y, 1.0 - uvHit.y));
   let fade = smoothstep(0.0, 0.08, edge) * (1.0 - (tHit / fx.e.y) * (tHit / fx.e.y));
   let refl = textureLoad(src, vec2i(clamp(uvHit, vec2f(0.0), vec2f(0.9999)) * fx.d.xy), 0).rgb;
-  let w = clamp(fx.e.x * mask * fade * (0.25 + 0.75 * fres), 0.0, 1.0);
-  return vec4f(mix(base.rgb, refl, w), base.a);
+  let lift = mix(0.25, 0.35, gm);
+  let w = clamp(strength * fade * (lift + (1.0 - lift) * fres), 0.0, 1.0);
+  return vec4f(mix(base.rgb, refl, w), 1.0);
 }
 
 
@@ -635,11 +640,13 @@ void main() {
   N = normalize(N);
   if (dot(N, P) > 0.0) N = -N;
   float height = u_fx[6].x + dot(P, u_fx[5].xyz);
-  float mask = smoothstep(u_fx[5].w, 1.0, dot(N, u_fx[5].xyz)) * (1.0 - smoothstep(u_fx[6].y - 1.0, u_fx[6].y, height)) * smoothstep(u_fx[6].z - 1.0, u_fx[6].z, height);
-  if (mask <= 0.001) { o = base; return; }
+  float gm = clamp(1.0 - base.a, 0.0, 1.0);
+  float level = smoothstep(u_fx[5].w, 1.0, dot(N, u_fx[5].xyz)) * (1.0 - smoothstep(u_fx[6].y - 1.0, u_fx[6].y, height)) * smoothstep(u_fx[6].z - 1.0, u_fx[6].z, height);
+  float strength = max(u_fx[4].x * level, u_fx[6].w * gm);
+  if (strength <= 0.001) { o = base; return; }
   vec3 V = normalize(P);
   vec3 R = reflect(V, N);
-  if (R.z > -0.02) { o = base; return; }
+  if (R.z > -0.02 && gm < 0.5) { o = base; return; }
   float fres = pow(1.0 - clamp(dot(N, -V), 0.0, 1.0), 4.0);
   int steps = int(u_fx[4].z);
   float jitter = ign(gl_FragCoord.xy);
@@ -674,8 +681,9 @@ void main() {
   float edge = min(min(uvHit.x, 1.0 - uvHit.x), min(uvHit.y, 1.0 - uvHit.y));
   float fade = smoothstep(0.0, 0.08, edge) * (1.0 - (tHit / u_fx[4].y) * (tHit / u_fx[4].y));
   vec3 refl = texelFetch(u_src, ivec2(clamp(uvHit, vec2(0.0), vec2(0.9999)) * u_fx[3].xy), 0).rgb;
-  float w = clamp(u_fx[4].x * mask * fade * (0.25 + 0.75 * fres), 0.0, 1.0);
-  o = vec4(mix(base.rgb, refl, w), base.a);
+  float lift = mix(0.25, 0.35, gm);
+  float w = clamp(strength * fade * (lift + (1.0 - lift) * fres), 0.0, 1.0);
+  o = vec4(mix(base.rgb, refl, w), 1.0);
 }`;
 
 export const POST_GLSL_FXAA = `${FX_GLSL_HEAD}

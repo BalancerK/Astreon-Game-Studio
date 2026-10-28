@@ -948,7 +948,7 @@ export class WebGL2Renderer3D {
     let first = 0; // make sure every mesh is on the GPU first (uploading one rebinds ARRAY_BUFFER), then fill the instance buffer
     for (const [mesh, g] of list.groups) {
       if (g.count === 0) continue;
-      draws.push({ gpu: this.#gpuMesh(mesh), first, count: g.count, data: g.data });
+      draws.push({ gpu: this.#gpuMesh(mesh), first, count: g.count, data: g.data, mesh });
       first += g.count;
     }
     for (const [mesh, g] of list.blended) {
@@ -1122,6 +1122,23 @@ export class WebGL2Renderer3D {
       gl.uniform1i(this.skinTexLoc, 2);
       gl.uniform1i(this.skinEnvLoc, 3);
       this.#drawAll(skinned, true);
+    }
+    if (post && this.post?.options?.ssr?.glass > 0 && list.reflective.size > 0) {                // the reflective surfaces are marked in the alpha of the picture: the same instances again, writing nothing but the alpha (0)
+      const marked = plain.filter((d) => list.reflective.has(d.mesh));
+      if (marked.length > 0) {
+        gl.useProgram(this.prog);
+        gl.uniform1i(this.shadowLoc, 1);
+        gl.uniform1i(this.localLoc, 4);
+        gl.uniform1i(this.texLoc, 2);
+        gl.uniform1i(this.envLoc, 3);
+        gl.colorMask(false, false, false, true);
+        gl.blendFuncSeparate(gl.ZERO, gl.ONE, gl.ZERO, gl.ZERO);
+        gl.depthMask(false); gl.depthFunc(gl.LEQUAL);
+        this.#drawAll(marked, false);
+        gl.depthFunc(gl.LESS); gl.depthMask(true);
+        gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.colorMask(true, true, true, true);
+      }
     }
     if (plain.blended.length > 0) {                                       // translucent things: over the solid scene, testing the depth but not writing it, before the particles
       gl.useProgram(this.prog);

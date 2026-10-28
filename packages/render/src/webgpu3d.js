@@ -686,9 +686,9 @@ export class WebGPURenderer3D {
   #buildScenePipelines(format) {
     const { device, samples, module } = this;
     this.sceneFormat = format;
-    this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null;
+    this.bindGroup = null; this.blendBindGroup = null; this.maskBindGroup = null; this.skinBindGroup = null;
     this.particles?.destroy(); this.particles = null;
-    const makePipeline = (depthWrite) => device.createRenderPipeline({
+    const makePipeline = (depthWrite, mask = false) => device.createRenderPipeline({
       layout: 'auto',
       vertex: {
         module, entryPoint: 'vs',
@@ -704,17 +704,21 @@ export class WebGPURenderer3D {
       },
       fragment: {
         module, entryPoint: 'fs',
-        targets: [{ format, blend: {
+        targets: [mask ? { format, writeMask: GPUColorWrite.ALPHA, blend: {                              // the reflective mask: only the alpha is written, and to nothing (the colour is left as it is)
+          color: { srcFactor: 'zero', dstFactor: 'one', operation: 'add' },
+          alpha: { srcFactor: 'zero', dstFactor: 'zero', operation: 'add' },
+        } } : { format, blend: {
           color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add' },
           alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
         } }],
       },
       primitive: { topology: 'triangle-list', cullMode: 'back', frontFace: 'ccw' },
-      depthStencil: { format: 'depth24plus', depthWriteEnabled: depthWrite, depthCompare: 'less' },
+      depthStencil: { format: 'depth24plus', depthWriteEnabled: depthWrite, depthCompare: mask ? 'less-equal' : 'less' },
       multisample: { count: samples },
     });
     this.pipeline = makePipeline(true);
     this.blendPipeline = makePipeline(false);          // the same, for translucent things: they test the depth but do not write it
+    this.maskPipeline = makePipeline(false, true);     // and for marking the reflective surfaces in the alpha of the picture (see `DrawList3D.reflect`)
     this.skyPipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: { module, entryPoint: 'vsSky' },
@@ -846,7 +850,7 @@ export class WebGPURenderer3D {
     this.envTexture?.destroy();
     this.envTexture = null;
     this.envSource = id;
-    this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null; this.skyBindGroup = null;
+    this.bindGroup = null; this.blendBindGroup = null; this.maskBindGroup = null; this.skinBindGroup = null; this.skyBindGroup = null;
     if (!env) { this.envView = this.dummyEnv.createView({ dimension: 'cube' }); return; }
     this.envTexture = this.device.createTexture({ size: [env.size, env.size, 6], mipLevelCount: env.levels.length, format: 'rgba16float', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST });
     env.levels.forEach((level, mip) => {
@@ -881,7 +885,7 @@ export class WebGPURenderer3D {
   #syncTextures() {
     const set = this.textureSet;
     if (!set) {
-      if (this.texture) { this.texture = null; this.textureSource = null; this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null; }
+      if (this.texture) { this.texture = null; this.textureSource = null; this.bindGroup = null; this.blendBindGroup = null; this.maskBindGroup = null; this.skinBindGroup = null; }
       return;
     }
     if (this.textureSource !== set) { // a different set: a fresh texture array
@@ -892,7 +896,7 @@ export class WebGPURenderer3D {
       this.textureSource = set;
       this.uploadedLayers = 0;
       this.layerVersions = [];
-      this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null;
+      this.bindGroup = null; this.blendBindGroup = null; this.maskBindGroup = null; this.skinBindGroup = null;
     }
     for (; this.uploadedLayers < set.layers.length; this.uploadedLayers++) this.#uploadLayer(set, this.uploadedLayers);
     for (let i = 0; i < this.uploadedLayers; i++) if (this.layerVersions[i] !== set.layers[i].version) this.#uploadLayer(set, i);      // a layer changed by `update` (a video frame)
@@ -921,7 +925,7 @@ export class WebGPURenderer3D {
     this.shadowTexture = this.device.createTexture({ size: [size, size, layers], format: 'depth32float', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
     this.shadowSize = size; this.shadowLayers = layers;
     this.shadowLayerViews = Array.from({ length: layers }, (_, i) => this.shadowTexture.createView({ dimension: '2d', baseArrayLayer: i, arrayLayerCount: 1 }));
-    this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null;
+    this.bindGroup = null; this.blendBindGroup = null; this.maskBindGroup = null; this.skinBindGroup = null;
   }
 
   /** (Re)allocate the maps of point and spot lights when they are first asked for or their size changes. */
@@ -931,7 +935,7 @@ export class WebGPURenderer3D {
     this.localShadowTexture = this.device.createTexture({ size: [size, size, layers], format: 'depth32float', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
     this.localSize = size; this.localLayers = layers;
     this.localLayerViews = Array.from({ length: layers }, (_, i) => this.localShadowTexture.createView({ dimension: '2d', baseArrayLayer: i, arrayLayerCount: 1 }));
-    this.bindGroup = null; this.blendBindGroup = null; this.skinBindGroup = null;
+    this.bindGroup = null; this.blendBindGroup = null; this.maskBindGroup = null; this.skinBindGroup = null;
   }
 
   /** Upload the skinned instances and their palettes; returns what to draw. */
@@ -1061,7 +1065,7 @@ export class WebGPURenderer3D {
     for (const [mesh, g] of list.groups) {
       if (g.count === 0) continue;
       this.staging.set(g.count * INSTANCE3D_FLOATS === g.data.length ? g.data : g.data.subarray(0, g.count * INSTANCE3D_FLOATS), first * INSTANCE3D_FLOATS);
-      draws.push({ gpu: this.#gpuMesh(mesh), first, count: g.count });
+      draws.push({ gpu: this.#gpuMesh(mesh), first, count: g.count, mesh });
       first += g.count;
     }
     const blendDraws = [];                                            // the translucent ones follow the solid ones in the buffer (and are in no shadow pass)
@@ -1160,6 +1164,21 @@ export class WebGPURenderer3D {
         pass.setVertexBuffer(3, d.gpu.ub ?? this.zeroUvBuffer);
         pass.setIndexBuffer(d.gpu.ib, 'uint32');
         pass.drawIndexed(d.gpu.indexCount, d.count, 0, 0, d.first);
+      }
+    }
+    if (post && this.post.options.ssr && this.post.options.ssr.glass > 0 && list.reflective.size > 0) {                // the reflective surfaces are marked in the alpha of the picture: the same instances again, writing nothing but the alpha (0)
+      const marked = draws.filter((d) => list.reflective.has(d.mesh));
+      if (marked.length > 0) {
+        this.maskBindGroup ??= device.createBindGroup({ layout: this.maskPipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: this.sceneBuffer } }, ...this.#shadowEntries()] });
+        pass.setPipeline(this.maskPipeline);
+        pass.setBindGroup(0, this.maskBindGroup);
+        pass.setVertexBuffer(1, this.instanceBuffer);
+        for (const d of marked) {
+          pass.setVertexBuffer(0, d.gpu.vb);
+          pass.setVertexBuffer(2, d.gpu.ub ?? this.zeroUvBuffer);
+          pass.setIndexBuffer(d.gpu.ib, 'uint32');
+          pass.drawIndexed(d.gpu.indexCount, d.count, 0, 0, d.first);
+        }
       }
     }
     if (blendDraws.length > 0) {                                       // translucent things: over the solid scene, before the particles

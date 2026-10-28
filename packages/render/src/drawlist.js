@@ -75,6 +75,8 @@ export class DrawList3D {
     /** @type {Map<import('./mesh.js').Mesh, {data: Float32Array, count: number}>} what was added after `setBlended(true)`: drawn after everything solid, blended over it, writing no depth (see `setBlended`). */
     this.blended = new Map();
     this.blend = false;
+    /** @type {Set<import('./mesh.js').Mesh>} the meshes marked `reflect` this frame: the screen-space reflections (see `ssr` in post.js, with `glass` above 0) show on every pixel they cover. */
+    this.reflective = new Set();
     /** @type {Map<import('./mesh.js').Mesh, {data: Float32Array, palettes: Float32Array, count: number, jointCount: number}>} skinned meshes: per instance a model matrix, colour and palette */
     this.skinned = new Map();
     this.count = 0;
@@ -242,8 +244,19 @@ export class DrawList3D {
     for (const g of this.groups.values()) g.count = 0;
     for (const g of this.blended.values()) g.count = 0;
     this.blend = false;
+    this.reflective.clear();
     for (const g of this.skinned.values()) g.count = 0;
     this.count = 0;
+  }
+
+  /**
+   * Mark a mesh as a reflective surface (glass, a mirror, a polished floor) for this frame: wherever it is drawn solid, the screen-space reflections of the post pass (`post: { ssr: { glass } }`) show
+   * what is in front of it, on any facing, not only on the level surfaces the height band picks. Mark the mesh each frame you add it (`clear()` forgets it), and use it only for reflective things:
+   * every instance of a marked mesh is reflective. Translucent instances (`setBlended`) are not marked.
+   * @param {import('./mesh.js').Mesh} mesh
+   */
+  reflect(mesh) {
+    this.reflective.add(mesh);
   }
 
   #slot(mesh) {

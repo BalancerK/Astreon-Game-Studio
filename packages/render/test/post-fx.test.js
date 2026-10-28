@@ -96,6 +96,10 @@ test('screen-space reflections: off unless given, checked and clamped, and writt
   assert.ok(Math.abs(Math.hypot(u[20], u[21], u[22]) - 1) < 1e-6, 'the up direction is a unit vector');
   assert.ok(Math.abs(u[21] - 1) < 1e-6, 'looking level, the up of the world is the up of the screen');
   assert.equal(u[24], 7); assert.equal(u[25], 1.5); assert.ok(u[26] < -1e8, 'no lower bound unless given');
+  assert.equal(u[27], 0, 'no reflective surfaces unless asked for');
+  const g = resolvePostOptions({ ssr: { glass: 0.5 } });
+  assert.equal(g.ssr.glass, 0.5); assert.equal(writeFxUniforms(new Float32Array(FX_UNIFORM_FLOATS), g, cam, 320, 180)[27], 0.5);
+  assert.equal(resolvePostOptions({ ssr: { glass: 9 } }).ssr.glass, 1, 'kept to 0..1');
 });
 
 test('both shaders have the reflection pass, and read the same block', () => {
