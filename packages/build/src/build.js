@@ -2,6 +2,7 @@
 // that maps the plain names to those files, rewrite the pages to match, and precompress what compresses.
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, statSync } from 'node:fs';
 import { resolve, join, dirname, extname, relative, sep, posix } from 'node:path';
+import vm from 'node:vm';
 import { gzipSync, brotliCompressSync, constants as zc } from 'node:zlib';
 import { bundle } from './bundle.js';
 import { minifyJson, minifyCss } from './minify.js';
@@ -114,6 +115,7 @@ export function build(config = {}) {
       const target = localTarget(root, page, src);
       if (!target) { warnings.push(`${page}: script "${src}" is not a local file; left as it is`); return tag; }
       const result = bundle(join(root, target), { root, minify, alias, define });
+      try { new vm.Script(result.code, { filename: target }); } catch (e) { throw new Error(`${page}: the bundle of ${target} does not parse (${e.message}); this is a mistake in the bundler or in a \`define\`: check the code that was changed`); }          // (a build that writes a script the browser cannot read is worse than one that stops)
       const code = Buffer.from(result.code, 'utf8');
       const file = hashedName(target.replace(/\.m?js$/, '.js'), code);
       emit(file, code);

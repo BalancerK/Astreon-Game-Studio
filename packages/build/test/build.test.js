@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { gunzipSync, brotliDecompressSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
-import { scan, codeTest, minifyJs, minifyJson, minifyCss, bundle, build, globToRegExp, serve, BundleError } from '../src/index.js';
+import { scan, codeTest, minifyJs, minifyJson, minifyCss, bundle, build, globToRegExp, serve, BundleError, checkBundle } from '../src/index.js';
 
 /** A project in a temporary folder: `files` maps relative paths to text (or Buffers). */
 function project(files) {
@@ -333,4 +333,62 @@ test('the dev server lets your own handler answer first (an API next to the page
     assert.ok((await (await fetch(dev.url)).text()).includes('page'));
     assert.equal(typeof dev.server.listen, 'function', 'the http.Server is exposed for upgrades');
   } finally { await dev.close(); p.cleanup(); }
+});
+
+// ---- what a bundle must do the way real modules do ----
+test('imports are read first, as in a real module: code above an import line may use it, and a module\'s imports run before its own code', () => {
+  const p = project({
+    'main.js': "out.order ??= [];\nout.order.push('main');\nearly();\nimport { x } from './dep.js';\nimport './other.js';\nfunction early() { out.early = x; }\nexport {};",
+    'dep.js': "(globalThis.out.order ??= []).push('dep');\nexport const x = 5;",
+    'other.js': "(globalThis.out.order ??= []).push('other');",
+  });
+  try {
+    for (const minify of [false, true]) {
+      const out = run(bundle(join(p.root, 'main.js'), { minify }).code);
+      assert.equal(out.early, 5);
+      assert.equal(JSON.stringify(out.order), JSON.stringify(['dep', 'other', 'main']));
+    }
+  } finally { p.cleanup(); }
+});
+
+test('`this` at the top of a module is undefined and `import.meta` is the module\'s own address, as in a real module', () => {
+  const p = project({ 'main.js': "out.self = typeof this;\nout.url = import.meta.url;\nout.same = import . meta === import.meta;\nconst s = 'import.meta in a string';\nexport {};" });
+  try {
+    for (const minify of [false, true]) {
+      const out = run(bundle(join(p.root, 'main.js'), { minify }).code);
+      assert.equal(out.self, 'undefined'); assert.equal(out.url, 'main.js'); assert.equal(out.same, true);
+    }
+  } finally { p.cleanup(); }
+});
+
+test('a build stops when a bundle would not parse, instead of writing a script the browser cannot read', () => {
+  const p = project({ 'index.html': '<!doctype html><script type="module" src="main.js"></script>', 'main.js': 'out.a = BROKEN;\nexport {};' });
+  try {
+    assert.throws(() => build({ root: p.root, pages: ['index.html'], minify: false, define: { BROKEN: '(' } }), /does not parse/);
+    assert.ok(build({ root: p.root, pages: ['index.html'], minify: false, define: { BROKEN: '1' } }).bundles.length === 1);
+  } finally { p.cleanup(); }
+});
+
+test('checkBundle loads every module as it is and in the bundle and compares what they export: the engine\'s packages agree, modules that need a page are skipped, and differences are reported', async () => {
+  for (const name of ['math', 'ai', 'fsm', 'protocol']) {
+    const r = await checkBundle(fileURLToPath(new URL(`../../${name}/src/index.js`, import.meta.url)));
+    assert.deepEqual(r.problems, [], `${name}: ${JSON.stringify(r.problems)}`);
+    assert.ok(r.checked >= 2, `${name} checked ${r.checked}`);
+  }
+  const p = project({
+    'main.js': "import { a } from './lib.js';\nimport './dom.js';\nexport const both = a;",
+    'lib.js': "export const a = 1;\nexport const b = [1, 2];\nexport function f() {}\nexport class K {}\nexport const o = { k: 1 };",
+    'dom.js': "export const title = document.title;",
+  });
+  try {
+    const r = await checkBundle(join(p.root, 'main.js'));
+    assert.deepEqual(r.problems, []); assert.equal(r.checked, 1);
+    assert.deepEqual(r.skipped.map((s) => s.id).sort(), ['dom.js', 'main.js']);
+    assert.match(r.skipped[0].why, /does not load in Node/);
+    const lie = await checkBundle(join(p.root, 'main.js'), { only: (id) => id === 'lib.js', load: async () => ({ a: 2, b: [1], f() {}, K: class {}, o: { k: 1 }, extra: 1 }) });
+    const why = lie.problems.map((x) => x.why).join('\n');
+    assert.match(why, /`a` is number:2 as the module and number:1 in the bundle/); assert.match(why, /`b` is array:1/); assert.match(why, /`extra` is exported but missing/);
+    const half = await checkBundle(join(p.root, 'main.js'), { only: (id) => id === 'lib.js', load: async () => ({ a: 1, b: [1, 2], f() {}, K: class {} }) });
+    assert.match(half.problems.map((x) => x.why).join('\n'), /`o` is in the bundle but the module does not export it/);
+  } finally { p.cleanup(); }
 });

@@ -8,7 +8,7 @@ Generated from the source by `npm run docs` (`tools/api-docs.js`): every export 
 | [`@engine/arcade`](arcade.md) | A small kit for a first game (the studio's pathway starts here): things as plain objects, easy key names, walking, jumping and walls, levels drawn with letters, boxes and emoji, a camera | 223 | 100% |
 | [`@engine/assets`](assets.md) | Asset manager: one fetch per file, hashed-name manifest, use counting, retries, dependencies, hot reload | 13 | 100% |
 | [`@engine/audio`](audio.md) | Web Audio mixer with buses and a limiter, positional sound, voice limits, music cross-fades, and sounds made in code (no files needed) | 48 | 100% |
-| [`@engine/build`](build.md) | Production build (bundle, minify, content-hashed files, manifest, precompression) and a dev server with live manifest and page reload | 16 | 100% |
+| [`@engine/build`](build.md) | Production build (bundle, minify, content-hashed files, manifest, precompression) and a dev server with live manifest and page reload | 17 | 100% |
 | [`@engine/client`](client.md) | Adaptive interpolation clock (jitter/loss-aware render delay), client-side prediction with reconciliation, and rollback netcode | 3 | 100% |
 | [`@engine/core`](core.md) | Fixed-timestep loop, typed-array ECS, plugin system, scheduler | 16 | 100% |
 | [`@engine/create-game`](create-game.md) | npx create-game my-game: a new project from a template (2D, 3D or multiplayer card game), wired to the dev server, the build and the editor | 4 | 100% |

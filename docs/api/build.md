@@ -10,13 +10,14 @@ Version 0.1.0. The package's own README ([packages/build](../../packages/build/R
 
 Command line: `engine-build`
 
-## Contents (16 of 16 documented)
+## Contents (17 of 17 documented)
 
 | Name | Kind | Summary |
 |---|---|---|
 | [`BundleError`](#class-bundleerror) | class | The bundler could not bundle the code (a missing file, a circular import, an unsupported form). |
 | [`build`](#build) | function | Build a project. |
 | [`bundle`](#bundle) | function | Bundle an entry module and everything it imports. |
+| [`checkBundle`](#checkbundle) | function | Load every module of a bundle both through the bundle and as the real module in Node, and compare the names each exports and what they are. |
 | [`codeTest`](#codetest) | function | A function that says whether an offset is code (not inside a comment, string, regular expression or the text of a template). |
 | [`findImportMap`](#findimportmap) | function | Browsers cannot resolve `import '@engine/render'`; an import map tells them where it is. |
 | [`formatReport`](#formatreport) | function | A short text report of a build. |
@@ -49,12 +50,12 @@ Build a project. Same input, same output, byte for byte.
 
 **Returns** `{outDir: string, files: Array<{path: string, bytes: number, gzip?: number, brotli?: number}>, manifest: any, bundles: Array<{page: string, entry: string, file: string, modules: number, source: number, minified: number, gzip: number}>, warnings: string[]}`
 
-<sub>src/build.js:51</sub>
+<sub>src/build.js:52</sub>
 
 ### `bundle`
 
 ```js
-function bundle(entry, { root, minify = false, alias = {}, define = {} } = {})
+function bundle(entry, { root, minify = false, alias = {}, define = {}, expose = false } = {})
 ```
 
 Bundle an entry module and everything it imports.
@@ -69,10 +70,31 @@ Bundle an entry module and everything it imports.
 | `o.minify` (optional) | `boolean` |  |
 | `o.alias` (optional) | `Record<string, string>` | Replace the start of a specifier: `{ '@game': '/abs/path/src' }`. |
 | `o.define` (optional) | `Record<string, string>` | Replace plain identifiers with literal text: `{ DEBUG: 'false' }` (code only, never inside strings). |
+| `o.expose` (optional) | `boolean` | Do not run the entry: the code is an expression that gives `{ require(id) }` (see `checkBundle`). |
 
 **Returns** `{code: string, modules: Array<{id: string, file: string, bytes: number}>}` — modules in the order they run
 
-<sub>src/bundle.js:155</sub>
+<sub>src/bundle.js:163</sub>
+
+### `checkBundle`
+
+```js
+async function checkBundle(entry, { root, alias, define, minify = false, only = () => true, load = (file) => import(pathToFileURL(file).href) } = {})
+```
+
+Load every module of a bundle both through the bundle and as the real module in Node, and compare the names each exports and what they are.
+Modules run twice (once each way), so give `only` to leave out the ones that touch the page.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `entry` | `string` | the bundle's entry file |
+| `o` (optional) | `object` | `root`, `alias`, `define`, `minify` as for `bundle`; `only(id)` limits which modules are compared (default all); `load(file)` loads the real module (default: `import()`) |
+
+**Returns** `Promise<{checked: number, skipped: Array<{id: string, why: string}>, problems: Array<{id: string, why: string}>}>` — `skipped` modules cannot be loaded in Node (they need a page); `problems` are real differences: a module that loads unbundled but not bundled, a name that is missing or extra, or a value that differs.
+
+<sub>src/check.js:27</sub>
 
 ### `codeTest`
 
@@ -105,7 +127,7 @@ function formatReport(result)
 
 A short text report of a build.
 
-<sub>src/build.js:166</sub>
+<sub>src/build.js:168</sub>
 
 ### `globToRegExp`
 

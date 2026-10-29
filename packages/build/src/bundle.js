@@ -98,9 +98,9 @@ export function transformModule(src, file, resolveId, { id = file } = {}) {
     if (def) code += ` const ${def} = ${v}.default;`;
     if (ns) code += ` const ${ns} = ${v};`;
     if (list && list.trim()) code += ` const { ${names(list).map(([a, b]) => (a === b ? a : `${a}: ${b}`)).join(', ')} } = ${v};`;
-    edits.push([m.index, m.index + all.length, code + lines(all)]);
+    edits.push([m.index, m.index + all.length, lines(all), code]);
   });
-  each(RE.importBare, (m) => edits.push([m.index, m.index + m[0].length, `${dep(m[2])};${lines(m[0])}`]));
+  each(RE.importBare, (m) => edits.push([m.index, m.index + m[0].length, lines(m[0]), `${dep(m[2])};`]));
   each(RE.exportFrom, (m) => {
     const [all, asName, list, , spec] = m;
     const v = `__i${counter++}`;
@@ -108,7 +108,7 @@ export function transformModule(src, file, resolveId, { id = file } = {}) {
     if (list !== undefined) for (const [a, b] of names(list)) getters.push([b, `${v}.${a}`]);
     else if (asName) getters.push([asName, v]);
     else code += ` __star(exports, ${v});`;
-    edits.push([m.index, m.index + all.length, code + lines(all)]);
+    edits.push([m.index, m.index + all.length, lines(all), code]);
   });
   each(RE.exportList, (m) => { for (const [a, b] of names(m[1])) getters.push([b, a]); edits.push([m.index, m.index + m[0].length, lines(m[0])]); });
   each(RE.exportDefault, (m) => {
@@ -131,15 +131,22 @@ export function transformModule(src, file, resolveId, { id = file } = {}) {
   let hasTla = false;
   for (const m of src.matchAll(/^(?:(?:const|let|var)\s+[\w${}\[\],\s:]+=\s*)?await\b/gm)) if (isCode(m.index)) hasTla = true;
 
+  // `import.meta`: a module's own address (a bundle is a classic script, where `import.meta` is a syntax error)
+  let usesMeta = false;
+  for (const m of src.matchAll(/\bimport\s*\.\s*meta\b/g)) if (isCode(m.index)) { usesMeta = true; edits.push([m.index, m.index + m[0].length, '__meta']); }
+
   edits.sort((a, b) => a[0] - b[0]);
   let out = '', pos = 0;
-  for (const [s, e, text] of edits) {
+  const hoisted = []; // what a real module does before its own code runs: every import is read first, in order (a call above an import line works)
+  for (const [s, e, text, hoist] of edits) {
     if (s < pos) throw bad('could not read an import / export statement (two matched the same text)');
     out += src.slice(pos, s) + text; pos = e;
+    if (hoist) hoisted.push(hoist);
   }
   out += src.slice(pos);
-  const head = getters.length ? `${getters.map(([n, expr]) => `Object.defineProperty(exports, ${JSON.stringify(n)}, { enumerable: true, get: () => ${expr} });`).join(' ')}\n` : '';
-  return { code: head + out, deps, hasTla };
+  const meta = usesMeta ? `const __meta = { url: typeof location === 'undefined' ? ${JSON.stringify(id)} : new URL(${JSON.stringify(id)}, location.href).href }; ` : '';
+  const head = `${getters.length ? `${getters.map(([n, expr]) => `Object.defineProperty(exports, ${JSON.stringify(n)}, { enumerable: true, get: () => ${expr} });`).join(' ')} ` : ''}${meta}${hoisted.join(' ')}`;
+  return { code: head ? `${head}\n${out}` : out, deps, hasTla };
 }
 
 /**
@@ -150,9 +157,10 @@ export function transformModule(src, file, resolveId, { id = file } = {}) {
  * @param {boolean} [o.minify]
  * @param {Record<string, string>} [o.alias] Replace the start of a specifier: `{ '@game': '/abs/path/src' }`.
  * @param {Record<string, string>} [o.define] Replace plain identifiers with literal text: `{ DEBUG: 'false' }` (code only, never inside strings).
+ * @param {boolean} [o.expose] Do not run the entry: the code is an expression that gives `{ require(id) }` (see `checkBundle`).
  * @returns {{code: string, modules: Array<{id: string, file: string, bytes: number}>}} modules in the order they run
  */
-export function bundle(entry, { root, minify = false, alias = {}, define = {} } = {}) {
+export function bundle(entry, { root, minify = false, alias = {}, define = {}, expose = false } = {}) {
   entry = resolve(entry);
   root = resolve(root ?? dirname(entry));
   const idOf = (file) => relative(root, file).split(sep).join('/');
@@ -183,9 +191,9 @@ export function bundle(entry, { root, minify = false, alias = {}, define = {} } 
   };
   const body = order.map(wrap).join(',\n');
   let out = `(() => {\nconst __mods = {\n${body}\n};\nconst __cache = {};\n`
-    + `function __r(id) { const c = __cache[id]; if (c) return c.exports; const m = __cache[id] = { exports: {} }; __mods[id](m.exports, __r); return m.exports; }\n`
+    + `function __r(id) { const c = __cache[id]; if (c) return c.exports; const m = __cache[id] = { exports: {} }; __mods[id].call(undefined, m.exports, __r); return m.exports; }\n`
     + `function __star(to, from) { for (const k of Object.keys(from)) if (k !== 'default' && !(k in to)) Object.defineProperty(to, k, { enumerable: true, get: () => from[k] }); }\n`
-    + `__r(${JSON.stringify(idOf(entry))});\n})();\n`;
+    + (expose ? `return { require: __r };\n})()\n` : `__r(${JSON.stringify(idOf(entry))});\n})();\n`);
   if (minify) out = minifyJs(out);
   return { code: out, modules: order.map((f) => ({ id: idOf(f), file: f, bytes: done.get(f).code.length })) };
 }
