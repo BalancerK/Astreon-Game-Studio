@@ -8,7 +8,7 @@ npm install @engine/render
 
 Version 0.1.0. The package's own README ([packages/render](../../packages/render/README.md)) explains how the pieces fit together; this page lists every export.
 
-## Contents (204 of 204 documented)
+## Contents (210 of 210 documented)
 
 | Name | Kind | Summary |
 |---|---|---|
@@ -59,6 +59,7 @@ Version 0.1.0. The package's own README ([packages/render](../../packages/render
 | [`PARTICLE_FLOATS`](#particle_floats) | constant | Floats per particle: four vec4s. |
 | [`ParticleBatch`](#class-particlebatch) | class | The per-frame list of particles for the renderer (16 floats each). |
 | [`Pose`](#class-pose) | class | Local translation, rotation and scale of every joint. |
+| [`QUALITY_LEVELS`](#quality_levels) | constant | What each level costs the graphics card. |
 | [`RichText`](#class-richtext) | class | Rich text over a set of fonts. |
 | [`SHADOW_ANGLES`](#shadow_angles) | constant | Directions in each shadow-casting light's shadow map. |
 | [`SKINNED_INSTANCE_BYTES`](#skinned_instance_bytes) | constant | Bytes per instance of a skinned mesh in a draw list. |
@@ -108,6 +109,7 @@ Version 0.1.0. The package's own README ([packages/render](../../packages/render
 | [`createCapsule`](#createcapsule) | function | An upright capsule (a cylinder with hemispherical ends): `height` is the total height. |
 | [`createCylinder`](#createcylinder) | function | An upright cylinder (axis along y, centred on the origin) with capped ends. |
 | [`createDecal`](#createdecal) | function | Make a decal mesh. |
+| [`createDynamicResolution`](#createdynamicresolution) | function | Dynamic resolution: the share of the screen's size the 3D picture is drawn at, kept where the card can manage the frame rate. |
 | [`createGltfMorph`](#creategltfmorph) | function | Make the morph targets of a loaded instance usable: a `MorphTargets` with a mesh of its own (draw `morph.mesh`, for example through the `meshes` map of `addGltfToDrawList`), starting at the weights the file gives. |
 | [`createLighting`](#createlighting) | function | The default lighting of a 3D scene: one directional light, a sky/ground hemisphere of ambient light, fog, and any number of point lights. |
 | [`createLod`](#createlod) | function | Bundle levels of detail. |
@@ -137,6 +139,8 @@ Version 0.1.0. The package's own README ([packages/render](../../packages/render
 | [`filterColor`](#filtercolor) | function | A colour as [r, g, b, a] in 0..1. |
 | [`fitRect`](#fitrect) | function | How to place a `srcW` x `srcH` picture in a `w` x `h` box: `cover` fills the box and crops the picture, `contain` shows all of the picture with bars, `stretch` squeezes it to fit. |
 | [`fromPremultiplied`](#frompremultiplied) | function | Canvas pixel data (RGBA bytes, not premultiplied) from premultiplied float pixels. |
+| [`gpuClass`](#gpuclass) | function | What kind of graphics card a name says it is: `strong` (enough for the highest level), `weak` (integrated, a phone's, or software drawing), or `unknown`. |
+| [`gpuName`](#gpuname) | function | The name of the graphics card in use, if the browser tells: a WebGPU renderer's adapter, else a WebGL context's debug information. |
 | [`graphemes`](#graphemes) | function | Split text into user-perceived characters (a base letter with its accents, an emoji sequence, a Hangul syllable...). |
 | [`humanoidKey`](#humanoidkey) | function | What body part a joint name means, in a form that matches across naming schemes (Mixamo's `mixamorig:LeftUpLeg`, Unity's `LeftUpperLeg`, Blender's `thigh.L`, 3ds Max's `Bip01 L Thigh`, VRM's `J_Bip_L_UpperLeg` all give `upleg.l`). |
 | [`isShaped`](#isshaped) | function | Does this character belong to a script that must be shaped as a word? |
@@ -177,7 +181,9 @@ Version 0.1.0. The package's own README ([packages/render](../../packages/render
 | [`poseToRagdoll`](#posetoragdoll) | function | Start a ragdoll from an animated pose: puts each body where the matching joint of `pose` has its bone (`ragdoll.setBone`), clears the spin and gives every body `velocity` (the speed the character was moving at, so it carries on that way). |
 | [`proceduralSkyEnvironment`](#proceduralskyenvironment) | function | A small cube of the sky for lighting and reflections (hand it to `renderer.setEnvironment`). |
 | [`proceduralTexture`](#proceduraltexture) | function | Make one of the built-in tileable textures. |
+| [`qualityOf`](#qualityof) | function | The settings of a level; anything else is the lightest, so a slow machine never has to find the setting. |
 | [`ragdollSpecFromSkeleton`](#ragdollspecfromskeleton) | function | Fit a ragdoll description to a skeleton: takes `base` (from `humanoidRagdollSpec`, giving the bones, radii, masses and joint types) and moves every bone to where the skeleton's own joints are at rest (a bone runs from its joint to its child's; the head, hands and feet use a fixed length where the skeleton has no joint to end at). |
+| [`reducePost`](#reducepost) | function | A finishing pass (the `post` of `render`) reduced to a level: `high` as it is; `medium` keeps the glow (at most four levels), the colour work, and smooth edges, and drops shading in the creases, reflections, depth of field and heat haze; `low` keeps only the colour work and smooth edges. |
 | [`reorder`](#reorder) | function | Reorder a line (L2): the indices of the characters from left to right on screen, given their levels. |
 | [`resolveBidi`](#resolvebidi) | function | Resolve the directions in a line of text. |
 | [`resolveLocalShadowOptions`](#resolvelocalshadowoptions) | function | Fill in defaults and check ranges. |
@@ -537,6 +543,25 @@ Make a decal mesh.
 **Returns** `import('./mesh.js').Mesh \| null` — `null` if the box holds no surface.
 
 <sub>src/decal.js:56</sub>
+
+### `createDynamicResolution`
+
+```js
+function createDynamicResolution({ target = 60, min = 0.4, step = 0.05, grace = 4 } = {})
+```
+
+Dynamic resolution: the share of the screen's size the 3D picture is drawn at, kept where the card can manage the frame rate. How long a frame takes follows the number of pixels, so the picture
+shrinks by about the square root of how far the frame rate is below the target, grows back slowly when the card keeps up, and waits longer before trying again after a try that failed. Frames of
+the first seconds (loading), of a hidden page and a single long stall do not count against the card.
+Give it the frame rate over the last half second every half second; draw the 3D picture at `renderer.setRenderScale(drs.scale)` and the writing and the controls at the screen's own size.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `o` (optional) | `{target?: number, min?: number, step?: number, grace?: number}` | `target` frames a second to aim for (60), `min` the smallest share (0.4), `step` how much it grows by (0.05), `grace` seconds after starting (or coming back to the page) in which a slow frame rate is put down to loading (4). |
+
+<sub>src/quality.js:49</sub>
 
 ### `createGltfMorph`
 
@@ -1072,6 +1097,42 @@ Canvas pixel data (RGBA bytes, not premultiplied) from premultiplied float pixel
 | `out` (optional) | `Uint8ClampedArray` |  |
 
 <sub>src/filters.js:180</sub>
+
+### `gpuClass`
+
+```js
+function gpuClass(name = '')
+```
+
+What kind of graphics card a name says it is: `strong` (enough for the highest level), `weak` (integrated, a phone's, or software drawing), or `unknown`.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `name` (optional) | `string` |  |
+
+**Returns** `'strong' \| 'weak' \| 'unknown'`
+
+<sub>src/quality.js:82</sub>
+
+### `gpuName`
+
+```js
+function gpuName(renderer)
+```
+
+The name of the graphics card in use, if the browser tells: a WebGPU renderer's adapter, else a WebGL context's debug information.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `renderer` (optional) | `any` |  |
+
+**Returns** `string`
+
+<sub>src/quality.js:89</sub>
 
 ### `graphemes`
 
@@ -1817,6 +1878,22 @@ Make one of the built-in tileable textures. They are bright and fairly neutral, 
 
 <sub>src/textures.js:175</sub>
 
+### `qualityOf`
+
+```js
+function qualityOf(level)
+```
+
+The settings of a level; anything else is the lightest, so a slow machine never has to find the setting.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `level` | `string` |  |
+
+<sub>src/quality.js:22</sub>
+
 ### `ragdollSpecFromSkeleton`
 
 ```js
@@ -1836,6 +1913,26 @@ at rest (a bone runs from its joint to its child's; the head, hands and feet use
 **Returns** `{bones: object[]}` — A new description; `base` is not changed.
 
 <sub>src/ik.js:398</sub>
+
+### `reducePost`
+
+```js
+function reducePost(full, level)
+```
+
+A finishing pass (the `post` of `render`) reduced to a level: `high` as it is; `medium` keeps the glow (at most four levels), the colour work, and smooth edges, and drops shading in the creases,
+reflections, depth of field and heat haze; `low` keeps only the colour work and smooth edges.
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `full` | `any` | the complete pass |
+| `level` | `string` |  |
+
+**Returns** `any`
+
+<sub>src/quality.js:31</sub>
 
 ### `reorder`
 
@@ -5256,6 +5353,19 @@ constructor(canvas, { antialias = true, water = false } = {})
 resize(cssW, cssH, dpr = 1)
 ```
 
+#### `WebGL2Renderer3D.setRenderScale`
+
+```js
+setRenderScale(scale)
+```
+
+Draw the picture with a share of the pixels the screen has (0.25 to 1) and let the browser stretch it over the same area: the way to keep the frame rate on a slow card (see `createDynamicResolution`).
+It applies at once to the size given to `resize`.
+
+| Name | Type | Description |
+|---|---|---|
+| `scale` | `number` |  |
+
 #### `WebGL2Renderer3D.setTextures`
 
 ```js
@@ -5408,6 +5518,19 @@ constructor(canvas, device, context, format, samples)
 ```js
 resize(cssW, cssH, dpr = 1)
 ```
+
+#### `WebGPURenderer3D.setRenderScale`
+
+```js
+setRenderScale(scale)
+```
+
+Draw the picture with a share of the pixels the screen has (0.25 to 1) and let the browser stretch it over the same area: the way to keep the frame rate on a slow card (see `createDynamicResolution`).
+It applies at once to the size given to `resize`.
+
+| Name | Type | Description |
+|---|---|---|
+| `scale` | `number` |  |
 
 #### `WebGPURenderer3D.releaseMesh`
 
@@ -5801,6 +5924,20 @@ Floats per particle: four vec4s.
 Value: `16`
 
 <sub>src/particles.js:6</sub>
+
+### `QUALITY_LEVELS`
+
+```js
+const QUALITY_LEVELS
+```
+
+What each level costs the graphics card. `shadowSize` is the sun's shadow map (0 for none), `pixelRatioCap` the most pixels drawn for a screen pixel, `antialias` multisampling (it can only be chosen
+when the renderer is made), `lights` how many point lights are lit at most, `particles` the share of particles drawn, and `post` the finishing pass: `full`, `glow` (glow, colour and smooth edges) or
+`plain` (colour and smooth edges).
+
+Value: `Object.freeze({`
+
+<sub>src/quality.js:15</sub>
 
 ### `SHADOW_ANGLES`
 

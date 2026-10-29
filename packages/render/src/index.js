@@ -15,6 +15,7 @@ export { DrawList3D, createLighting, MAX_POINT_LIGHTS, nearestLights, INSTANCE3D
 export { WebGPURenderer3D } from './webgpu3d.js';
 export { WebGL2Renderer3D } from './webgl3d.js';
 export { createRenderer3D } from './create3d.js';
+export { QUALITY_LEVELS, qualityOf, reducePost, createDynamicResolution, gpuClass, gpuName } from './quality.js';
 export { MorphTargets, MorphClip, sampleWeights } from './morph.js';
 export { createGltfMorph, parseGltf, loadGltf, loadGltfTextures, loadGltfMaterials, decodeImageInBrowser, addGltfToDrawList } from './gltf.js';
 export { TextureSet, proceduralTexture } from './textures.js';

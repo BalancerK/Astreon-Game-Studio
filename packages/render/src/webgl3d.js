@@ -687,9 +687,21 @@ export class WebGL2Renderer3D {
   }
 
   resize(cssW, cssH, dpr = 1) {
-    this.canvas.width = Math.max(1, Math.round(cssW * dpr));
-    this.canvas.height = Math.max(1, Math.round(cssH * dpr));
-    if (this.canvas.style) { this.canvas.style.width = `${cssW}px`; this.canvas.style.height = `${cssH}px`; }
+    this.cssSize = [cssW, cssH]; this.pixelRatio = dpr;
+    const scale = this.renderScale ?? 1, w = Math.max(1, Math.round(cssW * dpr * scale)), h = Math.max(1, Math.round(cssH * dpr * scale));
+    if (this.canvas.width !== w) this.canvas.width = w;                      // (setting a canvas's size, even to what it is, empties it, and every picture buffer is made again)
+    if (this.canvas.height !== h) this.canvas.height = h;
+    if (this.canvas.style) { const sw = `${cssW}px`, sh = `${cssH}px`; if (this.canvas.style.width !== sw) this.canvas.style.width = sw; if (this.canvas.style.height !== sh) this.canvas.style.height = sh; }
+  }
+
+  /**
+   * Draw the picture with a share of the pixels the screen has (0.25 to 1) and let the browser stretch it over the same area: the way to keep the frame rate on a slow card (see `createDynamicResolution`).
+   * It applies at once to the size given to `resize`.
+   * @param {number} scale
+   */
+  setRenderScale(scale) {
+    this.renderScale = Math.min(1, Math.max(0.25, Number(scale) || 1));
+    if (this.cssSize) this.resize(this.cssSize[0], this.cssSize[1], this.pixelRatio);
   }
 
   #gpuMesh(mesh) {

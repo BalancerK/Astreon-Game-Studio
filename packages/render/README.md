@@ -403,6 +403,25 @@ tv.update(); screen.update();                      // do nothing while the video
 - **Underneath:** `TextureSet.update(layer, image)` replaces any layer's pixels (rebuilding its mips in place, allocating nothing; each layer has its own `version` that both renderers check), so painted-on screens and damaged decals work the same way; `Atlas.redraw(name, draw)` clears and repaints a sprite's rectangle.
 - **Not done:** playback control and sound (the element is yours: starting it, seeking, volume), decoding files without an element (WebCodecs), a partial upload for 2D (the whole atlas page goes up each frame), and video in a compressed texture set.
 
+### Running on a slow graphics card: quality levels, render scale and dynamic resolution
+A game that must run on integrated graphics needs the same few rules, so they are here.
+```js
+import { createRenderer3D, qualityOf, reducePost, createDynamicResolution, gpuClass, gpuName } from '@engine/render';
+
+const q = qualityOf('low');                                // { shadowSize: 1024, pixelRatioCap: 1, antialias: false, lights: 6, particles: 0.7, post: 'plain' }
+const renderer = await createRenderer3D({ antialias: q.antialias });       // multisampling can only be chosen here
+const drs = createDynamicResolution();                     // aims for 60 frames a second
+// every half second, with the frame rate over that time and the slowest frame in it:
+if (drs.update(fps, worstFrameMs, performance.now() / 1000)) renderer.setRenderScale(drs.scale);
+renderer.render({ camera, list, shadows: { size: q.shadowSize }, post: reducePost(fullPost, 'low') });
+```
+- `QUALITY_LEVELS` / `qualityOf(level)`: what `low`, `medium` and `high` cost (shadow map, most pixels per screen pixel, multisampling, lights, share of particles, which finishing pass); anything else is `low`.
+- `reducePost(post, level)`: `high` keeps the pass; `medium` drops shading in the creases, reflections, depth of field and haze (keeps glow and colour); `low` keeps only the colour work and FXAA.
+- `renderer.setRenderScale(0.25 to 1)`: draw with that share of the pixels the screen has and let the browser stretch it (it applies to the size given to `resize`; the 2D and HUD layers on top stay sharp).
+- `createDynamicResolution({ target, min, step, grace })`: the share of the screen's size that keeps the frame rate. The picture shrinks by about the square root of how far the frame rate is below the target, grows back slowly, tries again less and less often after a try that failed, and ignores loading, a hidden page and a single long stall (`pause(seconds)` says the page was hidden).
+- `gpuClass(name)` (`strong`, `weak` or `unknown`) and `gpuName(renderer)` guess how strong the card is, to choose a first level or to say that better pictures are possible.
+- `renderer.resize` does nothing when the size has not changed: setting a canvas's size, even to what it is, empties it and every picture buffer is made again (a lobby that asked every few seconds stuttered).
+
 ### Drawing less
 Three ways to make a big scene cheaper without changing how it looks (or, for levels of detail, changing it only where nobody can tell).
 

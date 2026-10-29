@@ -33,9 +33,10 @@ export class Canvas2DRenderer {
 
   resize(cssW, cssH, dpr = 1) {
     this.dpr = dpr;
-    this.canvas.width = Math.max(1, Math.round(cssW * dpr));
-    this.canvas.height = Math.max(1, Math.round(cssH * dpr));
-    if (this.canvas.style) { this.canvas.style.width = `${cssW}px`; this.canvas.style.height = `${cssH}px`; }
+    const w = Math.max(1, Math.round(cssW * dpr)), h = Math.max(1, Math.round(cssH * dpr));
+    if (this.canvas.width !== w) this.canvas.width = w;                      // (setting a canvas's size, even to what it is, empties it, and a 3D renderer makes its picture buffers again)
+    if (this.canvas.height !== h) this.canvas.height = h;
+    if (this.canvas.style) { const sw = `${cssW}px`, sh = `${cssH}px`; if (this.canvas.style.width !== sw) this.canvas.style.width = sw; if (this.canvas.style.height !== sh) this.canvas.style.height = sh; }
   }
 
   /**
