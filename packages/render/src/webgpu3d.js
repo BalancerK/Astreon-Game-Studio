@@ -724,7 +724,7 @@ export class WebGPURenderer3D {
       vertex: { module, entryPoint: 'vsSky' },
       fragment: { module, entryPoint: 'fsSky', targets: [{ format }] },
       primitive: { topology: 'triangle-list', cullMode: 'none' },
-      depthStencil: { format: 'depth24plus', depthWriteEnabled: false, depthCompare: 'always' },
+      depthStencil: { format: 'depth24plus', depthWriteEnabled: false, depthCompare: 'less-equal' },       // (drawn at the far plane after the solid things: only worked out where nothing is in front)
       multisample: { count: samples },
     });
     this.skyProcPipeline = device.createRenderPipeline({
@@ -732,7 +732,7 @@ export class WebGPURenderer3D {
       vertex: { module, entryPoint: 'vsSky' },
       fragment: { module, entryPoint: 'fsSkyProc', targets: [{ format }] },
       primitive: { topology: 'triangle-list', cullMode: 'none' },
-      depthStencil: { format: 'depth24plus', depthWriteEnabled: false, depthCompare: 'always' },
+      depthStencil: { format: 'depth24plus', depthWriteEnabled: false, depthCompare: 'less-equal' },
       multisample: { count: samples },
     });
     this.skyProcBindGroup = null;
@@ -1131,18 +1131,6 @@ export class WebGPURenderer3D {
       }],
       depthStencilAttachment: { view: this.depthTexture.createView(), depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: post && this.post.options.needsDepth ? 'store' : 'discard' }, // ambient occlusion and depth of field read it
     });
-    if (this.envState.proceduralSky) {
-      this.skyProcBindGroup ??= device.createBindGroup({ layout: this.skyProcPipeline.getBindGroupLayout(0), entries: [{ binding: 6, resource: { buffer: this.materialBuffer } }] });
-      pass.setPipeline(this.skyProcPipeline);
-      pass.setBindGroup(0, this.skyProcBindGroup);
-      pass.draw(3);
-    } else if (this.envState.sky) {                                       // first, so that everything else (blended surfaces too) is drawn over it
-      this.skyBindGroup ??= device.createBindGroup({ layout: this.skyPipeline.getBindGroupLayout(0), entries: [
-        { binding: 6, resource: { buffer: this.materialBuffer } }, { binding: 7, resource: this.envView }, { binding: 8, resource: this.envSampler }] });
-      pass.setPipeline(this.skyPipeline);
-      pass.setBindGroup(0, this.skyBindGroup);
-      pass.draw(3);
-    }
     if (draws.length > 0) {
       pass.setPipeline(this.pipeline);
       pass.setBindGroup(0, this.bindGroup);
@@ -1165,6 +1153,19 @@ export class WebGPURenderer3D {
         pass.setIndexBuffer(d.gpu.ib, 'uint32');
         pass.drawIndexed(d.gpu.indexCount, d.count, 0, 0, d.first);
       }
+    }
+    // the sky, after the solid things and before the translucent ones (see the note in webgl3d.js)
+    if (this.envState.proceduralSky) {
+      this.skyProcBindGroup ??= device.createBindGroup({ layout: this.skyProcPipeline.getBindGroupLayout(0), entries: [{ binding: 6, resource: { buffer: this.materialBuffer } }] });
+      pass.setPipeline(this.skyProcPipeline);
+      pass.setBindGroup(0, this.skyProcBindGroup);
+      pass.draw(3);
+    } else if (this.envState.sky) {
+      this.skyBindGroup ??= device.createBindGroup({ layout: this.skyPipeline.getBindGroupLayout(0), entries: [
+        { binding: 6, resource: { buffer: this.materialBuffer } }, { binding: 7, resource: this.envView }, { binding: 8, resource: this.envSampler }] });
+      pass.setPipeline(this.skyPipeline);
+      pass.setBindGroup(0, this.skyBindGroup);
+      pass.draw(3);
     }
     if (post && this.post.options.ssr && this.post.options.ssr.glass > 0 && list.reflective.size > 0) {                // the reflective surfaces are marked in the alpha of the picture: the same instances again, writing nothing but the alpha (0)
       const marked = draws.filter((d) => list.reflective.has(d.mesh));

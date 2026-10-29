@@ -479,7 +479,7 @@ out vec2 v_ndc;
 void main() {
   vec2 p = vec2(gl_VertexID == 1 ? 3.0 : -1.0, gl_VertexID == 2 ? 3.0 : -1.0);
   v_ndc = p;
-  gl_Position = vec4(p, 0.0, 1.0);
+  gl_Position = vec4(p, 1.0, 1.0);                                   // at the far plane: drawn after the solid scene, it is only worked out where nothing is in front of it
 }`;
 const FRAG_SKY = `#version 300 es
 precision highp float;
@@ -1089,22 +1089,6 @@ export class WebGL2Renderer3D {
     gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.envTexture); // and the environment from unit 3
     gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.localTexture); // and the maps of point and spot lights from unit 4
     gl.activeTexture(gl.TEXTURE0);
-    if (this.envState.proceduralSky) {
-      gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
-      gl.useProgram(this.skyProcProg);
-      gl.bindVertexArray(this.skyVao);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      gl.bindVertexArray(null);
-      gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.enable(gl.BLEND);
-    } else if (this.envState.sky) {                                       // first, so that everything else (blended surfaces too) is drawn over it
-      gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
-      gl.useProgram(this.skyProg);
-      gl.uniform1i(this.skyEnvLoc, 3);
-      gl.bindVertexArray(this.skyVao);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      gl.bindVertexArray(null);
-      gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.enable(gl.BLEND);
-    }
     if (plain.length > 0) {
       gl.useProgram(this.prog);
       gl.uniform1i(this.shadowLoc, 1);
@@ -1122,6 +1106,23 @@ export class WebGL2Renderer3D {
       gl.uniform1i(this.skinTexLoc, 2);
       gl.uniform1i(this.skinEnvLoc, 3);
       this.#drawAll(skinned, true);
+    }
+    // the sky, after the solid things and before the translucent ones: the depth test keeps it from being worked out behind them (it was the most costly thing on the screen, and was drawn over all of it)
+    if (this.envState.proceduralSky) {
+      gl.depthFunc(gl.LEQUAL); gl.depthMask(false); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
+      gl.useProgram(this.skyProcProg);
+      gl.bindVertexArray(this.skyVao);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.bindVertexArray(null);
+      gl.depthFunc(gl.LESS); gl.depthMask(true); gl.enable(gl.CULL_FACE); gl.enable(gl.BLEND);
+    } else if (this.envState.sky) {
+      gl.depthFunc(gl.LEQUAL); gl.depthMask(false); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
+      gl.useProgram(this.skyProg);
+      gl.uniform1i(this.skyEnvLoc, 3);
+      gl.bindVertexArray(this.skyVao);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.bindVertexArray(null);
+      gl.depthFunc(gl.LESS); gl.depthMask(true); gl.enable(gl.CULL_FACE); gl.enable(gl.BLEND);
     }
     if (post && this.post?.options?.ssr?.glass > 0 && list.reflective.size > 0) {                // the reflective surfaces are marked in the alpha of the picture: the same instances again, writing nothing but the alpha (0)
       const marked = plain.filter((d) => list.reflective.has(d.mesh));
