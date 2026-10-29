@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/testkit · Astreon Engine</title>
+<meta name="description" content="Test a game in a real browser from a script: drive headless Chrome, time frames, check the built pages; never leaves a browser running.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a><h4>Other</h4><a href="testkit.html" class="on">testkit</a></nav><main><article><h1 id="enginetestkit">@engine/testkit</h1>
+<p>Test a game in a real browser from a script: drive headless Chrome, time frames, check the built pages; never leaves a browser running.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/testkit</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/testkit.html">packages/testkit</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-11-of-11-documented">Contents (11 of 11 documented)<a class="anchor" href="#contents-11-of-11-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#cpu_render_args"><code>CPU_RENDER_ARGS</code></a></td><td>constant</td><td>Chrome flags that draw on the CPU (a software graphics card).</td></tr><tr><td><a href="#unthrottled_args"><code>UNTHROTTLED_ARGS</code></a></td><td>constant</td><td>Chrome flags that stop the display's pace from capping the frame rate, so a frame's cost can be read from how many there are.</td></tr><tr><td><a href="#builtsmoke"><code>builtSmoke</code></a></td><td>function</td><td>Build a project the way it ships, serve it and open each page in headless Chrome, collecting what goes wrong.</td></tr><tr><td><a href="#findbrowser"><code>findBrowser</code></a></td><td>function</td><td>The path of an installed browser (<code>CHROME_PATH</code> / <code>FIREFOX_PATH</code> first, then the usual places), or undefined.</td></tr><tr><td><a href="#findchrome"><code>findChrome</code></a></td><td>function</td><td>The path of an installed Chrome (or Edge), or undefined.</td></tr><tr><td><a href="#guardbrowser"><code>guardBrowser</code></a></td><td>function</td><td>Watch over a browser a test has started.</td></tr><tr><td><a href="#killprofile"><code>killProfile</code></a></td><td>function</td><td>End every process that was started with this profile folder, and wait until none is left (up to a few seconds).</td></tr><tr><td><a href="#killtree"><code>killTree</code></a></td><td>function</td><td>End a process and everything it started, when its number is known to be right.</td></tr><tr><td><a href="#measureframes"><code>measureFrames</code></a></td><td>function</td><td>The average time of a page's animation frames over <code>seconds</code>, after <code>warmSeconds</code> (a page that compiles big shaders needs a long warm-up on a slow renderer: 45 s for a software one).</td></tr><tr><td><a href="#processesofprofile"><code>processesOfProfile</code></a></td><td>function</td><td>The numbers of the processes that were started with this profile folder on their command line.</td></tr><tr><td><a href="#withchromepage"><code>withChromePage</code></a></td><td>function</td><td>Open a page in headless Chrome and hand a controller to <code>fn</code>.</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="builtsmoke"><code>builtSmoke</code><a class="anchor" href="#builtsmoke" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">builtSmoke</span>(root, { pages, wait = <span class="tk-n">5</span>, allow = [<span class="tk-s">'favicon'</span>], args = [] } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Build a project the way it ships, serve it and open each page in headless Chrome, collecting what goes wrong.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>root</code></td><td><code>string</code></td><td>the project folder (its <code>engine.config.json</code> says how it is built)</td></tr><tr><td><code>o</code> (optional)</td><td><code>{pages?: string[], wait?: number, allow?: string[], args?: string[]}</code></td><td><code>pages</code> default to the config's; <code>wait</code> seconds on each page (5); <code>allow</code> texts of messages that are expected (default <code>favicon</code>): a missing icon, a game server that is not running; <code>args</code> more Chrome flags</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Promise&lt;{ok: boolean, results: Array&lt;{page: string, problems: string[]}&gt;}&gt;</code></p>
+<p><sub>src/smoke.js:18</sub></p>
+<h3 id="findbrowser"><code>findBrowser</code><a class="anchor" href="#findbrowser" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">findBrowser</span>(browser = <span class="tk-s">'chrome'</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The path of an installed browser (<code>CHROME_PATH</code> / <code>FIREFOX_PATH</code> first, then the usual places), or undefined.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>browser</code> (optional)</td><td><code>'chrome' | 'firefox'</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>string \| undefined</code></p>
+<p><sub>src/browser.js:21</sub></p>
+<h3 id="findchrome"><code>findChrome</code><a class="anchor" href="#findchrome" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">findChrome</span>()</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The path of an installed Chrome (or Edge), or undefined.</p>
+<p><strong>Returns</strong> <code>string \| undefined</code></p>
+<p><sub>src/browser.js:23</sub></p>
+<h3 id="guardbrowser"><code>guardBrowser</code><a class="anchor" href="#guardbrowser" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">guardBrowser</span>(proc, profile)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Watch over a browser a test has started.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>proc</code></td><td><code>import('node:child_process').ChildProcess</code></td><td>what <code>spawn</code> gave back (it may only be a launcher: the profile is what finds the browser)</td></tr><tr><td><code>profile</code> (optional)</td><td><code>string</code></td><td>the browser's profile folder (a fresh one for this run)</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{stop: () =&gt; void}</code></p>
+<p><sub>src/guard.js:89</sub></p>
+<h3 id="killprofile"><code>killProfile</code><a class="anchor" href="#killprofile" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">killProfile</span>(profile)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>End every process that was started with this profile folder, and wait until none is left (up to a few seconds). Returns how many it ended.</p>
+<p><sub>src/guard.js:32</sub></p>
+<h3 id="killtree"><code>killTree</code><a class="anchor" href="#killtree" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">killTree</span>(pid)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>End a process and everything it started, when its number is known to be right.</p>
+<p><sub>src/guard.js:44</sub></p>
+<h3 id="measureframes"><code>measureFrames</code><a class="anchor" href="#measureframes" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">measureFrames</span>(page, { seconds = <span class="tk-n">10</span>, warmSeconds = <span class="tk-n">0</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The average time of a page's animation frames over <code>seconds</code>, after <code>warmSeconds</code> (a page that compiles big shaders needs a long warm-up on a slow renderer: 45 s for a software one).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>page</code></td><td><code>{eval: (expression: string) =&gt; Promise&lt;any&gt;}</code></td><td>from <code>withChromePage</code></td></tr><tr><td><code>o</code> (optional)</td><td><code>{seconds?: number, warmSeconds?: number}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Promise&lt;{frames: number, ms: number, fps: number}&gt;</code></p>
+<p><sub>src/frames.js:20</sub></p>
+<h3 id="processesofprofile"><code>processesOfProfile</code><a class="anchor" href="#processesofprofile" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">processesOfProfile</span>(profile)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The numbers of the processes that were started with this profile folder on their command line.</p>
+<p><sub>src/guard.js:21</sub></p>
+<h3 id="withchromepage"><code>withChromePage</code><a class="anchor" href="#withchromepage" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">withChromePage</span>(url, fn, { width = <span class="tk-n">1400</span>, height = <span class="tk-n">800</span>, args = [] } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Open a page in headless Chrome and hand a controller to <code>fn</code>. Controller: <code>eval(expr)</code>, <code>key(code, down|up)</code>, <code>type(text)</code>, <code>mouse(type, x, y, options)</code>, <code>touch(type, points)</code>, <code>screenshot()</code> -&gt; PNG Buffer, <code>waitFor(expr, ms)</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>url</code></td><td><code>string</code></td><td></td></tr><tr><td><code>fn</code></td><td><code>(page: any) =&gt; Promise&lt;T&gt;</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{width?: number, height?: number, args?: string[]}</code></td><td><code>args</code> are more command line flags for Chrome (for example <code>--disable-gpu-vsync</code>, to time frames without the display's pace)</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Promise&lt;T&gt;</code></p>
+<p><sub>src/chrome.js:22</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="cpu_render_args"><code>CPU_RENDER_ARGS</code><a class="anchor" href="#cpu_render_args" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> CPU_RENDER_ARGS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Chrome flags that draw on the CPU (a software graphics card). It is far slower than any real card and balances work differently (it has no early depth test, for one), so it cannot say how fast a game runs on a given card; it does show what scales with the picture (pixels, passes), and by how much, on a machine with no slow card to hand.</p>
+<p>Value: <code>Object.freeze(['--use-angle=swiftshader', '--use-gl=angle'])</code></p>
+<p><sub>src/frames.js:10</sub></p>
+<h3 id="unthrottled_args"><code>UNTHROTTLED_ARGS</code><a class="anchor" href="#unthrottled_args" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> UNTHROTTLED_ARGS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Chrome flags that stop the display's pace from capping the frame rate, so a frame's cost can be read from how many there are.</p>
+<p>Value: <code>Object.freeze(['--disable-gpu-vsync', '--disable-frame-rate-limit'])</code></p>
+<p><sub>src/frames.js:4</sub></p><div class="pager"><a href="turns.html"><small>Previous</small>turns</a><span></span></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-11-of-11-documented">Contents (11 of 11 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#builtsmoke">builtSmoke</a><a class="l3" href="#findbrowser">findBrowser</a><a class="l3" href="#findchrome">findChrome</a><a class="l3" href="#guardbrowser">guardBrowser</a><a class="l3" href="#killprofile">killProfile</a><a class="l3" href="#killtree">killTree</a><a class="l3" href="#measureframes">measureFrames</a><a class="l3" href="#processesofprofile">processesOfProfile</a><a class="l3" href="#withchromepage">withChromePage</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#cpu_render_args">CPU_RENDER_ARGS</a><a class="l3" href="#unthrottled_args">UNTHROTTLED_ARGS</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

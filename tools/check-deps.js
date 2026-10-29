@@ -38,6 +38,7 @@ export const ALLOWED = {
   save: [],
   assets: [],
   build: [],
+  testkit: ['build'],
   matchmaking: [],
   persist: [],
   turns: ['matchmaking', 'transport'],

@@ -8,25 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { createStaticServer } from './static-server.js';
 import { guardBrowser } from './browser-guard.js';
 
-const PATHS = {
-  chrome: [
-    process.env.CHROME_PATH,
-    'C:/Program Files/Google/Chrome/Application/chrome.exe',
-    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-    '/usr/bin/google-chrome', '/usr/bin/chromium', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  ],
-  firefox: [
-    process.env.FIREFOX_PATH,
-    'C:/Program Files/Mozilla Firefox/firefox.exe',
-    'C:/Program Files (x86)/Mozilla Firefox/firefox.exe',
-    '/usr/bin/firefox', '/Applications/Firefox.app/Contents/MacOS/firefox',
-  ],
-};
-
-/** @param {'chrome' | 'firefox'} browser @returns {string | undefined} */
-export const findBrowser = (browser = 'chrome') => PATHS[browser].filter(Boolean).find((p) => existsSync(p));
-export const findChrome = () => findBrowser('chrome');
+import { findBrowser, findChrome } from '../packages/testkit/src/browser.js';
+export { findBrowser, findChrome };
 
 /**
  * @param {string} pagePath
