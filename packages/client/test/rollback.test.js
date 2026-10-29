@@ -235,3 +235,35 @@ test('with a server deciding every input, even the first frames are not taken as
   s.addLocalInput(0); s.advance();
   assert.equal(s.used[1].get(0), 1, 'frame 0 was played again with what the server said');
 });
+
+test('with peers, an input is given once for each frame: asking again while the session could not move gives the same frame and keeps the first input, so the lead does not grow while waiting', () => {
+  const s = new RollbackSession({ players: 2, local: 0, init, step, checksum, blank: 0, inputDelay: 1, maxRollback: 3 });
+  const given = [];
+  for (let t = 0; t < 12; t++) { given.push(s.addLocalInput(t + 1)); s.advance(); }          // nothing ever arrives from player 1: after three frames ahead it waits
+  assert.ok(s.frame < 12, `it waited at frame ${s.frame}`);
+  const stuck = given.slice(s.frame);
+  assert.ok(stuck.length > 4 && new Set(stuck).size === 1, `the frame stays ${stuck[0]} while waiting: ${stuck}`);
+  assert.equal(given[s.frame], stuck[0]);
+  assert.equal(s.known[0].get(stuck[0]), s.frame + 1, 'the first input given for that frame is the one kept');
+  assert.equal(stuck[0], s.frame + 1, 'the lead is still the delay (1 frame) plus the tick it waited in');
+});
+
+test('with a server deciding, the lead of the local inputs follows the delay down as well as up, and a command given again for the same frame replaces the old one', () => {
+  const s = new RollbackSession({ players: 2, local: 0, init, step, checksum, blank: 0, inputDelay: 8, assumeBlank: false, serverDecides: true, maxRollback: 90 });
+  for (let t = 0; t < 10; t++) { assert.equal(s.addLocalInput(1), s.frame + 8); s.advance(); }
+  s.inputDelay = 0;                                                                            // the connection turned out to be good
+  assert.equal(s.addLocalInput(7), s.frame, 'the next command is for the present frame, not eight frames on');
+  assert.equal(s.known[0].get(s.frame), 7);
+  assert.equal(s.addLocalInput(9), s.frame, 'given again before the session moved: the same frame');
+  assert.equal(s.known[0].get(s.frame), 9, 'the newest command replaces the old one');
+  s.advance();
+  s.inputDelay = 3;
+  assert.equal(s.addLocalInput(2), s.frame + 3, 'and up again');
+  s.setInput(0, s.frame + 6, 5);                                                              // the server decided some frames ahead of this machine (it has joined late, and is catching up)
+  s.inputDelay = 0;
+  assert.equal(s.addLocalInput(1), s.frame + 7, 'a command is never for a frame the server has already decided: it would only be late');
+  const peers = new RollbackSession({ players: 2, local: 0, init, step, checksum, blank: 0, inputDelay: 8, maxRollback: 90 });
+  for (let t = 0; t < 10; t++) { peers.addLocalInput(1); peers.advance(); }
+  peers.inputDelay = 0;
+  assert.equal(peers.addLocalInput(7), peers.frame + 8, 'with peers a lead that grew stays: what was sent cannot be taken back');
+});

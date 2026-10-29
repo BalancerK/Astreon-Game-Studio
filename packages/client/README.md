@@ -59,7 +59,8 @@ for (const m of received) session.addRemoteInput(m.player, m.frame, m.input);   
 session.advance();                                        // false when it has to wait (maxRollback frames ahead of what is confirmed)
 draw(session.state);
 ```
-- `inputDelay` takes the local input a few frames late, which gives the other player time to answer and so means fewer rollbacks (the tests show it).
+- `inputDelay` takes the local input a few frames late, which gives the other player time to answer and so means fewer rollbacks (the tests show it). Call `addLocalInput` once for each `advance`: if `advance` was waiting, calling again gives the same frame (it used to give one further on, so every wait made the lead longer for good).
+- `serverDecides: true` is for a server that has the last word on every input, this machine's own included: a command may be given again for the same frame (send the newest), and the lead follows `inputDelay` down as well as up (with peers each frame's input is given once, so a lead that grew cannot shrink). It is never for a frame the server has already decided.
 - `confirmed()` is the newest state that can never change and its checksum; send `{frame, checksum}` and give what you receive to `report(frame, theirChecksum)`: it returns `false` and sets `session.desync` the moment the two machines stop agreeing.
 - `stats` counts rollbacks, frames simulated again, the longest rollback and stalls. Old snapshots and inputs are forgotten, so a long game does not grow.
 - Two machines with a delay between them end up, for every confirmed frame, in exactly the state of the same game run on one machine (the tests check this, with even and uneven delays).

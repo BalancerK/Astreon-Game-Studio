@@ -247,6 +247,7 @@ addLocalInput(input)
 ```
 
 Give this machine's input for now. It will take effect `inputDelay` frames from the current one. Send the returned frame and the input to the other players.
+Call it once for each `advance`. If `advance` could not move (it was waiting), calling again before it does gives the same frame: with peers the first input for it is kept (they already have it), with `serverDecides` the new one replaces it (send it again).
 
 | Name | Type | Description |
 |---|---|---|
@@ -338,7 +339,7 @@ Compare what another player says the state was at a confirmed frame with ours. W
 
 **Returns** `boolean` — true when they agree (or the frame is too old to check)
 
-<sub>src/rollback.js:37</sub>
+<sub>src/rollback.js:38</sub>
 
 ## Types
 
@@ -363,6 +364,7 @@ Type: `Object`
 | `inputDelay` (optional) | `number` | Local inputs take effect this many frames late, which gives the other player time to receive them and so means fewer rollbacks. Default 0. |
 | `blank` (optional) | `any` | The input that means "nothing pressed", used for the first frames and before anything is known. Default `null`. |
 | `assumeBlank` (optional) | `boolean` | Treat the first `inputDelay` frames as known (blank) for every player. Default true; pass false when a server decides every input, including those of the first frames. |
+| `serverDecides` (optional) | `boolean` | A server has the last word on every input, this machine's own included: a command may be given again for a frame it was already given for (the newest is the one to send), so the lead of the local inputs over the present frame follows `inputDelay` both ways (but is never for a frame the server has already decided: `setInput` for this machine's own seat moves that line). Default false (peers: each frame's input is given once, so a lead that grew can never shrink). |
 | `guess` (optional) | `(last: any) => any` | Guesses an input that has not arrived from the last one that did. Default: the same again. |
 | `checksum` (optional) | `(state: any) => number` | A number that says what a state is, to find players that disagree. |
 | `startFrame` (optional) | `number` | The frame `init` gives the state of (default 0): a player who joins a game that is already going starts from the state they were sent, at the frame it was. |

@@ -25,6 +25,7 @@
  * @property {number} [inputDelay] Local inputs take effect this many frames late, which gives the other player time to receive them and so means fewer rollbacks. Default 0.
  * @property {any} [blank] The input that means "nothing pressed", used for the first frames and before anything is known. Default `null`.
  * @property {boolean} [assumeBlank] Treat the first `inputDelay` frames as known (blank) for every player. Default true; pass false when a server decides every input, including those of the first frames.
+ * @property {boolean} [serverDecides] A server has the last word on every input, this machine's own included: a command may be given again for a frame it was already given for (the newest is the one to send), so the lead of the local inputs over the present frame follows `inputDelay` both ways (but is never for a frame the server has already decided: `setInput` for this machine's own seat moves that line). Default false (peers: each frame's input is given once, so a lead that grew can never shrink).
  * @property {(last: any) => any} [guess] Guesses an input that has not arrived from the last one that did. Default: the same again.
  * @property {(state: any) => number} [checksum] A number that says what a state is, to find players that disagree.
  * @property {number} [startFrame] The frame `init` gives the state of (default 0): a player who joins a game that is already going starts from the state they were sent, at the frame it was.
@@ -48,6 +49,7 @@ export class RollbackSession {
     this.clone = o.clone ?? ((s) => structuredClone(s));
     this.maxRollback = o.maxRollback ?? 8;
     this.inputDelay = o.inputDelay ?? 0;
+    this.serverDecides = !!o.serverDecides;
     this.blank = o.blank ?? null;
     this.guess = o.guess ?? ((last) => last);
     this.checksumFn = o.checksum ?? null;
@@ -76,13 +78,21 @@ export class RollbackSession {
 
   /**
    * Give this machine's input for now. It will take effect `inputDelay` frames from the current one. Send the returned frame and the input to the other players.
+   * Call it once for each `advance`. If `advance` could not move (it was waiting), calling again before it does gives the same frame: with peers the first input for it is kept (they already have it), with `serverDecides` the new one replaces it (send it again).
    * @param {any} input
    * @returns {number} The frame the input is for.
    */
   addLocalInput(input) {
+    if (this.serverDecides) {                                           // the server takes the newest: the lead is the delay, whatever it was before, but never a frame the server has already decided (a command for it would only be late)
+      const frame = Math.max(this.frame + this.inputDelay, this.nextLocal);
+      this.known[this.local].set(frame, input);
+      return frame;
+    }
+    if (this.givenAt === this.frame) return this.givenFrame;           // not moved since the last time: the same frame again, not one further on (that would grow the lead for good)
     const frame = Math.max(this.nextLocal, this.frame + this.inputDelay);
     this.known[this.local].set(frame, input);
     this.nextLocal = frame + 1;
+    this.givenAt = this.frame; this.givenFrame = frame;
     return frame;
   }
 
