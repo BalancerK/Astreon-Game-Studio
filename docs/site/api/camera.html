@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/camera · Astreon Engine</title>
+<meta name="description" content="The feel of a 3D view: a follow camera with wall pull-in and shoulder switch, a spring kick, trauma shake, a wider view at speed, and hit-stop.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a><h4>Other</h4><a href="camera.html" class="on">camera</a><a href="match.html">match</a><a href="testkit.html">testkit</a></nav><main><article><h1 id="enginecamera">@engine/camera</h1>
+<p>The feel of a 3D view: a follow camera with wall pull-in and shoulder switch, a spring kick, trauma shake, a wider view at speed, and hit-stop.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/camera</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/camera.html">packages/camera</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-12-of-12-documented">Contents (12 of 12 documented)<a class="anchor" href="#contents-12-of-12-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#damping"><code>DAMPING</code></a></td><td>constant</td><td>How much of its speed the spring loses each second (see <code>STIFFNESS</code>).</td></tr><tr><td><a href="#max_angle"><code>MAX_ANGLE</code></a></td><td>constant</td><td>The most the view can be turned or rolled by, in radians.</td></tr><tr><td><a href="#max_dip"><code>MAX_DIP</code></a></td><td>constant</td><td>The most the view can dip, in body sizes (a game multiplies <code>dip</code> by the size of what the camera is on).</td></tr><tr><td><a href="#stiffness"><code>STIFFNESS</code></a></td><td>constant</td><td>How stiff the spring is (per second squared) and how much of its speed it loses (per second): a damping ratio of 0.58, so it overshoots once and settles in about half a second.</td></tr><tr><td><a href="#createfollowrig"><code>createFollowRig</code></a></td><td>function</td><td>Make the state of a follow camera (see <code>stepFollowRig</code>).</td></tr><tr><td><a href="#createhitstop"><code>createHitStop</code></a></td><td>function</td><td>Hit-stop and punch.</td></tr><tr><td><a href="#createkick"><code>createKick</code></a></td><td>function</td><td>A resting camera: pitch, yaw and roll (radians) and dip (in body sizes, downward), each with its speed.</td></tr><tr><td><a href="#kick"><code>kick</code></a></td><td>function</td><td>Push the camera: <code>pitch</code> (positive tips the view up), <code>yaw</code> (positive turns it right), <code>roll</code> and <code>dip</code> are the speeds given to each (about 14 times the most it will swing).</td></tr><tr><td><a href="#rushfov"><code>rushFov</code></a></td><td>function</td><td>A wider field of view the faster you go: the factor to multiply the field of view by, 1 up to <code>from</code> times top speed, then up to <code>1 + widen</code> at <code>from + over</code> times it.</td></tr><tr><td><a href="#stepfollowrig"><code>stepFollowRig</code></a></td><td>function</td><td>Move the camera for one frame.</td></tr><tr><td><a href="#stepkick"><code>stepKick</code></a></td><td>function</td><td>One step of <code>dt</code> seconds (in small slices, so a slow frame does not make it unstable).</td></tr><tr><td><a href="#traumashake"><code>traumaShake</code></a></td><td>function</td><td>The camera shake of a given trauma (0 to 1), as offsets to add to the camera's position and roll.</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="createfollowrig"><code>createFollowRig</code><a class="anchor" href="#createfollowrig" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createFollowRig</span>({ minDistance = <span class="tk-n">2</span>, margin = <span class="tk-n">1.5</span>, pullIn = <span class="tk-n">18</span>, pullOut = <span class="tk-n">6</span>, sideEase = <span class="tk-n">9</span>, clearance = <span class="tk-n">1.5</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Make the state of a follow camera (see <code>stepFollowRig</code>).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>{minDistance?: number, margin?: number, pullIn?: number, pullOut?: number, sideEase?: number, clearance?: number}</code></td><td><code>minDistance</code> the closest it will come (2), <code>margin</code> how far in front of a wall it stays (1.5), <code>pullIn</code> / <code>pullOut</code> how fast it comes in when blocked and goes out when clear, per second (18 and 6), <code>sideEase</code> how fast it changes shoulder (9), <code>clearance</code> the least height above the ground (1.5)</td></tr></tbody></table></div>
+<p><sub>src/follow.js:18</sub></p>
+<h3 id="createhitstop"><code>createHitStop</code><a class="anchor" href="#createhitstop" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createHitStop</span>({ decay = <span class="tk-n">0.5</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Hit-stop and punch. A heavy blow freezes the game for a few ticks (<code>freeze</code>) and pulls the view in for a moment (<code>punch</code>, which fades). In the game loop, for each fixed tick ask <code>skip()</code>: while it says true, do not step the simulation (and draw without moving things).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>{decay?: number}</code></td><td><code>decay</code> how much punch is lost each second (0.5)</td></tr></tbody></table></div>
+<p><sub>src/feel.js:28</sub></p>
+<h3 id="createkick"><code>createKick</code><a class="anchor" href="#createkick" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createKick</span>(spring = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A resting camera: pitch, yaw and roll (radians) and dip (in body sizes, downward), each with its speed.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>spring</code> (optional)</td><td><code>{stiffness?: number, damping?: number, maxAngle?: number, maxDip?: number}</code></td><td>another spring than the default</td></tr></tbody></table></div>
+<p><sub>src/kick.js:24</sub></p>
+<h3 id="kick"><code>kick</code><a class="anchor" href="#kick" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">kick</span>(k, { pitch = <span class="tk-n">0</span>, yaw = <span class="tk-n">0</span>, roll = <span class="tk-n">0</span>, dip = <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Push the camera: <code>pitch</code> (positive tips the view up), <code>yaw</code> (positive turns it right), <code>roll</code> and <code>dip</code> are the speeds given to each (about 14 times the most it will swing).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>k</code></td><td><code>ReturnType&lt;typeof createKick&gt;</code></td><td></td></tr><tr><td><code>push</code></td><td><code>{pitch?: number, yaw?: number, roll?: number, dip?: number}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>ReturnType&lt;typeof createKick&gt;</code></p>
+<p><sub>src/kick.js:32</sub></p>
+<h3 id="rushfov"><code>rushFov</code><a class="anchor" href="#rushfov" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">rushFov</span>(speed, topSpeed, { widen = <span class="tk-n">0.32</span>, <span class="tk-k">from</span> = <span class="tk-n">1.2</span>, over = <span class="tk-n">2.2</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A wider field of view the faster you go: the factor to multiply the field of view by, 1 up to <code>from</code> times top speed, then up to <code>1 + widen</code> at <code>from + over</code> times it.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>speed</code></td><td><code>number</code></td><td>how fast now</td></tr><tr><td><code>topSpeed</code></td><td><code>number</code></td><td>the speed that is &quot;usual&quot; fast</td></tr><tr><td><code>o</code> (optional)</td><td><code>{widen?: number, from?: number, over?: number}</code></td><td>by default 0.32 wider, from 1.2 times top speed over 2.2 more</td></tr></tbody></table></div>
+<p><sub>src/feel.js:18</sub></p>
+<h3 id="stepfollowrig"><code>stepFollowRig</code><a class="anchor" href="#stepfollowrig" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">stepFollowRig</span>(rig, { pivot, yaw, pitch, distance, side = <span class="tk-n">0</span>, reach = <span class="tk-n">0</span>, dt, blocked = () =&gt; <span class="tk-k">null</span>, ground = () =&gt; -Infinity })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Move the camera for one frame.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>rig</code></td><td><code>ReturnType&lt;typeof createFollowRig&gt;</code></td><td></td></tr><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.pivot</code></td><td><code>number[]</code></td><td>the point it looks at and orbits, <code>[x, y, z]</code> (a shoulder height over the body)</td></tr><tr><td><code>o.yaw</code></td><td><code>number</code></td><td></td></tr><tr><td><code>o.pitch</code></td><td><code>number</code></td><td>the orbit angles, in radians: the camera sits at <code>pivot + (sin yaw cos pitch, sin pitch, cos yaw cos pitch) * distance</code>, looking back at the pivot (a game's look angles, when the camera looks the opposite way; give the angles it uses for that)</td></tr><tr><td><code>o.distance</code></td><td><code>number</code></td><td>how far back it wants to be</td></tr><tr><td><code>o.side</code> (optional)</td><td><code>number</code></td><td>which shoulder: -1 to 1 (it eases toward it)</td></tr><tr><td><code>o.reach</code> (optional)</td><td><code>number</code></td><td>how far to the side that is at 1, in metres (0: straight behind)</td></tr><tr><td><code>o.dt</code></td><td><code>number</code></td><td>seconds since the last frame</td></tr><tr><td><code>o.blocked</code> (optional)</td><td><code>(from: number[], to: number[]) =&gt; (number | null)</code></td><td>how far along <code>from</code> to <code>to</code> (0 to 1) a wall is, or null for a clear way</td></tr><tr><td><code>o.ground</code> (optional)</td><td><code>(x: number, z: number) =&gt; number</code></td><td>the height of the ground</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{x: number, y: number, z: number, distance: number}</code></p>
+<p><sub>src/follow.js:35</sub></p>
+<h3 id="stepkick"><code>stepKick</code><a class="anchor" href="#stepkick" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">stepKick</span>(k, dt)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>One step of <code>dt</code> seconds (in small slices, so a slow frame does not make it unstable). Returns <code>k</code>.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>k</code></td><td><code>ReturnType&lt;typeof createKick&gt;</code></td><td></td></tr><tr><td><code>dt</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/kick.js:38</sub></p>
+<h3 id="traumashake"><code>traumaShake</code><a class="anchor" href="#traumashake" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">traumaShake</span>(trauma, clock, strength = <span class="tk-n">1</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The camera shake of a given trauma (0 to 1), as offsets to add to the camera's position and roll. Trauma squared, so a light one is a tremor and a big one is felt.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>trauma</code></td><td><code>number</code></td><td>0 to 1</td></tr><tr><td><code>clock</code></td><td><code>number</code></td><td>seconds (any steadily growing time)</td></tr><tr><td><code>strength</code> (optional)</td><td><code>number</code></td><td>how much the player allows (0 to 1), and how hard the game shakes at all</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{x: number, y: number, z: number, roll: number}</code> — metres, and radians of roll</p>
+<p><sub>src/feel.js:8</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="damping"><code>DAMPING</code><a class="anchor" href="#damping" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> DAMPING</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How much of its speed the spring loses each second (see <code>STIFFNESS</code>).</p>
+<p>Value: <code>11</code></p>
+<p><sub>src/kick.js:12</sub></p>
+<h3 id="max_angle"><code>MAX_ANGLE</code><a class="anchor" href="#max_angle" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> MAX_ANGLE</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The most the view can be turned or rolled by, in radians.</p>
+<p>Value: <code>0.12</code></p>
+<p><sub>src/kick.js:14</sub></p>
+<h3 id="max_dip"><code>MAX_DIP</code><a class="anchor" href="#max_dip" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> MAX_DIP</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The most the view can dip, in body sizes (a game multiplies <code>dip</code> by the size of what the camera is on).</p>
+<p>Value: <code>0.9</code></p>
+<p><sub>src/kick.js:16</sub></p>
+<h3 id="stiffness"><code>STIFFNESS</code><a class="anchor" href="#stiffness" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> STIFFNESS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How stiff the spring is (per second squared) and how much of its speed it loses (per second): a damping ratio of 0.58, so it overshoots once and settles in about half a second.</p>
+<p>Value: <code>90</code></p>
+<p><sub>src/kick.js:10</sub></p><div class="pager"><a href="turns.html"><small>Previous</small>turns</a><a class="next" href="match.html"><small>Next</small>match</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-12-of-12-documented">Contents (12 of 12 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#createfollowrig">createFollowRig</a><a class="l3" href="#createhitstop">createHitStop</a><a class="l3" href="#createkick">createKick</a><a class="l3" href="#kick">kick</a><a class="l3" href="#rushfov">rushFov</a><a class="l3" href="#stepfollowrig">stepFollowRig</a><a class="l3" href="#stepkick">stepKick</a><a class="l3" href="#traumashake">traumaShake</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#damping">DAMPING</a><a class="l3" href="#max_angle">MAX_ANGLE</a><a class="l3" href="#max_dip">MAX_DIP</a><a class="l3" href="#stiffness">STIFFNESS</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

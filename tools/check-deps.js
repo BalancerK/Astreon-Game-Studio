@@ -40,6 +40,7 @@ export const ALLOWED = {
   build: [],
   testkit: ['build'],
   match: ['math'],
+  camera: [],
   matchmaking: [],
   persist: [],
   turns: ['matchmaking', 'transport'],
