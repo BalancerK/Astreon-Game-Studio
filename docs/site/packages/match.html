@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/match · Astreon Engine</title>
+<meta name="description" content="A match layer: who has scored, who destroyed whom, assists, runs of kills, when a destroyed player comes back and where, how the match is won, control points, and the summary a results screen shows. I">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html" class="on">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">All packages</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a><h4>Other</h4><a href="match.html" class="on">match</a><a href="testkit.html">testkit</a></nav><main><article><h1 id="enginematch">@engine/match</h1>
+<p>A match layer: who has scored, who destroyed whom, assists, runs of kills, when a destroyed player comes back and where, how the match is won, control points, and the summary a results screen shows. It reads the game's <strong>events</strong> and nothing else, so a server and every player's browser count the same score. It came out of a competitive 3D game and does not know what a character, a weapon or a map is.</p>
+<p><strong>May import:</strong> <code>@engine/math</code>.</p>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">import</span> { createMatch, stepMatch, matchSummary, leading, respawnIn, POINTS } <span class="tk-k">from</span> <span class="tk-s">'@engine/match'</span>;
+
+<span class="tk-k">const</span> match = <span class="tk-f">createMatch</span>(world, {
+  mode: <span class="tk-s">'tdm'</span>, killLimit: <span class="tk-n">25</span>, timeLimitSeconds: <span class="tk-n">300</span>, respawnSeconds: <span class="tk-n">5</span>,      <span class="tk-c">// 'dm' (everyone alone), 'tdm' (two teams) or 'cp' (control points)</span>
+  rules: {
+    actors: (w) =&gt; w.players,                                                <span class="tk-c">// everything that can score: { id, team, dead, x, z, name }</span>
+    spawns: (w) =&gt; w.spawns,                                                 <span class="tk-c">// [x, z] places to start at</span>
+    respawn: (w, p, at) =&gt; { p.x = at[<span class="tk-n">0</span>]; p.z = at[<span class="tk-n">1</span>]; p.hp = p.maxHp; p.dead = <span class="tk-k">false</span>; },
+    maxHealth: (p) =&gt; p.maxHp,                                               <span class="tk-c">// the least damage that is an assist is a share of this</span>
+    isMelee: (weapon) =&gt; weapon === <span class="tk-s">'sword'</span>,                                 <span class="tk-c">// close-up kills pay extra</span>
+  },
+});
+
+<span class="tk-c">// every tick, after the world moved and said what happened:</span>
+<span class="tk-k">const</span> { respawned } = <span class="tk-f">stepMatch</span>(match, [
+  { type: <span class="tk-s">'hit'</span>, attacker: <span class="tk-n">1</span>, target: <span class="tk-n">2</span>, dealt: <span class="tk-n">40</span>, part: <span class="tk-s">'head'</span>, weapon: <span class="tk-s">'rifle'</span> },
+  { type: <span class="tk-s">'destroyed'</span>, target: <span class="tk-n">2</span>, by: <span class="tk-n">1</span> },
+]);
+<span class="tk-k">if</span> (match.over) <span class="tk-f">show</span>(<span class="tk-f">matchSummary</span>(match, myId));       <span class="tk-c">// { title: 'VICTORY' | 'DEFEAT' | 'DRAW', teams, rows: [{ id, name, points, kills, deaths, assists, ... mvp }] }</span></code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>Events it reads:</strong> <code>shot</code> (<code>owner</code>, and <code>pellet: true</code> for the extra pellets of one shot), <code>hit</code> (<code>attacker</code>, <code>target</code>, <code>dealt</code>, <code>part</code>, <code>weapon</code>), <code>destroyed</code> (<code>target</code>, <code>by</code>), and <code>capture</code> (<code>point</code>, <code>team</code>, <code>name</code>, made by the control points). Anything else goes to <code>rules.onEvent</code> first, so a game adds its own (a parry, a flag).</li><li><strong>Scoring:</strong> a kill, a head shot, a close-up kill, an <strong>assist</strong> (damage in the last 10 seconds, at least 40 and 8% of the victim's health, not the killer's), runs of kills (called out at 3, 5, 7 and 10), quick kills, first blood, revenge, ending somebody's run, holding a control point. <code>POINTS</code>, <code>KINDS</code> and <code>PART_OF</code> are plain tables to spread and extend; <code>breakdown(row)</code> says how a score was made.</li><li><strong>Respawns:</strong> a destroyed actor comes back after <code>respawnSeconds</code> at the start furthest from its living enemies (<code>pickSpawn</code>).</li><li><strong>Winning:</strong> the first to the limit, or whoever leads when time is up; level is a draw (<code>winner</code> is null). In a team match the team counts; in control points a held point scores a second and kills break a tie.</li><li><strong>Control points:</strong> <code>controlPoints(map, a, b)</code> finds three fair ones (the middle, and one out on each flank) on open land from the map's heights and starts, the same on every machine; <code>stepPoints</code> moves them as actors stand on them (more help a little, a contested point is slower).</li><li><strong>Modes:</strong> <code>MODE_NAMES</code>, <code>isTeamMode</code>, <code>cleanMode</code>, <code>defaultLimit</code>, <code>limitWord</code>.</li><li>The match is plain data (<code>scores</code>, <code>teamKills</code>, <code>teamPoints</code>, <code>respawns</code>, <code>hurt</code>, <code>awards</code>, <code>over</code>, <code>winner</code>), so it can be copied and sent; <code>match.rules</code> holds the functions you gave.</li></ul>
+<h2 id="tests">Tests<a class="anchor" href="#tests" aria-label="Link to this section">#</a></h2>
+<p><code>packages/match/test/match.test.js</code> plays matches over a tiny fake world: scoring, assists, respawns, winning, the summary, a game's own kind of award, and control points.</p>
+<h2 id="every-export">Every export<a class="anchor" href="#every-export" aria-label="Link to this section">#</a></h2>
+<p>The complete, generated list of this package's exports (every function, class and option) is on its <span class="src">API page</span>.</p><div class="pager"><a href="turns.html"><small>Previous</small>turns</a><a class="next" href="testkit.html"><small>Next</small>testkit</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#what-it-does">What it does</a><a class="l2" href="#tests">Tests</a><a class="l2" href="#every-export">Every export</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

@@ -39,6 +39,7 @@ export const ALLOWED = {
   assets: [],
   build: [],
   testkit: ['build'],
+  match: ['math'],
   matchmaking: [],
   persist: [],
   turns: ['matchmaking', 'transport'],

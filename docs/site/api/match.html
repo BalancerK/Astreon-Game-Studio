@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/match · Astreon Engine</title>
+<meta name="description" content="A match layer: score, assists, streaks, respawns, win rules, control points and a results summary, from a game's events.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a><h4>Other</h4><a href="match.html" class="on">match</a><a href="testkit.html">testkit</a></nav><main><article><h1 id="enginematch">@engine/match</h1>
+<p>A match layer: score, assists, streaks, respawns, win rules, control points and a results summary, from a game's events.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/match</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/match.html">packages/match</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-31-of-31-documented">Contents (31 of 31 documented)<a class="anchor" href="#contents-31-of-31-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#assist_min"><code>ASSIST_MIN</code></a></td><td>constant</td><td>The least damage that makes an assist: the larger of this and a share of the victim armour, so a graze is not one.</td></tr><tr><td><a href="#assist_share"><code>ASSIST_SHARE</code></a></td><td>constant</td><td>The share of the victim's health that damage must reach for an assist (or <code>ASSIST_MIN</code>, if that is more).</td></tr><tr><td><a href="#assist_window"><code>ASSIST_WINDOW</code></a></td><td>constant</td><td>How many ticks back damage counts for an assist (10 seconds).</td></tr><tr><td><a href="#capture_seconds"><code>CAPTURE_SECONDS</code></a></td><td>constant</td><td>How many seconds one actor alone takes to capture a point (a held point scores one a second).</td></tr><tr><td><a href="#contested"><code>CONTESTED</code></a></td><td>constant</td><td>How much of the usual speed a point is taken at when the other team still has actors on it but fewer.</td></tr><tr><td><a href="#kinds"><code>KINDS</code></a></td><td>constant</td><td>What each kind of award is called on the screen, and which colour it takes: 'main' (the usual), 'gold' (a good one), 'red' (a big one) or 'dim' (a small one).</td></tr><tr><td><a href="#mode_names"><code>MODE_NAMES</code></a></td><td>constant</td><td>Every kind of match and what it is called.</td></tr><tr><td><a href="#multi_window"><code>MULTI_WINDOW</code></a></td><td>constant</td><td>How many ticks a kill still counts as part of a multi-kill after the one before it (5 seconds).</td></tr><tr><td><a href="#part_of"><code>PART_OF</code></a></td><td>constant</td><td>Which part of a pilot's score each kind of award belongs to, and the name of the field in the score that keeps that part (what the results screen shows as &quot;how you earned it&quot;).</td></tr><tr><td><a href="#points"><code>POINTS</code></a></td><td>constant</td><td>The points for each thing, one number each (the rest are built from these: see <code>streakBonus</code> and <code>multiBonus</code>).</td></tr><tr><td><a href="#point_radius"><code>POINT_RADIUS</code></a></td><td>constant</td><td>How wide a control point is, in metres.</td></tr><tr><td><a href="#streaks"><code>STREAKS</code></a></td><td>constant</td><td>The runs of kills that are called out, and what they are called.</td></tr><tr><td><a href="#awardlabel"><code>awardLabel</code></a></td><td>function</td><td>The words for an award as it is shown: &quot;KILL&quot;, &quot;DOUBLE KILL&quot;, &quot;KILLING SPREE&quot;...</td></tr><tr><td><a href="#breakdown"><code>breakdown</code></a></td><td>function</td><td>How a pilot's score was made, largest part first: <code>{ key, label, points, note, tone }</code> for each part that is more than nothing.</td></tr><tr><td><a href="#cleanmode"><code>cleanMode</code></a></td><td>function</td><td>The mode a room or an address asks for, or team deathmatch if it is not one we know.</td></tr><tr><td><a href="#controlpoints"><code>controlPoints</code></a></td><td>function</td><td>The control points of a map: one in the middle between where the two teams start and one far out on each flank, on open land, each as near as can be to equally far from both teams, so that neither starts with a point to itself.</td></tr><tr><td><a href="#creatematch"><code>createMatch</code></a></td><td>function</td><td>Start a match over a world.</td></tr><tr><td><a href="#defaultlimit"><code>defaultLimit</code></a></td><td>function</td><td>The score the match is played to when nothing else is asked for: kills, or points held for a second each in control points.</td></tr><tr><td><a href="#isteammode"><code>isTeamMode</code></a></td><td>function</td><td>Two teams play (rather than every mecha for itself).</td></tr><tr><td><a href="#leading"><code>leading</code></a></td><td>function</td><td>Who is ahead: the team in a team match, otherwise the actor.</td></tr><tr><td><a href="#limitword"><code>limitWord</code></a></td><td>function</td><td>What the limit counts, for the screens.</td></tr><tr><td><a href="#matchsummary"><code>matchSummary</code></a></td><td>function</td><td>What the results screen shows: how it ended for <code>viewerId</code>, the teams' kills, and a row for every actor, best first (the match's best player is marked).</td></tr><tr><td><a href="#multibonus"><code>multiBonus</code></a></td><td>function</td><td>The extra points for the nth kill in quick succession: 25 for a double, then 50, 75 and 100 for the largest.</td></tr><tr><td><a href="#multiname"><code>multiName</code></a></td><td>function</td><td>The name of the nth kill in quick succession.</td></tr><tr><td><a href="#pickspawn"><code>pickSpawn</code></a></td><td>function</td><td>The best place for an actor to start: the spawn point furthest from every living enemy (ties go to the earlier one in the list).</td></tr><tr><td><a href="#respawnin"><code>respawnIn</code></a></td><td>function</td><td>How many seconds until an actor is back (0 if it is not waiting).</td></tr><tr><td><a href="#shutdownbonus"><code>shutdownBonus</code></a></td><td>function</td><td>What ending a run of <code>streak</code> kills is worth: 50, and 10 more for each kill over 3 (up to 100).</td></tr><tr><td><a href="#stepmatch"><code>stepMatch</code></a></td><td>function</td><td>Take in what happened this tick: score the kills, queue the comebacks, bring back actors whose time is up, and decide whether the match is over.</td></tr><tr><td><a href="#steppoints"><code>stepPoints</code></a></td><td>function</td><td>One tick of the control points: a point with only one team on it moves toward that team (a second actor helps, up to three), a point with equal numbers of both is held where it is (more of one team moves it slowly their way), and a point the team has taken all the way scores for it every second.</td></tr><tr><td><a href="#streakbonus"><code>streakBonus</code></a></td><td>function</td><td>The extra points for a run of kills: 10 for the second in a row, 10 more for each after it, up to 50.</td></tr><tr><td><a href="#streakname"><code>streakName</code></a></td><td>function</td><td>The name of a run of kills if it is one that is called out, else null.</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="awardlabel"><code>awardLabel</code><a class="anchor" href="#awardlabel" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">awardLabel</span>(a, kinds = KINDS)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The words for an award as it is shown: &quot;KILL&quot;, &quot;DOUBLE KILL&quot;, &quot;KILLING SPREE&quot;...</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>a</code></td><td><code>{kind: string, n?: number}</code></td><td></td></tr><tr><td><code>kinds</code> (optional)</td><td><code>Record&lt;string, {label: string}&gt;</code></td><td>a table with a game's own kinds added to <code>KINDS</code></td></tr></tbody></table></div>
+<p><sub>src/scoring.js:39</sub></p>
+<h3 id="breakdown"><code>breakdown</code><a class="anchor" href="#breakdown" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">breakdown</span>(row)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How a pilot's score was made, largest part first: <code>{ key, label, points, note, tone }</code> for each part that is more than nothing. <code>row</code> is a pilot's row from the match summary.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>row</code></td><td><code>{pk?: number, pa?: number, ps?: number, pb?: number, pp?: number, kills?: number, heads?: number, blade?: number, assists?: number, bestStreak?: number, bestMulti?: number, revenges?: number, shutdowns?: number, firstBloods?: number}</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/scoring.js:52</sub></p>
+<h3 id="cleanmode"><code>cleanMode</code><a class="anchor" href="#cleanmode" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">cleanMode</span>(mode)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The mode a room or an address asks for, or team deathmatch if it is not one we know.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>mode</code></td><td><code>unknown</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/modes.js:11</sub></p>
+<h3 id="controlpoints"><code>controlPoints</code><a class="anchor" href="#controlpoints" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">controlPoints</span>(map, a, b)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The control points of a map: one in the middle between where the two teams start and one far out on each flank, on open land, each as near as can be to equally far from both teams, so that neither starts with a point to itself. A point is found by looking over the land round where it ought to be for a place that is mostly above the sea all the way round and not steep (on a map without land to look at, the spawn points stand in). Pure: the same map and starts give the same points.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>map</code></td><td><code>{spawns: number[][], heightAt?: (x: number, z: number) =&gt; number, half?: number}</code></td><td></td></tr><tr><td><code>a</code> (optional)</td><td><code>number[]</code></td><td>where the first team starts (x, z; the first spawn point if left out)</td></tr><tr><td><code>b</code> (optional)</td><td><code>number[]</code></td><td>where the second does (the spawn furthest from the first)</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Array&lt;{x: number, z: number, r: number, control: number, owner: number, name: string}&gt;</code></p>
+<p><sub>src/points.js:24</sub></p>
+<h3 id="creatematch"><code>createMatch</code><a class="anchor" href="#creatematch" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createMatch</span>(world, { mode = <span class="tk-s">'tdm'</span>, killLimit = <span class="tk-n">15</span>, timeLimitSeconds = <span class="tk-n">300</span>, respawnSeconds = <span class="tk-n">5</span>, rules = {} } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Start a match over a world. The world needs <code>tick</code> (the current tick) and whatever <code>rules</code> ask of it (by default <code>world.actors</code> and <code>world.spawns</code>; in control points <code>world.points</code>).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>world</code></td><td><code>any</code></td><td></td></tr><tr><td><code>o</code> (optional)</td><td><code>{mode?: 'dm' | 'tdm' | 'cp', killLimit?: number, timeLimitSeconds?: number, respawnSeconds?: number, rules?: MatchRules}</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/match.js:33</sub></p>
+<h3 id="defaultlimit"><code>defaultLimit</code><a class="anchor" href="#defaultlimit" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">defaultLimit</span>(mode)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The score the match is played to when nothing else is asked for: kills, or points held for a second each in control points.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>mode</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/modes.js:14</sub></p>
+<h3 id="isteammode"><code>isTeamMode</code><a class="anchor" href="#isteammode" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">isTeamMode</span>(mode)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Two teams play (rather than every mecha for itself).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>mode</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/modes.js:8</sub></p>
+<h3 id="leading"><code>leading</code><a class="anchor" href="#leading" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">leading</span>(match)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Who is ahead: the team in a team match, otherwise the actor.</p>
+<p><strong>Returns</strong> <code>{kind: string, id: number, score: number, tie: boolean}</code> — <code>kind</code> is 'team' or the rules' <code>actorKind</code></p>
+<p><sub>src/match.js:169</sub></p>
+<h3 id="limitword"><code>limitWord</code><a class="anchor" href="#limitword" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">limitWord</span>(mode)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What the limit counts, for the screens.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>mode</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/modes.js:17</sub></p>
+<h3 id="matchsummary"><code>matchSummary</code><a class="anchor" href="#matchsummary" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">matchSummary</span>(match, viewerId)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What the results screen shows: how it ended for <code>viewerId</code>, the teams' kills, and a row for every actor, best first (the match's best player is marked).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>match</code></td><td><code>ReturnType&lt;typeof createMatch&gt;</code></td><td></td></tr><tr><td><code>viewerId</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{title: 'VICTORY' \| 'DEFEAT' \| 'DRAW' \| 'IN PROGRESS', mode: 'dm' \| 'tdm' \| 'cp', killLimit: number, seconds: number,   teams: Array&lt;{team: number, kills: number, points: number, score: number, mine: boolean}&gt; \| null,   rows: Array&lt;MatchScore &amp; {id: number, name: string, team: number, you: boolean, ally: boolean, mvp: boolean, kind: string}&gt;}</code></p>
+<p><sub>src/match.js:194</sub></p>
+<h3 id="multibonus"><code>multiBonus</code><a class="anchor" href="#multibonus" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">multiBonus</span>(n)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The extra points for the nth kill in quick succession: 25 for a double, then 50, 75 and 100 for the largest.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>n</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/scoring.js:20</sub></p>
+<h3 id="multiname"><code>multiName</code><a class="anchor" href="#multiname" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">multiName</span>(n)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The name of the nth kill in quick succession.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>n</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/scoring.js:29</sub></p>
+<h3 id="pickspawn"><code>pickSpawn</code><a class="anchor" href="#pickspawn" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">pickSpawn</span>(world, m, rules = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The best place for an actor to start: the spawn point furthest from every living enemy (ties go to the earlier one in the list).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>world</code></td><td><code>any</code></td><td></td></tr><tr><td><code>m</code></td><td><code>any</code></td><td></td></tr><tr><td><code>rules</code> (optional)</td><td><code>MatchRules</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/match.js:74</sub></p>
+<h3 id="respawnin"><code>respawnIn</code><a class="anchor" href="#respawnin" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">respawnIn</span>(match, id)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How many seconds until an actor is back (0 if it is not waiting).</p>
+<p><sub>src/match.js:182</sub></p>
+<h3 id="shutdownbonus"><code>shutdownBonus</code><a class="anchor" href="#shutdownbonus" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">shutdownBonus</span>(streak)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What ending a run of <code>streak</code> kills is worth: 50, and 10 more for each kill over 3 (up to 100).</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>streak</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/scoring.js:22</sub></p>
+<h3 id="stepmatch"><code>stepMatch</code><a class="anchor" href="#stepmatch" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">stepMatch</span>(match, events)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Take in what happened this tick: score the kills, queue the comebacks, bring back actors whose time is up, and decide whether the match is over. The events: <code>shot</code> (<code>owner</code>, <code>pellet</code> for the extra pellets of one shot), <code>hit</code> (<code>attacker</code>, <code>target</code>, <code>dealt</code>, <code>part</code>, <code>weapon</code>), <code>destroyed</code> (<code>target</code>, <code>by</code>), <code>capture</code> (<code>point</code>, <code>team</code>, <code>name</code>, made by the control points), and anything the rules' <code>onEvent</code> takes.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>match</code></td><td><code>ReturnType&lt;typeof createMatch&gt;</code></td><td></td></tr><tr><td><code>events</code></td><td><code>any[]</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{respawned: number[]}</code></p>
+<p><sub>src/match.js:94</sub></p>
+<h3 id="steppoints"><code>stepPoints</code><a class="anchor" href="#steppoints" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">stepPoints</span>(match, events)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>One tick of the control points: a point with only one team on it moves toward that team (a second actor helps, up to three), a point with equal numbers of both is held where it is (more of one team moves it slowly their way), and a point the team has taken all the way scores for it every second. The first team is 1, the second 2.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>match</code></td><td><code>any</code></td><td></td></tr><tr><td><code>events</code></td><td><code>any[]</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/points.js:71</sub></p>
+<h3 id="streakbonus"><code>streakBonus</code><a class="anchor" href="#streakbonus" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">streakBonus</span>(streak)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The extra points for a run of kills: 10 for the second in a row, 10 more for each after it, up to 50.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>streak</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/scoring.js:18</sub></p>
+<h3 id="streakname"><code>streakName</code><a class="anchor" href="#streakname" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">streakName</span>(streak)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The name of a run of kills if it is one that is called out, else null.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>streak</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/scoring.js:27</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="assist_min"><code>ASSIST_MIN</code><a class="anchor" href="#assist_min" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> ASSIST_MIN</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The least damage that makes an assist: the larger of this and a share of the victim armour, so a graze is not one.</p>
+<p>Value: <code>40</code></p>
+<p><sub>src/scoring.js:13</sub></p>
+<h3 id="assist_share"><code>ASSIST_SHARE</code><a class="anchor" href="#assist_share" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> ASSIST_SHARE</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The share of the victim's health that damage must reach for an assist (or <code>ASSIST_MIN</code>, if that is more).</p>
+<p>Value: <code>0.08</code></p>
+<p><sub>src/scoring.js:15</sub></p>
+<h3 id="assist_window"><code>ASSIST_WINDOW</code><a class="anchor" href="#assist_window" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> ASSIST_WINDOW</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How many ticks back damage counts for an assist (10 seconds).</p>
+<p>Value: <code>600</code></p>
+<p><sub>src/scoring.js:11</sub></p>
+<h3 id="capture_seconds"><code>CAPTURE_SECONDS</code><a class="anchor" href="#capture_seconds" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> CAPTURE_SECONDS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How many seconds one actor alone takes to capture a point (a held point scores one a second).</p>
+<p>Value: <code>8</code></p>
+<p><sub>src/points.js:7</sub></p>
+<h3 id="contested"><code>CONTESTED</code><a class="anchor" href="#contested" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> CONTESTED</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How much of the usual speed a point is taken at when the other team still has actors on it but fewer.</p>
+<p>Value: <code>0.4</code></p>
+<p><sub>src/points.js:14</sub></p>
+<h3 id="kinds"><code>KINDS</code><a class="anchor" href="#kinds" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> KINDS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>What each kind of award is called on the screen, and which colour it takes: 'main' (the usual), 'gold' (a good one), 'red' (a big one) or 'dim' (a small one).</p>
+<p>Value: <code>Object.freeze({</code></p>
+<p><sub>src/scoring.js:32</sub></p>
+<h3 id="mode_names"><code>MODE_NAMES</code><a class="anchor" href="#mode_names" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> MODE_NAMES</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Every kind of match and what it is called.</p>
+<p>Value: <code>Object.freeze({ tdm: 'Team deathmatch', cp: 'Control points', dm: 'Deathmatch' }</code></p>
+<p><sub>src/modes.js:5</sub></p>
+<h3 id="multi_window"><code>MULTI_WINDOW</code><a class="anchor" href="#multi_window" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> MULTI_WINDOW</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How many ticks a kill still counts as part of a multi-kill after the one before it (5 seconds).</p>
+<p>Value: <code>300</code></p>
+<p><sub>src/scoring.js:9</sub></p>
+<h3 id="part_of"><code>PART_OF</code><a class="anchor" href="#part_of" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> PART_OF</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Which part of a pilot's score each kind of award belongs to, and the name of the field in the score that keeps that part (what the results screen shows as &quot;how you earned it&quot;).</p>
+<p>Value: <code>Object.freeze({ kill: 'pk', head: 'pk', melee: 'pk', assist: 'pa', streak: 'ps',</code></p>
+<p><sub>src/scoring.js:46</sub></p>
+<h3 id="points"><code>POINTS</code><a class="anchor" href="#points" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> POINTS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The points for each thing, one number each (the rest are built from these: see <code>streakBonus</code> and <code>multiBonus</code>).</p>
+<p>Value: <code>Object.freeze({ kill: 100, head: 25, melee: 25, assist: 40, firstBlood: 50, reve</code></p>
+<p><sub>src/scoring.js:6</sub></p>
+<h3 id="point_radius"><code>POINT_RADIUS</code><a class="anchor" href="#point_radius" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> POINT_RADIUS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How wide a control point is, in metres.</p>
+<p>Value: <code>180</code></p>
+<p><sub>src/points.js:5</sub></p>
+<h3 id="streaks"><code>STREAKS</code><a class="anchor" href="#streaks" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> STREAKS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The runs of kills that are called out, and what they are called.</p>
+<p>Value: <code>Object.freeze({ 3: 'KILLING SPREE', 5: 'RAMPAGE', 7: 'UNSTOPPABLE', 10: 'LEGENDA</code></p>
+<p><sub>src/scoring.js:25</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="matchrules"><code>MatchRules</code><a class="anchor" href="#matchrules" aria-label="Link to this section">#</a></h3>
+<p>What the match needs to know about the game it is scoring (every one is optional).</p>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>actors</code> (optional)</td><td><code>(world: any) =&gt; any[]</code></td><td>Everything that can score: <code>{ id, team, dead, x, z, name }</code> each (default <code>world.actors</code>).</td></tr><tr><td><code>spawns</code> (optional)</td><td><code>(world: any) =&gt; number[][]</code></td><td>Places to come back at, <code>[x, z]</code> each (default <code>world.spawns</code>).</td></tr><tr><td><code>respawn</code> (optional)</td><td><code>(world: any, actor: any, at: number[]) =&gt; void</code></td><td>Bring a destroyed actor back at <code>at</code> (default: nothing).</td></tr><tr><td><code>maxHealth</code> (optional)</td><td><code>(actor: any) =&gt; number</code></td><td>How much damage an actor can take at most, for the assists (default 100).</td></tr><tr><td><code>isMelee</code> (optional)</td><td><code>(weapon: string) =&gt; boolean</code></td><td>Whether a kill with this weapon is a close-quarters one (default none).</td></tr><tr><td><code>label</code> (optional)</td><td><code>(actor: any) =&gt; string</code></td><td>A short word about an actor for the results screen (default empty).</td></tr><tr><td><code>points</code> (optional)</td><td><code>Record&lt;string, number&gt;</code></td><td>The points for each kind of award (default <code>POINTS</code>; spread it to add the game's own kinds).</td></tr><tr><td><code>partOf</code> (optional)</td><td><code>Record&lt;string, string&gt;</code></td><td>Which part of the score each kind of award belongs to (default <code>PART_OF</code>).</td></tr><tr><td><code>onEvent</code> (optional)</td><td><code>(match: any, event: any, tools: {award: Function, scoreOf: Function}) =&gt; boolean</code></td><td>Called first for every event; return true if it was the game's own kind of event (a parry), which the match then leaves alone.</td></tr><tr><td><code>actorKind</code> (optional)</td><td><code>string</code></td><td>What the winner or leader is called when it is one actor and not a team (<code>winner.kind</code>; default 'actor').</td></tr><tr><td><code>ticksPerSecond</code> (optional)</td><td><code>number</code></td><td>How many simulation ticks make a second (default 60).</td></tr></tbody></table></div>
+<h3 id="matchscore"><code>MatchScore</code><a class="anchor" href="#matchscore" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>kills</code></td><td><code>number</code></td><td></td></tr><tr><td><code>deaths</code></td><td><code>number</code></td><td></td></tr><tr><td><code>damage</code></td><td><code>number</code></td><td></td></tr><tr><td><code>hits</code></td><td><code>number</code></td><td></td></tr><tr><td><code>heads</code></td><td><code>number</code></td><td></td></tr><tr><td><code>shots</code></td><td><code>number</code></td><td></td></tr><tr><td><code>streak</code></td><td><code>number</code></td><td>Kills in a row now.</td></tr><tr><td><code>bestStreak</code></td><td><code>number</code></td><td>The most kills in a row so far.</td></tr><tr><td><code>points</code></td><td><code>number</code></td><td>What the player has earned (see scoring.js).</td></tr><tr><td><code>assists</code></td><td><code>number</code></td><td></td></tr><tr><td><code>multi</code></td><td><code>number</code></td><td>Kills in the current quick run.</td></tr><tr><td><code>bestMulti</code></td><td><code>number</code></td><td></td></tr><tr><td><code>lastKill</code></td><td><code>number</code></td><td>The tick of the last kill.</td></tr><tr><td><code>killedBy</code></td><td><code>number</code></td><td>Who destroyed the player last (-1 for nobody, or once got back at).</td></tr><tr><td><code>revenges</code></td><td><code>number</code></td><td></td></tr><tr><td><code>shutdowns</code></td><td><code>number</code></td><td></td></tr><tr><td><code>firstBloods</code></td><td><code>number</code></td><td></td></tr><tr><td><code>blade</code></td><td><code>number</code></td><td>Kills made close up.</td></tr><tr><td><code>pk</code></td><td><code>number</code></td><td></td></tr><tr><td><code>pa</code></td><td><code>number</code></td><td></td></tr><tr><td><code>ps</code></td><td><code>number</code></td><td></td></tr><tr><td><code>pb</code></td><td><code>number</code></td><td></td></tr><tr><td><code>pp</code></td><td><code>number</code></td><td>The points that came from kills, assists, streaks and multi kills, bonuses and points taken (they add up to <code>points</code>).</td></tr></tbody></table></div><div class="pager"><a href="turns.html"><small>Previous</small>turns</a><a class="next" href="testkit.html"><small>Next</small>testkit</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-31-of-31-documented">Contents (31 of 31 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#awardlabel">awardLabel</a><a class="l3" href="#breakdown">breakdown</a><a class="l3" href="#cleanmode">cleanMode</a><a class="l3" href="#controlpoints">controlPoints</a><a class="l3" href="#creatematch">createMatch</a><a class="l3" href="#defaultlimit">defaultLimit</a><a class="l3" href="#isteammode">isTeamMode</a><a class="l3" href="#leading">leading</a><a class="l3" href="#limitword">limitWord</a><a class="l3" href="#matchsummary">matchSummary</a><a class="l3" href="#multibonus">multiBonus</a><a class="l3" href="#multiname">multiName</a><a class="l3" href="#pickspawn">pickSpawn</a><a class="l3" href="#respawnin">respawnIn</a><a class="l3" href="#shutdownbonus">shutdownBonus</a><a class="l3" href="#stepmatch">stepMatch</a><a class="l3" href="#steppoints">stepPoints</a><a class="l3" href="#streakbonus">streakBonus</a><a class="l3" href="#streakname">streakName</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#assist_min">ASSIST_MIN</a><a class="l3" href="#assist_share">ASSIST_SHARE</a><a class="l3" href="#assist_window">ASSIST_WINDOW</a><a class="l3" href="#capture_seconds">CAPTURE_SECONDS</a><a class="l3" href="#contested">CONTESTED</a><a class="l3" href="#kinds">KINDS</a><a class="l3" href="#mode_names">MODE_NAMES</a><a class="l3" href="#multi_window">MULTI_WINDOW</a><a class="l3" href="#part_of">PART_OF</a><a class="l3" href="#points">POINTS</a><a class="l3" href="#point_radius">POINT_RADIUS</a><a class="l3" href="#streaks">STREAKS</a><a class="l2" href="#types">Types</a><a class="l3" href="#matchrules">MatchRules</a><a class="l3" href="#matchscore">MatchScore</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

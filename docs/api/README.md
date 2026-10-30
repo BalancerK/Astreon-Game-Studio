@@ -17,6 +17,7 @@ Generated from the source by `npm run docs` (`tools/api-docs.js`): every export 
 | [`@engine/fsm`](fsm.md) | Hierarchical state machines (events, timers, history, saving) and an animation graph with blend trees and cross-fades | 3 | 100% |
 | [`@engine/i18n`](i18n.md) | Localisation: plural forms for every language, contexts, gettext .po and CSV import, fallback chains (pt-BR to pt), pseudo-localisation, a list of what is untranslated | 10 | 100% |
 | [`@engine/input`](input.md) | Actions and bindings over keyboard, mouse, gamepad and on-screen touch controls; contexts, rebinding, saving, prompts | 25 | 100% |
+| [`@engine/match`](match.md) | A match layer: score, assists, streaks, respawns, win rules, control points and a results summary, from a game's events | 31 | 100% |
 | [`@engine/matchmaking`](matchmaking.md) | Getting players into games: fair queues with parties and widening skill windows, balanced teams, Elo ratings, a room directory with join codes and seat reservations, signed join tokens and an HTTP match service | 7 | 100% |
 | [`@engine/math`](math.md) | Deterministic sin/cos/tan/atan2/asin/acos plus 3D vectors and quaternions, bit-identical in Node, Chrome and Firefox (the built-in Math.sin is not) | 60 | 100% |
 | [`@engine/mods`](mods.md) | Safe third-party mods: manifests, content-hashed bundles, sandboxed script mods in confined processes, signing, policy, validated commands (guide: docs/MODDING.md, threat model: docs/SECURITY.md) | 25 | 100% |
