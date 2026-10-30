@@ -1,0 +1,50 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Baked sky self-test</title>
+<body style="margin:0;background:#000">
+<script type="module">
+const fail = (m) => fetch('/report', { method: 'POST', body: JSON.stringify({ results: [], error: String(m) }) });
+window.addEventListener('error', (e) => fail(`${e.message} at ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason?.stack ?? e.reason));
+import { createRenderer3D, Camera3D, DrawList3D, createLighting, createSky, sunDirection, skyLighting } from '../src/index.js';
+
+const W = 256, H = 160;
+
+function read(renderer) {
+  const c = document.createElement('canvas');
+  c.width = renderer.canvas.width; c.height = renderer.canvas.height;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(renderer.canvas, 0, 0);
+  return g.getImageData(0, 0, c.width, c.height).data;
+}
+
+/** The sky from three directions (up, along the horizon toward the sun, and away from it) at three times of day: samples of the picture and the pictures' sums. */
+async function run(kind, skyBake) {
+  const renderer = await createRenderer3D({ prefer: [kind], antialias: false, water: true, skyBake });
+  if (renderer.kind !== kind) throw new Error(`got ${renderer.kind}`);
+  document.body.append(renderer.canvas);
+  renderer.resize(W, H, 1);
+  const list = new DrawList3D();
+  const samples = [], sums = [];
+  for (const hour of [9, 12.5, 18.4]) {
+    const sky = createSky({ sun: sunDirection({ hour, latitude: 45, dayOfYear: 172 }), turbidity: 3, clouds: { coverage: 0.4 }, stars: true, time: 3 });
+    for (const [yaw, pitch] of [[0, 1.2], [Math.PI, 0.05], [0, 0.05], [Math.PI / 2, 0.4]]) {
+      const cam = new Camera3D({ x: 0, y: 2, z: 0, fovY: 1.0, viewW: W, viewH: H });
+      cam.yaw = yaw; cam.pitch = pitch; cam.update();
+      list.clear(); list.setCamera(cam);
+      renderer.render({ camera: cam, list, clear: [0, 0, 0, 1], lighting: { ...createLighting(), ...skyLighting(sky), sky } });
+      const px = read(renderer);
+      let sum = 0;
+      for (let y = 8; y < H; y += 20) for (let x = 8; x < W; x += 24) { for (let k = 0; k < 3; k++) { const v = px[(y * W + x) * 4 + k]; samples.push(v); sum += v; } }
+      sums.push(sum);
+    }
+  }
+  return { samples, sums, baked: !!renderer.skyLut, lastError: renderer.lastError ?? '' };
+}
+
+const results = [];
+for (const kind of ['webgpu', 'webgl2']) {
+  try { results.push({ kind, on: await run(kind, true), off: await run(kind, false) }); } catch (e) { results.push({ kind, unavailable: String(e.message ?? e), stack: e.stack }); }
+}
+fetch('/report', { method: 'POST', body: JSON.stringify({ userAgent: navigator.userAgent, results }) });
+</script>

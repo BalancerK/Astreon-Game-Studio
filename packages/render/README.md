@@ -420,6 +420,7 @@ renderer.render({ camera, list, shadows: { size: q.shadowSize }, post: reducePos
 - `renderer.setRenderScale(0.25 to 1)`: draw with that share of the pixels the screen has and let the browser stretch it (it applies to the size given to `resize`; the 2D and HUD layers on top stay sharp).
 - `createDynamicResolution({ target, min, step, grace })`: the share of the screen's size that keeps the frame rate. The picture shrinks by about the square root of how far the frame rate is below the target, grows back slowly, tries again less and less often after a try that failed, and ignores loading, a hidden page and a single long stall (`pause(seconds)` says the page was hidden).
 - `gpuClass(name)` (`strong`, `weak` or `unknown`) and `gpuName(renderer)` guess how strong the card is, to choose a first level or to say that better pictures are possible.
+- `createRenderer3D({ skyBake })` (on by default): the procedural sky's atmosphere is drawn into two small textures when the sun moves, and the sky and the water read them instead of working it out for every pixel; the clouds, stars, moon and sun's disc are still drawn for each pixel. About 60% off the cost of a pixel of sky; the picture is the same to within a shade. `renderer.skyLut` is null when it is off or the card cannot draw to half-float textures.
 - `renderer.resize` does nothing when the size has not changed: setting a canvas's size, even to what it is, empties it and every picture buffer is made again (a lobby that asked every few seconds stuttered).
 
 ### Drawing less

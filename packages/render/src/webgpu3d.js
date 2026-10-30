@@ -11,7 +11,7 @@ import { waterWaveWgsl, waterShadeWgsl } from './water-shaders.js';
 import { mat4 } from '../../math/src/index.js';
 import { INSTANCE3D_FLOATS, INSTANCE3D_BYTES, SKINNED_INSTANCE_FLOATS, SKINNED_INSTANCE_BYTES, MAX_POINT_LIGHTS, createLighting } from './drawlist.js';
 
-const WGSL = `
+const makeWgsl = (lut) => `
 struct Scene {
   viewProj: mat4x4f,
   lightDir: vec4f,
@@ -40,7 +40,10 @@ struct Scene {
 @group(0) @binding(7) var envMap: texture_cube<f32>;
 @group(0) @binding(8) var envSampler: sampler;
 @group(0) @binding(9) var localShadowMap: texture_depth_2d_array;
-
+${lut ? `@group(0) @binding(10) var skyLutR: texture_2d<f32>;
+@group(0) @binding(11) var skyLutM: texture_2d<f32>;
+@group(0) @binding(12) var skyLutS: sampler;
+` : ''}
 struct VIn {
   @location(0) pos: vec3f, @location(1) nor: vec3f,
   @location(2) m0: vec4f, @location(3) m1: vec4f, @location(4) m2: vec4f, @location(5) m3: vec4f,
@@ -494,8 +497,8 @@ fn fsSky(i: SkyOut) -> @location(0) vec4f {
   return vec4f(linearToSrgb(c), 1.0);
 }
 
-// ---------- the procedural sky: the atmosphere worked out for each pixel (see sky.js) ----------
-${skyWgsl((n) => `materials[${SKY_BLOCK_AT + n}]`)}
+// ---------- the procedural sky: the atmosphere worked out for each pixel, or read from the baked textures (see sky.js and the bake shader below) ----------
+${skyWgsl((n) => `materials[${SKY_BLOCK_AT + n}]`, { lut })}
 // ---------- water: waves lifting the surface, and its colour, reflections, glints and froth (see water.js) ----------
 ${waterWaveWgsl((e) => `materials[${e}]`)}
 ${waterShadeWgsl((e) => `materials[${e}]`)}
@@ -506,6 +509,35 @@ fn fsSkyProc(i: SkyOut) -> @location(0) vec4f {
   let b = inv * vec4f(i.ndc, 1.0, 1.0);
   let dir = normalize(b.xyz / b.w - a.xyz / a.w);
   return vec4f(linearToSrgb(skyColor(dir)), 1.0);
+}
+`;
+
+/** The size of the baked atmosphere: the direction's azimuth across, the square root of its height down the rows. */
+const SKY_LUT_W = 256, SKY_LUT_H = 128;
+// The light the atmosphere scatters, for each direction, before the phase functions (two outputs: air and haze). It only changes when the sun moves.
+const makeBakeWgsl = () => `
+@group(0) @binding(6) var<uniform> materials: array<vec4f, 713>;
+${skyWgsl((n) => `materials[${SKY_BLOCK_AT + n}]`)}
+struct BakeOut { @builtin(position) clip: vec4f, @location(0) ndc: vec2f };
+@vertex
+fn vsBake(@builtin(vertex_index) vi: u32) -> BakeOut {
+  var p = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+  var o: BakeOut;
+  o.clip = vec4f(p[vi], 0.0, 1.0);
+  o.ndc = p[vi];
+  return o;
+}
+struct Baked { @location(0) r: vec4f, @location(1) m: vec4f };
+@fragment
+fn fsBake(i: BakeOut) -> Baked {
+  let u = i.ndc.x * 0.5 + 0.5;
+  let v = 0.5 - i.ndc.y * 0.5;
+  let az = (u - 0.5) * 6.28318530718;
+  let y = v * v;
+  let h = sqrt(max(1.0 - y * y, 0.0));
+  let d = normalize(vec3f(cos(az) * h, max(y, 0.0005), sin(az) * h));
+  let sc = skyScatter(d, materials[${SKY_BLOCK_AT}].xyz, materials[${SKY_BLOCK_AT + 1}].y, materials[${SKY_BLOCK_AT + 1}].x);
+  return Baked(vec4f(sc.r, 1.0), vec4f(sc.m, 1.0));
 }
 `;
 
@@ -575,7 +607,7 @@ export function writeSceneUniforms(out, camera, lighting, shadow = null, local =
 
 /** 3D rendering through WebGPU: instanced meshes, depth buffer, optional 4x MSAA. Create with `WebGPURenderer3D.create`. */
 export class WebGPURenderer3D {
-  static async create(canvas, { antialias = true } = {}) {
+  static async create(canvas, { antialias = true, skyBake = true } = {}) {
     const gpu = globalThis.navigator?.gpu;
     if (!gpu) throw new Error('WebGPU unavailable');
     const adapter = await gpu.requestAdapter();
@@ -584,10 +616,10 @@ export class WebGPURenderer3D {
     const device = await adapter.requestDevice({ requiredFeatures });
     const context = canvas.getContext('webgpu');
     if (!context) throw new Error('WebGPU canvas context unavailable');
-    return new WebGPURenderer3D(canvas, device, context, gpu.getPreferredCanvasFormat(), antialias ? 4 : 1);
+    return new WebGPURenderer3D(canvas, device, context, gpu.getPreferredCanvasFormat(), antialias ? 4 : 1, skyBake);
   }
 
-  constructor(canvas, device, context, format, samples) {
+  constructor(canvas, device, context, format, samples, skyBake = true) {
     this.kind = 'webgpu';
     this.canvas = canvas;
     this.device = device;
@@ -616,7 +648,14 @@ export class WebGPURenderer3D {
     device.addEventListener?.('uncapturederror', (e) => { this.lastError = e.error?.message ?? String(e.error); console.error(`WebGPU validation error: ${this.lastError}`); });
     context.configure({ device, format, alphaMode: 'opaque' });
 
-    const module = device.createShaderModule({ code: WGSL });
+    /** The atmosphere baked into two small textures that are filled again only when the sun moves: the sky and the water read them instead of working it out for every pixel (`createRenderer3D({ skyBake: false })` turns it off). */
+    this.skyLut = null;
+    if (skyBake) {
+      const texture = () => device.createTexture({ size: [SKY_LUT_W, SKY_LUT_H], format: 'rgba16float', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+      const r = texture(), m = texture();
+      this.skyLut = { r, m, rv: r.createView(), mv: m.createView(), sampler: device.createSampler({ magFilter: 'linear', minFilter: 'linear', addressModeU: 'repeat', addressModeV: 'clamp-to-edge' }), key: '', pipeline: null, bindGroup: null };
+    }
+    const module = device.createShaderModule({ code: makeWgsl(!!this.skyLut) });
     module.getCompilationInfo?.().then((info) => {
       for (const m of info.messages) if (m.type === 'error') { this.lastError = `WGSL line ${m.lineNum}: ${m.message}`; console.error(`WebGPU shader error: ${this.lastError}`); }
     });
@@ -824,6 +863,28 @@ export class WebGPURenderer3D {
     if (s) { s.sb.destroy(); this.skinMeshes.delete(mesh); }
   }
 
+  /** The baked atmosphere as the main shaders and the sky read it (nothing when it is not baked). */
+  #skyEntries() {
+    const l = this.skyLut;
+    return l ? [{ binding: 10, resource: l.rv }, { binding: 11, resource: l.mv }, { binding: 12, resource: l.sampler }] : [];
+  }
+
+  /** Fill the baked atmosphere again if the sun, or how much air and haze there is, changed since it was last filled (the clouds, the stars and the sun's disc are drawn for each pixel, so time passing alone changes nothing here). */
+  #bakeSky(encoder) {
+    const l = this.skyLut;
+    if (!l || !this.envState.proceduralSky) return;
+    const t = this.envTable, o = SKY_BLOCK_AT * 4, key = `${t[o]},${t[o + 1]},${t[o + 2]},${t[o + 4]},${t[o + 5]}`;
+    if (key === l.key) return;
+    l.key = key;
+    if (!l.pipeline) {
+      const bake = this.device.createShaderModule({ code: makeBakeWgsl() });
+      l.pipeline = this.device.createRenderPipeline({ layout: 'auto', vertex: { module: bake, entryPoint: 'vsBake' }, fragment: { module: bake, entryPoint: 'fsBake', targets: [{ format: 'rgba16float' }, { format: 'rgba16float' }] }, primitive: { topology: 'triangle-list' } });
+      l.bindGroup = this.device.createBindGroup({ layout: l.pipeline.getBindGroupLayout(0), entries: [{ binding: 6, resource: { buffer: this.materialBuffer } }] });
+    }
+    const pass = encoder.beginRenderPass({ colorAttachments: [{ view: l.rv, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }, { view: l.mv, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }] });
+    pass.setPipeline(l.pipeline); pass.setBindGroup(0, l.bindGroup); pass.draw(3); pass.end();
+  }
+
   /** What the main shaders read besides the scene block: the shadow map and the texture array. */
   #shadowEntries() {
     return [
@@ -831,6 +892,7 @@ export class WebGPURenderer3D {
       { binding: 9, resource: (this.localShadowTexture ?? this.dummyShadow).createView({ dimension: '2d-array' }) },
       { binding: 4, resource: (this.texture ?? this.whiteTexture).createView({ dimension: '2d-array' }) }, { binding: 5, resource: this.textureSampler },
       { binding: 6, resource: { buffer: this.materialBuffer } }, { binding: 7, resource: this.envView }, { binding: 8, resource: this.envSampler },
+      ...this.#skyEntries(),
     ];
   }
 
@@ -1103,6 +1165,7 @@ export class WebGPURenderer3D {
     if (zeroNeeded > 0) this.#ensureZeroUv(zeroNeeded);
 
     const encoder = device.createCommandEncoder();
+    this.#bakeSky(encoder);
     if (passes > 0) { // first the world as the lights see it (depth only)
       for (let ci = 0; ci < passes; ci++) {
       const sp = encoder.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: ci < cascades ? this.shadowLayerViews[ci] : this.localLayerViews[ci - cascades], depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'store' } });
@@ -1168,7 +1231,7 @@ export class WebGPURenderer3D {
     }
     // the sky, after the solid things and before the translucent ones (see the note in webgl3d.js)
     if (this.envState.proceduralSky) {
-      this.skyProcBindGroup ??= device.createBindGroup({ layout: this.skyProcPipeline.getBindGroupLayout(0), entries: [{ binding: 6, resource: { buffer: this.materialBuffer } }] });
+      this.skyProcBindGroup ??= device.createBindGroup({ layout: this.skyProcPipeline.getBindGroupLayout(0), entries: [{ binding: 6, resource: { buffer: this.materialBuffer } }, ...this.#skyEntries()] });
       pass.setPipeline(this.skyProcPipeline);
       pass.setBindGroup(0, this.skyProcBindGroup);
       pass.draw(3);
@@ -1214,6 +1277,7 @@ export class WebGPURenderer3D {
   }
 
   destroy() {
+    this.skyLut?.r.destroy(); this.skyLut?.m.destroy();
     this.particles?.destroy();
     this.post?.destroy();
     this.instanceBuffer?.destroy();

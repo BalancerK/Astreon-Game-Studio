@@ -107,7 +107,7 @@ void main() {
 }`;
 
 /** The main fragment shader. `water` adds the sky and water functions (a lot of code to compile, so only when the renderer was made with `{ water: true }`). */
-const makeFrag = (water) => `#version 300 es
+const makeFrag = (water, lut = false) => `#version 300 es
 precision highp float;
 precision highp int;
 ${SCENE_BLOCK}
@@ -414,7 +414,7 @@ vec4 pbrShade(int id, float sh, vec2 uvdx, vec2 uvdy, vec3 wdx, vec3 wdy) {
 }
 
 // ---------- water: its colour, reflections, glints and froth (see water.js); the waves themselves are lifted in the vertex shader ----------
-${water ? `${skyGlsl((n) => `mats.m[${SKY_BLOCK_AT + n}]`)}
+${water ? `${skyGlsl((n) => `mats.m[${SKY_BLOCK_AT + n}]`, { lut })}
 ${waterWaveGlsl((e) => `mats.m[${e}]`)}
 ${waterShadeGlsl((e) => `mats.m[${e}]`)}` : ''}
 
@@ -502,8 +502,8 @@ void main() {
   o = vec4(linearToSrgb(c), 1.0);
 }`;
 
-// The procedural sky: the atmosphere worked out for each pixel (see sky.js).
-const FRAG_SKY_PROC = `#version 300 es
+// The procedural sky (see sky.js): the atmosphere is worked out for each pixel, or (`lut`) read from the textures `bakeSky` fills when the sun moves.
+const makeSkyProc = (lut) => `#version 300 es
 precision highp float;
 precision highp int;
 in vec2 v_ndc;
@@ -513,13 +513,34 @@ vec3 linearToSrgb(vec3 c) {
   vec3 x = max(c, vec3(0.0));
   return mix(1.055 * pow(x, vec3(1.0 / 2.4)) - 0.055, x * 12.92, lessThanEqual(x, vec3(0.0031308)));
 }
-${skyGlsl((n) => `mats.m[${SKY_BLOCK_AT + n}]`)}
+${skyGlsl((n) => `mats.m[${SKY_BLOCK_AT + n}]`, { lut })}
 void main() {
   mat4 inv = mat4(mats.m[651], mats.m[652], mats.m[653], mats.m[654]);
   vec4 a = inv * vec4(v_ndc, 0.0, 1.0);
   vec4 b = inv * vec4(v_ndc, 1.0, 1.0);
   vec3 dir = normalize(b.xyz / b.w - a.xyz / a.w);
   o = vec4(linearToSrgb(skyColor(dir)), 1.0);
+}`;
+
+/** The size of the baked atmosphere: the direction's azimuth across, the square root of its height up. */
+const SKY_LUT_W = 256, SKY_LUT_H = 128;
+// The light the atmosphere scatters, for each direction, before the phase functions (two outputs: air and haze). It only changes when the sun moves.
+const FRAG_SKY_BAKE = `#version 300 es
+precision highp float;
+precision highp int;
+in vec2 v_ndc;
+layout(location = 0) out vec4 oR;
+layout(location = 1) out vec4 oM;
+layout(std140) uniform Materials { vec4 m[713]; } mats;
+${skyGlsl((n) => `mats.m[${SKY_BLOCK_AT + n}]`)}
+void main() {
+  vec2 uv = v_ndc * 0.5 + 0.5;
+  float az = (uv.x - 0.5) * 6.28318530718, y = uv.y * uv.y, h = sqrt(max(1.0 - y * y, 0.0));
+  vec3 d = normalize(vec3(cos(az) * h, max(y, 0.0005), sin(az) * h));
+  vec3 LR, LM;
+  skyScatter(d, mats.m[${SKY_BLOCK_AT}].xyz, mats.m[${SKY_BLOCK_AT + 1}].y, mats.m[${SKY_BLOCK_AT + 1}].x, LR, LM);
+  oR = vec4(LR, 1.0);
+  oM = vec4(LM, 1.0);
 }`;
 
 // The shadow pass: the same vertex work from the light's point of view, depth only; see-through instances cast nothing.
@@ -568,7 +589,7 @@ void main() {}`;
 
 /** 3D rendering through WebGL2 (the fallback for WebGPU): the same scene, shading and draw order. */
 export class WebGL2Renderer3D {
-  constructor(canvas, { antialias = true, water = false } = {}) {
+  constructor(canvas, { antialias = true, water = false, skyBake = true } = {}) {
     const gl = canvas.getContext('webgl2', { alpha: false, antialias, depth: true, powerPreference: 'high-performance' });
     if (!gl) throw new Error('WebGL2 unavailable');
     this.kind = 'webgl2';
@@ -591,7 +612,9 @@ export class WebGL2Renderer3D {
       return sh;
     };
     this.water = water;
-    const mainFrag = makeFrag(water);
+    /** Whether the atmosphere is baked into textures (when the card can draw to half-float textures): the sky and the water then read it instead of working it out for every pixel. */
+    const lutOk = skyBake && !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
+    const mainFrag = makeFrag(water, lutOk);
     const link = (vert, frag = mainFrag) => {
       const p = gl.createProgram();
       gl.attachShader(p, compile(gl.VERTEX_SHADER, vert));
@@ -608,8 +631,33 @@ export class WebGL2Renderer3D {
     this.prog = prog;
     this.skinProg = link(VERT_SKIN);
     this.skyProg = link(VERT_SKY, FRAG_SKY);
-    this.skyProcProg = link(VERT_SKY, FRAG_SKY_PROC);
+    this.skyProcProg = link(VERT_SKY, makeSkyProc(lutOk));
     this.skyVao = gl.createVertexArray();
+    this.skyLut = null;
+    if (lutOk) {
+      this.skyBakeProg = link(VERT_SKY, FRAG_SKY_BAKE);
+      const texture = () => {
+        const t = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, SKY_LUT_W, SKY_LUT_H, 0, gl.RGBA, gl.HALF_FLOAT, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        return t;
+      };
+      const r = texture(), m = texture(), fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r, 0);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, m, 0);
+      const complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.bindTexture(gl.TEXTURE_2D, null);
+      if (complete) this.skyLut = { r, m, fbo, key: '' };
+      else throw new Error('the baked sky needs a complete half-float framebuffer: make the renderer with { skyBake: false }');
+      for (const pr of [prog, this.skinProg, this.skyProcProg]) {                       // (each sampler on a unit of its own, so that no two kinds of texture share one)
+        gl.useProgram(pr);
+        for (const [name, unit] of [['u_skyLutR', 5], ['u_skyLutM', 6]]) { const loc = gl.getUniformLocation(pr, name); if (loc) gl.uniform1i(loc, unit); }
+      }
+      gl.useProgram(null);
+    }
     this.skinPaletteLoc = gl.getUniformLocation(this.skinProg, 'u_palette');
     this.shadowProg = link(VERT_SHADOW, FRAG_DEPTH);
     this.shadowSkinProg = link(VERT_SHADOW_SKIN, FRAG_DEPTH);
@@ -807,6 +855,27 @@ export class WebGL2Renderer3D {
     if (lighting?.water) writeWaterBlock(this.envTable, WATER_BLOCK_AT, lighting.water, lighting.sky ? 2 : this.envState.lighting ? 1 : 0);
     gl.bindBuffer(gl.UNIFORM_BUFFER, this.materialBuffer);
     gl.bufferSubData(gl.UNIFORM_BUFFER, ENV_BLOCK_AT * 16, this.envTable, ENV_BLOCK_AT * 4, ENV_BLOCK_VEC4S * 4);
+  }
+
+  /** Fill the baked atmosphere again if the sun, or how much air and haze there is, changed since it was last filled (the clouds, the stars and the sun's disc are drawn for each pixel, so time passing alone changes nothing here). */
+  #bakeSky() {
+    const lut = this.skyLut;
+    if (!lut || !this.envState.proceduralSky) return;
+    const t = this.envTable, o = SKY_BLOCK_AT * 4, key = `${t[o]},${t[o + 1]},${t[o + 2]},${t[o + 4]},${t[o + 5]}`;
+    if (key === lut.key) return;
+    lut.key = key;
+    const { gl } = this;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, lut.fbo);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+    gl.viewport(0, 0, SKY_LUT_W, SKY_LUT_H);
+    gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
+    gl.useProgram(this.skyBakeProg);
+    gl.bindVertexArray(this.skyVao);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindVertexArray(null);
+    gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.enable(gl.BLEND);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
   #syncMaterials() {
@@ -1055,6 +1124,7 @@ export class WebGL2Renderer3D {
       }
     }
     this.#writeEnvironment(camera, lighting);
+    this.#bakeSky();
     writeSceneUniforms(this.sceneData, camera, lighting, shadow, local);
     gl.bindBuffer(gl.UNIFORM_BUFFER, this.sceneBuffer);
     gl.bufferSubData(gl.UNIFORM_BUFFER, 0, this.sceneData);
@@ -1100,6 +1170,7 @@ export class WebGL2Renderer3D {
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.texture);   // and the texture array from unit 2
     gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.envTexture); // and the environment from unit 3
     gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.localTexture); // and the maps of point and spot lights from unit 4
+    if (this.skyLut) { gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, this.skyLut.r); gl.activeTexture(gl.TEXTURE6); gl.bindTexture(gl.TEXTURE_2D, this.skyLut.m); }   // and the baked atmosphere from units 5 and 6
     gl.activeTexture(gl.TEXTURE0);
     if (plain.length > 0) {
       gl.useProgram(this.prog);
@@ -1180,6 +1251,7 @@ export class WebGL2Renderer3D {
     gl.deleteTexture(this.shadowTexture); gl.deleteTexture(this.localTexture); gl.deleteTexture(this.texture); gl.deleteFramebuffer(this.shadowFbo); gl.deleteProgram(this.shadowProg); gl.deleteProgram(this.shadowSkinProg);
     gl.deleteBuffer(this.instanceBuffer); gl.deleteBuffer(this.sceneBuffer); gl.deleteProgram(this.prog);
     gl.deleteTexture(this.envTexture); gl.deleteProgram(this.skyProg); gl.deleteProgram(this.skyProcProg); gl.deleteVertexArray(this.skyVao); gl.deleteBuffer(this.materialBuffer);
+    if (this.skyLut) { gl.deleteTexture(this.skyLut.r); gl.deleteTexture(this.skyLut.m); gl.deleteFramebuffer(this.skyLut.fbo); gl.deleteProgram(this.skyBakeProg); }
     gl.getExtension('WEBGL_lose_context')?.loseContext();
   }
 }

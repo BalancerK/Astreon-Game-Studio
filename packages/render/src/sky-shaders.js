@@ -5,9 +5,9 @@ const BETA_R_TEXT = BETA_R.map((b) => b.toString()).join(', ');
 
 /**
  * The sky in WGSL: defines `skyRadiance(dir)` and `skyColor(dir)` as the CPU functions in sky.js do, line for line. `block(n)` is the text that reads vec4 number n of the sky block (see `writeSkyBlock`).
- * @param {(n: number) => string} block
+ * @param {(n: number) => string} block @param {{lut?: boolean}} [o] `lut`: read the scattered light from the baked textures `skyLutR`, `skyLutM` (sampler `skyLutS`) instead of working it out for each pixel (see `SKY_LUT_WGSL`)
  */
-export function skyWgsl(block) {
+export function skyWgsl(block, { lut = false } = {}) {
   const B = block;
   return `
 const SKY_RE = ${RE}.0; const SKY_RA = ${RA}.0; const SKY_HR = ${HR}; const SKY_HM = ${HM}; const SKY_OBS = ${OBSERVER};
@@ -41,14 +41,9 @@ fn skyVnoise(p: vec2f) -> f32 {
   return a + (b - a) * u.x + (c - a) * u.y + (a - b - c + d) * u.x * u.y;
 }
 fn skyCloudNoise(p: vec2f) -> f32 { return (skyVnoise(p) * 0.5 + skyVnoise(p * 2.0) * 0.25 + skyVnoise(p * 4.0) * 0.125 + skyVnoise(p * 8.0) * 0.0625) / 0.9375; }
-fn skyRadiance(dir: vec3f) -> vec3f {
-  let s = ${B(0)}.xyz;
-  let sunI = ${B(0)}.w;
-  let ms = ${B(1)}.x;
-  let rs = ${B(1)}.y;
-  let g = ${B(1)}.z;
-  let tSun = ${B(7)}.xyz;
-  let d = normalize(vec3f(dir.x, max(dir.y, 0.0005), dir.z));
+struct SkyScatter { r: vec3f, m: vec3f };
+${lut ? '' : `// the part of the atmosphere that follows from the direction alone (and the sun, and how much of each kind of air): the light scattered by air and by haze, before the phase functions
+fn skyScatter(d: vec3f, s: vec3f, rs: f32, ms: f32) -> SkyScatter {
   let o = vec3f(0.0, SKY_RE + SKY_OBS, 0.0);
   let tMax = skyExit(o, d, SKY_RA);
   var sumR = vec3f(0.0);
@@ -80,10 +75,24 @@ fn skyRadiance(dir: vec3f) -> vec3f {
     sumR += att * hr;
     sumM += att * hm;
   }
-  let mu = dot(d, s);
+  return SkyScatter(sumR * SKY_BETA_R * rs, sumM * SKY_BETA_M * ms);
+}
+`}
+fn skyRadiance(dir: vec3f) -> vec3f {
+  let s = ${B(0)}.xyz;
+  let sunI = ${B(0)}.w;
+  let ms = ${B(1)}.x;
+  let rs = ${B(1)}.y;
+  let g = ${B(1)}.z;
+  let tSun = ${B(7)}.xyz;
+  let d = normalize(vec3f(dir.x, max(dir.y, 0.0005), dir.z));
+${lut ? `  let lutUv = vec2f(atan2(d.z, d.x) * 0.15915494309 + 0.5, sqrt(d.y));
+  let sc = SkyScatter(textureSampleLevel(skyLutR, skyLutS, lutUv, 0.0).rgb, textureSampleLevel(skyLutM, skyLutS, lutUv, 0.0).rgb);
+` : `  let sc = skyScatter(d, s, rs, ms);
+`}  let mu = dot(d, s);
   let phaseR = 3.0 / (16.0 * 3.14159265358979) * (1.0 + mu * mu);
   let phaseM = 3.0 / (8.0 * 3.14159265358979) * ((1.0 - g * g) * (1.0 + mu * mu)) / ((2.0 + g * g) * pow(1.0 + g * g - 2.0 * g * mu, 1.5));
-  let sky0 = (sumR * SKY_BETA_R * rs * phaseR + sumM * SKY_BETA_M * ms * phaseM) * sunI;
+  let sky0 = (sc.r * phaseR + sc.m * phaseM) * sunI;
   let gl = (sky0.x + sky0.y + sky0.z) / 3.0 * 0.5;
   let groundRad = ${B(2)}.xyz * (vec3f(gl) + tSun * max(s.y, 0.0) * sunI * 0.05);
   var out = mix(sky0, groundRad, skySmooth(0.0, -0.06, dir.y));
@@ -128,8 +137,8 @@ fn skyColor(dir: vec3f) -> vec3f { return vec3f(1.0) - exp(-skyRadiance(dir) * $
 `;
 }
 
-/** The sky in GLSL ES 3.0: the same functions as `skyWgsl`. @param {(n: number) => string} block */
-export function skyGlsl(block) {
+/** The sky in GLSL ES 3.0: the same functions as `skyWgsl`. @param {(n: number) => string} block @param {{lut?: boolean}} [o] `lut`: read the scattered light from the baked textures `u_skyLutR`, `u_skyLutM` instead of working it out for each pixel */
+export function skyGlsl(block, { lut = false } = {}) {
   const B = block;
   return `
 const float SKY_RE = ${RE}.0; const float SKY_RA = ${RA}.0; const float SKY_HR = ${HR}; const float SKY_HM = ${HM}; const float SKY_OBS = ${OBSERVER};
@@ -163,14 +172,8 @@ float skyVnoise(vec2 p) {
   return a + (b - a) * u.x + (c - a) * u.y + (a - b - c + d) * u.x * u.y;
 }
 float skyCloudNoise(vec2 p) { return (skyVnoise(p) * 0.5 + skyVnoise(p * 2.0) * 0.25 + skyVnoise(p * 4.0) * 0.125 + skyVnoise(p * 8.0) * 0.0625) / 0.9375; }
-vec3 skyRadiance(vec3 dir) {
-  vec3 s = ${B(0)}.xyz;
-  float sunI = ${B(0)}.w;
-  float ms = ${B(1)}.x;
-  float rs = ${B(1)}.y;
-  float g = ${B(1)}.z;
-  vec3 tSun = ${B(7)}.xyz;
-  vec3 d = normalize(vec3(dir.x, max(dir.y, 0.0005), dir.z));
+${lut ? 'uniform highp sampler2D u_skyLutR;\nuniform highp sampler2D u_skyLutM;' : `// the part of the atmosphere that follows from the direction alone (and the sun, and how much of each kind of air): the light scattered by air and by haze, before the phase functions
+void skyScatter(vec3 d, vec3 s, float rs, float ms, out vec3 LR, out vec3 LM) {
   vec3 o = vec3(0.0, SKY_RE + SKY_OBS, 0.0);
   float tMax = skyExit(o, d, SKY_RA);
   vec3 sumR = vec3(0.0);
@@ -202,10 +205,27 @@ vec3 skyRadiance(vec3 dir) {
     sumR += att * hr;
     sumM += att * hm;
   }
-  float mu = dot(d, s);
+  LR = sumR * SKY_BETA_R * rs;
+  LM = sumM * SKY_BETA_M * ms;
+}
+`}
+vec3 skyRadiance(vec3 dir) {
+  vec3 s = ${B(0)}.xyz;
+  float sunI = ${B(0)}.w;
+  float ms = ${B(1)}.x;
+  float rs = ${B(1)}.y;
+  float g = ${B(1)}.z;
+  vec3 tSun = ${B(7)}.xyz;
+  vec3 d = normalize(vec3(dir.x, max(dir.y, 0.0005), dir.z));
+${lut ? `  vec2 lutUv = vec2(atan(d.z, d.x) * 0.15915494309 + 0.5, sqrt(d.y));
+  vec3 LR = textureLod(u_skyLutR, lutUv, 0.0).rgb;
+  vec3 LM = textureLod(u_skyLutM, lutUv, 0.0).rgb;
+` : `  vec3 LR, LM;
+  skyScatter(d, s, rs, ms, LR, LM);
+`}  float mu = dot(d, s);
   float phaseR = 3.0 / (16.0 * 3.14159265358979) * (1.0 + mu * mu);
   float phaseM = 3.0 / (8.0 * 3.14159265358979) * ((1.0 - g * g) * (1.0 + mu * mu)) / ((2.0 + g * g) * pow(1.0 + g * g - 2.0 * g * mu, 1.5));
-  vec3 sky0 = (sumR * SKY_BETA_R * rs * phaseR + sumM * SKY_BETA_M * ms * phaseM) * sunI;
+  vec3 sky0 = (LR * phaseR + LM * phaseM) * sunI;
   float gl = (sky0.x + sky0.y + sky0.z) / 3.0 * 0.5;
   vec3 groundRad = ${B(2)}.xyz * (vec3(gl) + tSun * max(s.y, 0.0) * sunI * 0.05);
   vec3 outc = mix(sky0, groundRad, skySmooth(0.0, -0.06, dir.y));

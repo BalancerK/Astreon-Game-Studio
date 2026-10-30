@@ -695,7 +695,7 @@ attempt gets a fresh canvas from `createCanvas`. Append `renderer.canvas` to the
 ### `createRenderer3D`
 
 ```js
-async function createRenderer3D({ prefer = ['webgpu', 'webgl2'], antialias = true, water = false, createCanvas = defaultCreateCanvas } = {})
+async function createRenderer3D({ prefer = ['webgpu', 'webgl2'], antialias = true, water = false, skyBake = true, createCanvas = defaultCreateCanvas } = {})
 ```
 
 Create the best available 3D renderer, falling back automatically: WebGPU -> WebGL2 (Canvas2D cannot draw 3D). Each
@@ -709,11 +709,12 @@ attempt gets a fresh canvas because a canvas is locked to its first context type
 | `o.prefer` (optional) | `('webgpu'\|'webgl2')[]` |  |
 | `o.antialias` (optional) | `boolean` | Multisample anti-aliasing (default on). |
 | `o.water` (optional) | `boolean` | Compile the water shading (`list.setWater`, `lighting.water`). Off by default because WebGL2 pays for it in shader compile time even when no water is drawn; WebGPU ignores it. |
+| `o.skyBake` (optional) | `boolean` | Bake the procedural sky's atmosphere into small textures that are filled again only when the sun moves, so the sky and the water read it instead of working it out for every pixel (default on; WebGL2 does it when the card can draw to half-float textures, and turns it off by itself when it cannot). |
 | `o.createCanvas` (optional) | `() => HTMLCanvasElement` |  |
 
 **Returns** `Promise<WebGPURenderer3D \| WebGL2Renderer3D>` — `renderer.kind` says which one won.
 
-<sub>src/create3d.js:17</sub>
+<sub>src/create3d.js:18</sub>
 
 ### `createSkinnedMesh`
 
@@ -5344,7 +5345,7 @@ class WebGL2Renderer3D
 #### `WebGL2Renderer3D.constructor`
 
 ```js
-constructor(canvas, { antialias = true, water = false } = {})
+constructor(canvas, { antialias = true, water = false, skyBake = true } = {})
 ```
 
 #### `WebGL2Renderer3D.resize`
@@ -5423,7 +5424,7 @@ render({ camera, list, clear = [0.55, 0.65, 0.78, 1], lighting, shadows, localSh
 destroy()
 ```
 
-<sub>src/webgl3d.js:570</sub>
+<sub>src/webgl3d.js:591</sub>
 
 ### `class WebGPURenderer`
 
@@ -5504,13 +5505,13 @@ class WebGPURenderer3D
 #### `WebGPURenderer3D.create`
 
 ```js
-static async create(canvas, { antialias = true } = {})
+static async create(canvas, { antialias = true, skyBake = true } = {})
 ```
 
 #### `WebGPURenderer3D.constructor`
 
 ```js
-constructor(canvas, device, context, format, samples)
+constructor(canvas, device, context, format, samples, skyBake = true)
 ```
 
 #### `WebGPURenderer3D.resize`
@@ -5599,7 +5600,7 @@ render({ camera, list, clear = [0.55, 0.65, 0.78, 1], lighting, shadows, localSh
 destroy()
 ```
 
-<sub>src/webgpu3d.js:577</sub>
+<sub>src/webgpu3d.js:609</sub>
 
 ## Constants
 
