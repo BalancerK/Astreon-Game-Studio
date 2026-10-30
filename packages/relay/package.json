@@ -1,0 +1,34 @@
+{
+  "name": "@engine/relay",
+  "version": "0.1.0",
+  "description": "Online play where every machine plays the whole game and a server has the last word on every input: the input relay, the frames it sends, the window, and the rollback client",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "API.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "game-engine",
+    "javascript",
+    "webgpu",
+    "multiplayer",
+    "relay"
+  ],
+  "dependencies": {
+    "@engine/client": "^0.1.0"
+  }
+}

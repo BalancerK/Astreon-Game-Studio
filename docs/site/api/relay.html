@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/relay · Astreon Engine</title>
+<meta name="description" content="Online play where every machine plays the whole game and a server has the last word on every input: the input relay, the frames it sends, the window, and the rollback client.">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html">Packages</a><a href="../api/index.html" class="on">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">Overview</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a><h4>Other</h4><a href="camera.html">camera</a><a href="hud.html">hud</a><a href="match.html">match</a><a href="relay.html" class="on">relay</a><a href="testkit.html">testkit</a></nav><main><article><h1 id="enginerelay">@engine/relay</h1>
+<p>Online play where every machine plays the whole game and a server has the last word on every input: the input relay, the frames it sends, the window, and the rollback client.</p>
+<div class="code"><pre><code class="lang-text">npm install @engine/relay</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Version 0.1.0. The package's own README (<a href="../packages/relay.html">packages/relay</a>) explains how the pieces fit together; this page lists every export.</p>
+<h2 id="contents-15-of-15-documented">Contents (15 of 15 documented)<a class="anchor" href="#contents-15-of-15-documented" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Name</th><th>Kind</th><th>Summary</th></tr></thead><tbody><tr><td><a href="#class-inputrelay"><code>InputRelay</code></a></td><td>class</td><td>The server's side of one match: the commands of every seat for every frame, and the frames played from them (see the top of this file).</td></tr><tr><td><a href="#max_ahead"><code>MAX_AHEAD</code></a></td><td>constant</td><td>The furthest ahead (frames) a player may send a command for.</td></tr><tr><td><a href="#max_window"><code>MAX_WINDOW</code></a></td><td>constant</td><td>The most frames the window grows to.</td></tr><tr><td><a href="#class-onlinerollback"><code>OnlineRollback</code></a></td><td>class</td><td>A player's side of an online match: plays at once, takes the server's word, keeps the clock and the delay (see the top of this file).</td></tr><tr><td><a href="#tick_ms"><code>TICK_MS</code></a></td><td>constant</td><td>The length of a frame in milliseconds (60 a second).</td></tr><tr><td><a href="#tone"><code>TONE</code></a></td><td>constant</td><td>The colour of a tone, for pages with their own style.</td></tr><tr><td><a href="#window"><code>WINDOW</code></a></td><td>constant</td><td>The usual window, in frames.</td></tr><tr><td><a href="#createframelog"><code>createFrameLog</code></a></td><td>function</td><td>Make the log of a match's frames.</td></tr><tr><td><a href="#createtokenbucket"><code>createTokenBucket</code></a></td><td>function</td><td>Make a bucket.</td></tr><tr><td><a href="#describedifferences"><code>describeDifferences</code></a></td><td>function</td><td>The first few paths where <code>mine</code> and <code>theirs</code> differ, and the two values.</td></tr><tr><td><a href="#linkquality"><code>linkQuality</code></a></td><td>function</td><td>How good a connection is: bars (0 to 4), a word and a tone.</td></tr><tr><td><a href="#neededwindow"><code>neededWindow</code></a></td><td>function</td><td>The window the connections in a room need: half the round trip and twice its jitter, in frames, and 3 more.</td></tr><tr><td><a href="#pack"><code>pack</code></a></td><td>function</td><td>A message as bytes.</td></tr><tr><td><a href="#stepwindow"><code>stepWindow</code></a></td><td>function</td><td>One look at the window: up at once (by 3 frames a time) when more is needed, down by 1 frame at most every 2 seconds when less is.</td></tr><tr><td><a href="#unpack"><code>unpack</code></a></td><td>function</td><td>A message from bytes.</td></tr></tbody></table></div>
+<h2 id="functions">Functions<a class="anchor" href="#functions" aria-label="Link to this section">#</a></h2>
+<h3 id="createframelog"><code>createFrameLog</code><a class="anchor" href="#createframelog" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createFrameLog</span>({ hashEvery = <span class="tk-n">60</span>, keep = <span class="tk-n">900</span> } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Make the log of a match's frames.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code> (optional)</td><td><code>{hashEvery?: number, keep?: number}</code></td><td><code>hashEvery</code> how many frames between checksums (60), <code>keep</code> how many frames of history (900)</td></tr></tbody></table></div>
+<p><sub>src/frames.js:8</sub></p>
+<h3 id="createtokenbucket"><code>createTokenBucket</code><a class="anchor" href="#createtokenbucket" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">createTokenBucket</span>({ rate, burst, now = <span class="tk-n">0</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Make a bucket.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>{rate: number, burst: number, now?: number}</code></td><td><code>rate</code> requests a second it earns, <code>burst</code> the most it holds (and starts with), <code>now</code> the time in milliseconds it starts at</td></tr></tbody></table></div>
+<p><sub>src/limit.js:7</sub></p>
+<h3 id="describedifferences"><code>describeDifferences</code><a class="anchor" href="#describedifferences" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">describeDifferences</span>(mine, theirs, limit = <span class="tk-n">8</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The first few paths where <code>mine</code> and <code>theirs</code> differ, and the two values.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>mine</code></td><td><code>any</code></td><td></td></tr><tr><td><code>theirs</code></td><td><code>any</code></td><td></td></tr><tr><td><code>limit</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>string[]</code></p>
+<p><sub>src/diff.js:7</sub></p>
+<h3 id="linkquality"><code>linkQuality</code><a class="anchor" href="#linkquality" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">linkQuality</span>({ ping, jitter = <span class="tk-n">0</span>, ahead = <span class="tk-n">0</span>, lost = <span class="tk-k">false</span> })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How good a connection is: bars (0 to 4), a word and a tone.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>c</code></td><td><code>{ping: number, jitter?: number, ahead?: number, lost?: boolean}</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Quality</code></p>
+<p><sub>src/quality.js:11</sub></p>
+<h3 id="neededwindow"><code>neededWindow</code><a class="anchor" href="#neededwindow" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">neededWindow</span>(connections, { base = WINDOW, max = MAX_WINDOW, tickMs = TICK_MS } = {})</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The window the connections in a room need: half the round trip and twice its jitter, in frames, and 3 more.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>connections</code></td><td><code>Array&lt;{rtt?: number, jitter?: number} | null | undefined&gt;</code></td><td>the players' links (a link with no <code>rtt</code> yet, or none, counts for nothing)</td></tr><tr><td><code>o</code> (optional)</td><td><code>{base?: number, max?: number, tickMs?: number}</code></td><td></td></tr></tbody></table></div>
+<p><sub>src/window.js:16</sub></p>
+<h3 id="pack"><code>pack</code><a class="anchor" href="#pack" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">pack</span>(msg)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A message as bytes.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>msg</code></td><td><code>any</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>Uint8Array</code></p>
+<p><sub>src/wire.js:5</sub></p>
+<h3 id="stepwindow"><code>stepWindow</code><a class="anchor" href="#stepwindow" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">stepWindow</span>(room, need, now)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>One look at the window: up at once (by 3 frames a time) when more is needed, down by 1 frame at most every 2 seconds when less is.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>room</code></td><td><code>{window?: number, downAt?: number}</code></td><td>the room's state, <code>window</code> (default WINDOW) and <code>downAt</code> (when it last came down): both are updated</td></tr><tr><td><code>need</code></td><td><code>number</code></td><td>from <code>neededWindow</code></td></tr><tr><td><code>now</code></td><td><code>number</code></td><td>milliseconds</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — the window now</p>
+<p><sub>src/window.js:27</sub></p>
+<h3 id="unpack"><code>unpack</code><a class="anchor" href="#unpack" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">function</span> <span class="tk-f">unpack</span>(bytes)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A message from bytes.</p>
+<p><strong>Parameters</strong></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>bytes</code></td><td><code>Uint8Array | ArrayBuffer</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>any</code> — the message, or null if it is not one</p>
+<p><sub>src/wire.js:8</sub></p>
+<h2 id="classes">Classes<a class="anchor" href="#classes" aria-label="Link to this section">#</a></h2>
+<h3 id="class-inputrelay"><code>class InputRelay</code><a class="anchor" href="#class-inputrelay" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> InputRelay</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The server's side of one match: the commands of every seat for every frame, and the frames played from them (see the top of this file).</p>
+<h4 id="inputrelayconstructor"><code>InputRelay.constructor</code><a class="anchor" href="#inputrelayconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ seats, codec, think, onChange = () =&gt; {}, hooks = {}, maxAhead = MAX_AHEAD })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.seats</code></td><td><code>RelaySeat[]</code></td><td>the seats; the array is kept and changed as seats change hands</td></tr><tr><td><code>o.codec</code></td><td><code>CommandCodec</code></td><td></td></tr><tr><td><code>o.think</code></td><td><code>(seat: number, frame: number) =&gt; any</code></td><td>the command (decoded) of a computer-driven seat for this frame</td></tr><tr><td><code>o.onChange</code> (optional)</td><td><code>(entries: Array&lt;{seat: number, [k: string]: any}&gt;) =&gt; void</code></td><td>called with the changes of a frame as they are recorded, so the game's own copy can apply them at once (the players apply them at the same frame)</td></tr><tr><td><code>o.hooks</code> (optional)</td><td><code>{human?: (seat: number) =&gt; void, bot?: (seat: number, frame: number) =&gt; void}</code></td><td>called when a person takes a seat (<code>human</code>) and when a computer takes it back (<code>bot</code>), so the game can drop or make the seat's mind</td></tr><tr><td><code>o.maxAhead</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="inputrelayseatof"><code>InputRelay.seatOf</code><a class="anchor" href="#inputrelayseatof" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">seatOf</span>(pilot)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The seat a person is in, or -1.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>pilot</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<h4 id="inputrelayreceive"><code>InputRelay.receive</code><a class="anchor" href="#inputrelayreceive" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">receive</span>(seat, frame, encoded)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A command from a player's machine for a frame. Too late (that frame is already played) it is used for the next frame instead, so that a slow connection delays what the player does and does not lose it (unless it is older than one already taken); too far ahead, or for a seat that is not a person's, it is ignored.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>seat</code></td><td><code>number</code></td><td></td></tr><tr><td><code>encoded</code></td><td><code>any</code></td><td></td></tr><tr><td><code>frame</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>boolean</code> — whether it was kept</p>
+<h4 id="inputrelayseathuman"><code>InputRelay.seatHuman</code><a class="anchor" href="#inputrelayseathuman" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">seatHuman</span>(seat, pilot, name)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A person takes over a computer-driven seat from the next frame.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>seat</code></td><td><code>number</code></td><td></td></tr><tr><td><code>pilot</code></td><td><code>string</code></td><td></td></tr><tr><td><code>name</code></td><td><code>string</code></td><td></td></tr></tbody></table></div>
+<h4 id="inputrelayseatbot"><code>InputRelay.seatBot</code><a class="anchor" href="#inputrelayseatbot" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">seatBot</span>(seat)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The person in a seat has gone: the computer takes it from the next frame.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>seat</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="inputrelayrecord"><code>InputRelay.record</code><a class="anchor" href="#inputrelayrecord" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">record</span>(entry)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Note a change that takes effect at the next frame to be played, on every machine at the same frame (it comes with that frame to the players): a seat changing hands, or anything else of the game's own (a new build chosen during the round).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>entry</code></td><td><code>{seat: number, [k: string]: any}</code></td><td></td></tr></tbody></table></div>
+<h4 id="inputrelayfreeseats"><code>InputRelay.freeSeats</code><a class="anchor" href="#inputrelayfreeseats" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">freeSeats</span>(team)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The seats a person could take over: computer-driven ones, the weakest-placed first (a team's own before any other, when <code>team</code> is given).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>team</code> (optional)</td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="inputrelaystep"><code>InputRelay.step</code><a class="anchor" href="#inputrelaystep" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">step</span>(play)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Play one frame. <code>play</code> is given the commands (decoded) of every seat and the changes that take effect at this frame, and plays the game; what it returns comes back as <code>events</code>.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>play</code></td><td><code>(commands: any[], changes: Array&lt;{seat: number, [k: string]: any}&gt;) =&gt; T</code></td><td></td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>{frame: number, inputs: any[], events: T, changes: Array&lt;{seat: number, [k: string]: any}&gt;}</code> — <code>inputs[i]</code> is the encoded command of seat i</p>
+<p><sub>src/relay.js:25</sub></p>
+<h3 id="class-onlinerollback"><code>class OnlineRollback</code><a class="anchor" href="#class-onlinerollback" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">class</span> OnlineRollback</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A player's side of an online match: plays at once, takes the server's word, keeps the clock and the delay (see the top of this file).</p>
+<h4 id="onlinerollbackconstructor"><code>OnlineRollback.constructor</code><a class="anchor" href="#onlinerollbackconstructor" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">constructor</span>({ seats, you, game, send, sendFast = send, redundant = () =&gt; <span class="tk-k">false</span>, window = <span class="tk-n">6</span>, inputDelay = <span class="tk-n">0</span>, onEvents = () =&gt; {} })</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>o</code></td><td><code>object</code></td><td></td></tr><tr><td><code>o.seats</code></td><td><code>any[]</code></td><td>a record for each seat, kept (the server's <code>roster</code> messages update them)</td></tr><tr><td><code>o.you</code></td><td><code>number</code></td><td>this player's seat</td></tr><tr><td><code>o.game</code></td><td><code>OnlineGame</code></td><td></td></tr><tr><td><code>o.send</code></td><td><code>(msg: any) =&gt; void</code></td><td>sends a message to the server the reliable way</td></tr><tr><td><code>o.sendFast</code> (optional)</td><td><code>(msg: any) =&gt; void</code></td><td>for what may be lost (pings, commands)</td></tr><tr><td><code>o.redundant</code> (optional)</td><td><code>() =&gt; boolean</code></td><td>whether commands go in datagrams of several at a time</td></tr><tr><td><code>o.window</code> (optional)</td><td><code>number</code></td><td>the server's window in frames</td></tr><tr><td><code>o.inputDelay</code> (optional)</td><td><code>number</code></td><td></td></tr><tr><td><code>o.onEvents</code> (optional)</td><td><code>(events: any[], frame: number) =&gt; void</code></td><td></td></tr></tbody></table></div>
+<h4 id="onlinerollbackstate"><code>OnlineRollback.state</code><a class="anchor" href="#onlinerollbackstate" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> state</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The game now (it is replaced whenever it is played again from an earlier frame, so ask each frame).</p>
+<h4 id="onlinerollbackaheadms"><code>OnlineRollback.aheadMs</code><a class="anchor" href="#onlinerollbackaheadms" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> aheadMs</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>How far ahead of what the server has confirmed this machine is playing (milliseconds): the part of what is on the screen that is a guess.</p>
+<h4 id="onlinerollbackframe"><code>OnlineRollback.frame</code><a class="anchor" href="#onlinerollbackframe" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">get</span> frame</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The frame the machine has played up to.</p>
+<h4 id="onlinerollbackmessage"><code>OnlineRollback.message</code><a class="anchor" href="#onlinerollbackmessage" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">message</span>(msg, now)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>A message from the server.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>msg</code></td><td><code>any</code></td><td></td></tr><tr><td><code>now</code></td><td><code>number</code></td><td>milliseconds</td></tr></tbody></table></div>
+<h4 id="onlinerollbackping"><code>OnlineRollback.ping</code><a class="anchor" href="#onlinerollbackping" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">ping</span>(now, force = <span class="tk-k">false</span>)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Ask the server what time it is in the match (every second or so).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>now</code></td><td><code>number</code></td><td></td></tr><tr><td><code>force</code> (optional)</td><td><code>boolean</code></td><td></td></tr></tbody></table></div>
+<h4 id="onlinerollbackmatchframe"><code>OnlineRollback.matchFrame</code><a class="anchor" href="#onlinerollbackmatchframe" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">matchFrame</span>(now)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Which frame of the match it is now, by the server's clock (a fraction), or NaN before the clock is known.</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>now</code></td><td><code>number</code></td><td></td></tr></tbody></table></div>
+<h4 id="onlinerollbacktick"><code>OnlineRollback.tick</code><a class="anchor" href="#onlinerollbacktick" aria-label="Link to this section">#</a></h4>
+<div class="code"><pre><code class="lang-js"><span class="tk-f">tick</span>(now, readCommand)</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>Play the frames that are due: for each, take the player's command, send it, and play the frame. Call every rendered frame (or at least often).</p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>now</code></td><td><code>number</code></td><td>milliseconds</td></tr><tr><td><code>readCommand</code></td><td><code>() =&gt; any</code></td><td>gives the player's command for this moment</td></tr></tbody></table></div>
+<p><strong>Returns</strong> <code>number</code> — how many frames were played</p>
+<p><sub>src/online.js:27</sub></p>
+<h2 id="constants">Constants<a class="anchor" href="#constants" aria-label="Link to this section">#</a></h2>
+<h3 id="max_ahead"><code>MAX_AHEAD</code><a class="anchor" href="#max_ahead" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> MAX_AHEAD</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The furthest ahead (frames) a player may send a command for.</p>
+<p>Value: <code>90</code></p>
+<p><sub>src/relay.js:12</sub></p>
+<h3 id="max_window"><code>MAX_WINDOW</code><a class="anchor" href="#max_window" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> MAX_WINDOW</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The most frames the window grows to.</p>
+<p>Value: <code>20</code></p>
+<p><sub>src/window.js:7</sub></p>
+<h3 id="tick_ms"><code>TICK_MS</code><a class="anchor" href="#tick_ms" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> TICK_MS</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The length of a frame in milliseconds (60 a second).</p>
+<p>Value: <code>1000 / 60</code></p>
+<p><sub>src/window.js:9</sub></p>
+<h3 id="tone"><code>TONE</code><a class="anchor" href="#tone" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> TONE</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The colour of a tone, for pages with their own style.</p>
+<p>Value: <code>Object.freeze({ good: '#6fcf97', fair: '#e0b84a', poor: '#e0594f', lost: '#e0594</code></p>
+<p><sub>src/quality.js:21</sub></p>
+<h3 id="window"><code>WINDOW</code><a class="anchor" href="#window" aria-label="Link to this section">#</a></h3>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">const</span> WINDOW</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The usual window, in frames.</p>
+<p>Value: <code>6</code></p>
+<p><sub>src/window.js:5</sub></p>
+<h2 id="types">Types<a class="anchor" href="#types" aria-label="Link to this section">#</a></h2>
+<h3 id="commandcodec"><code>CommandCodec</code><a class="anchor" href="#commandcodec" aria-label="Link to this section">#</a></h3>
+<p>How a game's command is written for the wire.</p>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>normalize</code></td><td><code>(raw?: any) =&gt; any</code></td><td>makes a command that is certainly sound (no argument: &quot;nothing pressed&quot;)</td></tr><tr><td><code>encode</code></td><td><code>(command: any) =&gt; any</code></td><td>a command as plain data (JSON)</td></tr><tr><td><code>decode</code></td><td><code>(encoded: any) =&gt; any</code></td><td></td></tr></tbody></table></div>
+<h3 id="onlinegame"><code>OnlineGame</code><a class="anchor" href="#onlinegame" aria-label="Link to this section">#</a></h3>
+<p>What the game is, for the online match.</p>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>base</code></td><td><code>() =&gt; any</code></td><td>makes the state at frame 0 (the same on every machine, from what the server's <code>start</code> message said)</td></tr><tr><td><code>step</code></td><td><code>(state: any, commands: any[], changes: Array&lt;{seat: number, [k: string]: any}&gt; | undefined, frame: number) =&gt; any[]</code></td><td>plays one frame: apply the changes (of who holds a seat, and anything else the server recorded), play the game with these commands (one decoded command for each seat), and return the events of the frame (shown once, when the frame is played for the first time)</td></tr><tr><td><code>clone</code></td><td><code>(state: any) =&gt; any</code></td><td></td></tr><tr><td><code>checksum</code></td><td><code>(state: any) =&gt; number</code></td><td></td></tr><tr><td><code>serialize</code></td><td><code>(state: any) =&gt; any</code></td><td>the state as plain data (for the server's copy and for finding differences)</td></tr><tr><td><code>revive</code></td><td><code>(data: any, base: any) =&gt; any</code></td><td>the state from plain data (<code>base</code> is a fresh state to take what cannot be written down from)</td></tr><tr><td><code>normalize</code></td><td><code>(raw?: any) =&gt; any</code></td><td></td></tr><tr><td><code>encode</code></td><td><code>(command: any) =&gt; any</code></td><td></td></tr><tr><td><code>decode</code></td><td><code>(encoded: any) =&gt; any</code></td><td>a command (see <code>CommandCodec</code> in relay.js)</td></tr></tbody></table></div>
+<h3 id="quality"><code>Quality</code><a class="anchor" href="#quality" aria-label="Link to this section">#</a></h3>
+<p>Type: <code>{bars: 0 \| 1 \| 2 \| 3 \| 4, label: string, tone: 'good' \| 'fair' \| 'poor' \| 'lost'}</code></p>
+<h3 id="relayseat"><code>RelaySeat</code><a class="anchor" href="#relayseat" aria-label="Link to this section">#</a></h3>
+<p>A seat: who or what plays it.</p>
+<p>Type: <code>object</code></p>
+<div class="table"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>kind</code></td><td><code>'human' | 'bot'</code></td><td></td></tr><tr><td><code>pilot</code> (optional)</td><td><code>string</code></td><td>the id of the person in it (none for a computer-driven seat)</td></tr><tr><td><code>team</code> (optional)</td><td><code>number</code></td><td></td></tr><tr><td><code>name</code> (optional)</td><td><code>string</code></td><td></td></tr></tbody></table></div><div class="pager"><a href="match.html"><small>Previous</small>match</a><a class="next" href="testkit.html"><small>Next</small>testkit</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#contents-15-of-15-documented">Contents (15 of 15 documented)</a><a class="l2" href="#functions">Functions</a><a class="l3" href="#createframelog">createFrameLog</a><a class="l3" href="#createtokenbucket">createTokenBucket</a><a class="l3" href="#describedifferences">describeDifferences</a><a class="l3" href="#linkquality">linkQuality</a><a class="l3" href="#neededwindow">neededWindow</a><a class="l3" href="#pack">pack</a><a class="l3" href="#stepwindow">stepWindow</a><a class="l3" href="#unpack">unpack</a><a class="l2" href="#classes">Classes</a><a class="l3" href="#class-inputrelay">class InputRelay</a><a class="l3" href="#class-onlinerollback">class OnlineRollback</a><a class="l2" href="#constants">Constants</a><a class="l3" href="#max_ahead">MAX_AHEAD</a><a class="l3" href="#max_window">MAX_WINDOW</a><a class="l3" href="#tick_ms">TICK_MS</a><a class="l3" href="#tone">TONE</a><a class="l3" href="#window">WINDOW</a><a class="l2" href="#types">Types</a><a class="l3" href="#commandcodec">CommandCodec</a><a class="l3" href="#onlinegame">OnlineGame</a><a class="l3" href="#quality">Quality</a><a class="l3" href="#relayseat">RelaySeat</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

@@ -42,6 +42,7 @@ export const ALLOWED = {
   match: ['math'],
   camera: [],
   hud: [],
+  relay: ['client'],
   matchmaking: [],
   persist: [],
   turns: ['matchmaking', 'transport'],

@@ -45,6 +45,7 @@ npm run determinism      # shared simulation hashed bit-for-bit in Node, Chrome 
 | [`persist`](packages/persist) | What outlives a match: a versioned key-value store (memory, files), player profiles with a write-behind cache and migrations, leaderboards, guest accounts and an append-only log |
 | [`turns`](packages/turns) | Turn-based and card games: rules as plain functions with hidden information and seeded randomness, a server room (tokens, robots, turn timers, rematch) and a client with reconnect |
 | [`create-game`](packages/create-game) | `npx create-game my-game`: a new project from a template (2D, 3D or multiplayer card game), wired to the dev server, the build and the editor |
+| [`relay`](packages/relay) | Online play where every machine plays the whole game and a server has the last word on every input: the input relay, the frames it sends, the window, and the rollback client |
 | [`hud`](packages/hud) | HUD widgets for a 2D canvas over a 3D view: panels, gauges, cooldown sweeps, a compass tape, a turning radar, off-screen arrows and a frame-time overlay |
 | [`camera`](packages/camera) | The feel of a 3D view: a follow camera with wall pull-in and shoulder switch, a spring kick, trauma shake, a wider view at speed, and hit-stop |
 | [`match`](packages/match) | A match layer: score, assists, streaks, respawns, win rules, control points and a results summary, from a game's events |

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-base="../">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@engine/relay · Astreon Engine</title>
+<meta name="description" content="Online play for games where every machine plays the whole game and a server has the last word on every input: the input relay on the server, the frames it broadcasts, the window that keeps late comman">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button><a class="brand" href="../index.html"><span class="logo">▶</span>Astreon Engine</a><nav class="tabs" aria-label="Sections"><a href="../guide/start-here.html">Guide</a><a href="../tutorials/2d-platformer.html">Tutorials</a><a href="../packages/index.html" class="on">Packages</a><a href="../api/index.html">API</a><a href="../reference/changelog.html">Reference</a></nav><span class="spacer"></span><button class="search-btn" id="search-btn" type="button" aria-label="Search">⌕ <span>Search the docs</span><kbd>/</kbd></button><button class="icon-btn" id="theme-btn" type="button" aria-label="Switch between light and dark">☾</button></header>
+<div class="shell"><nav class="side" aria-label="Pages"><a href="index.html">All packages</a><h4>Foundation</h4><a href="core.html">core</a><a href="math.html">math</a><h4>Simulation</h4><a href="arcade.html">arcade</a><a href="physics.html">physics</a><a href="ai.html">ai</a><a href="fsm.html">fsm</a><a href="tween.html">tween</a><a href="prefab.html">prefab</a><a href="scene.html">scene</a><h4>Presentation</h4><a href="render.html">render</a><a href="skeleton2d.html">skeleton2d</a><a href="particles.html">particles</a><a href="ui.html">ui</a><a href="input.html">input</a><a href="audio.html">audio</a><a href="i18n.html">i18n</a><h4>Content and tools</h4><a href="assets.html">assets</a><a href="save.html">save</a><a href="editor.html">editor</a><a href="build.html">build</a><a href="create-game.html">create-game</a><a href="debug.html">debug</a><a href="mods.html">mods</a><h4>Multiplayer</h4><a href="protocol.html">protocol</a><a href="transport.html">transport</a><a href="server.html">server</a><a href="client.html">client</a><a href="replay.html">replay</a><a href="matchmaking.html">matchmaking</a><a href="persist.html">persist</a><a href="turns.html">turns</a><h4>Other</h4><a href="camera.html">camera</a><a href="hud.html">hud</a><a href="match.html">match</a><a href="relay.html" class="on">relay</a><a href="testkit.html">testkit</a></nav><main><article><h1 id="enginerelay">@engine/relay</h1>
+<p>Online play for games where <strong>every machine plays the whole game</strong> and <strong>a server has the last word on every input</strong>: the input relay on the server, the frames it broadcasts, the window that keeps late commands useful, and the rollback client that plays at once and takes corrections. It is the networking of a competitive 3D game (Mecha Strike) with the game taken out. The server does not need to simulate more than the game's own step function; the players only ever send commands.</p>
+<p><strong>May import:</strong> <code>@engine/client</code> (its <code>RollbackSession</code>).</p>
+<h2 id="how-it-fits-together">How it fits together<a class="anchor" href="#how-it-fits-together" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-text">player's machine                         server
+OnlineRollback ── in {f, c} ──────────►  InputRelay.receive(seat, f, c)
+  plays frame F at once, guessing                keeps the command for frame F (late: used for the next)
+  the others' commands                   relay.step(play) every frame the window allows
+                  ◄── f {f, i, ch, h} ── createFrameLog().make(...)   only the commands that changed, a checksum now and then
+  takes the commands that were really used, plays again from the first wrong guess</code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>The server plays frame F only when F is <code>window</code> frames old (<code>stepWindow</code>), which gives commands from slow connections time to arrive; the client delays its own commands by the same reasoning, never more than it needs.</p>
+<h2 id="the-server-half">The server half<a class="anchor" href="#the-server-half" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">import</span> { InputRelay, createFrameLog, neededWindow, stepWindow, createTokenBucket } <span class="tk-k">from</span> <span class="tk-s">'@engine/relay'</span>;
+
+<span class="tk-k">const</span> relay = <span class="tk-k">new</span> <span class="tk-f">InputRelay</span>({
+  seats,                                                    <span class="tk-c">// [{ kind: 'human' | 'bot', pilot: 'id', team }, ...]</span>
+  codec: { normalize, encode, decode },                     <span class="tk-c">// a command, made sound / written as plain data / read back</span>
+  think: (seat, frame) =&gt; bots[seat].<span class="tk-f">think</span>(world),          <span class="tk-c">// the command of a computer-driven seat</span>
+  onChange: (changes) =&gt; <span class="tk-f">applyToMyCopy</span>(changes),            <span class="tk-c">// a seat changed hands: apply it to the server's own game at once</span>
+  hooks: { human: (seat) =&gt; <span class="tk-f">dropBot</span>(seat), bot: (seat, frame) =&gt; <span class="tk-f">makeBot</span>(seat, frame) },
+});
+<span class="tk-k">const</span> frames = <span class="tk-f">createFrameLog</span>();
+
+relay.<span class="tk-f">receive</span>(seat, frame, encoded);                        <span class="tk-c">// what a player's machine sent (late ones are used a frame later; too far ahead is ignored)</span>
+<span class="tk-k">const</span> { frame, inputs, events, changes } = relay.<span class="tk-f">step</span>((commands, changes) =&gt; game.<span class="tk-f">step</span>(commands, changes));
+<span class="tk-f">broadcast</span>(frames.<span class="tk-f">make</span>(frame, inputs, { changes, hash: frames.<span class="tk-f">wantsHash</span>(frame) ? game.<span class="tk-f">checksum</span>() : <span class="tk-k">undefined</span> }));
+<span class="tk-c">// when the window allows: room.window follows the worst connection: stepWindow(room, neededWindow(links.map((l) =&gt; ({ rtt: l.rtt, jitter: l.jitter }))), now)</span></code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<ul><li><code>relay.seatBot(seat)</code> / <code>relay.seatHuman(seat, pilot, name)</code> hand a seat over from the next frame (a player left, a newcomer drops in); <code>relay.record({ seat, ...anything })</code> records a change of the game's own (a new build for the next life) so every machine applies it at the same frame; <code>relay.freeSeats(team)</code>.</li><li><code>createFrameLog().since(from)</code> gives the frames to send again to a machine that lost datagrams (<code>null</code> when it is too long ago: send the whole state).</li><li><code>createTokenBucket({ rate, burst })</code> limits how much one connection may ask of the server.</li></ul>
+<h2 id="the-client-half">The client half<a class="anchor" href="#the-client-half" aria-label="Link to this section">#</a></h2>
+<div class="code"><pre><code class="lang-js"><span class="tk-k">import</span> { OnlineRollback } <span class="tk-k">from</span> <span class="tk-s">'@engine/relay'</span>;
+
+<span class="tk-k">const</span> online = <span class="tk-k">new</span> <span class="tk-f">OnlineRollback</span>({ seats, you: mySeat, send, sendFast, game: {
+  base: () =&gt; <span class="tk-f">makeGame</span>(config),                             <span class="tk-c">// the state at frame 0, the same on every machine</span>
+  step: (state, commands, changes, frame) =&gt; { <span class="tk-f">applyChanges</span>(state, changes); <span class="tk-k">return</span> <span class="tk-f">playFrame</span>(state, commands); },   <span class="tk-c">// returns the frame's events</span>
+  clone, checksum, serialize, revive,                       <span class="tk-c">// copy, sum, write as plain data, read back</span>
+  normalize, encode, decode,                                <span class="tk-c">// the same codec as the server's</span>
+}, onEvents: (events, frame) =&gt; <span class="tk-f">showEffects</span>(events) });
+<span class="tk-c">// for each message from the server: online.message(msg, now); every rendered frame: online.tick(now, () =&gt; readMyKeys()); read online.state</span></code></pre><button class="copy" type="button" aria-label="Copy">Copy</button></div>
+<p>It estimates the server's clock from pings, adapts its input delay, catches up or asks for the whole state when it falls far behind, asks again for frames a datagram lost, and asks for the state when a checksum says its game went wrong (<code>lastMismatch</code> says where).</p>
+<h2 id="also-here">Also here<a class="anchor" href="#also-here" aria-label="Link to this section">#</a></h2>
+<p><code>pack</code> / <code>unpack</code> (messages as bytes: plain objects with a text <code>t</code>, written as JSON), <code>linkQuality</code> (bars and a label from ping, jitter and how far ahead the player is playing) and <code>TONE</code>, <code>describeDifferences</code> (where two states differ), and the constants <code>WINDOW</code> (6), <code>MAX_WINDOW</code> (20), <code>TICK_MS</code>, <code>MAX_AHEAD</code>.</p>
+<h2 id="tests">Tests<a class="anchor" href="#tests" aria-label="Link to this section">#</a></h2>
+<p><code>packages/relay/test/relay.test.js</code>: the relay's rules over a toy game, and three machines and a bot over a network with delay and jitter that end up in the server's state, notice a damaged game, ask again for lost frames and shrink a lead that grew.</p>
+<h2 id="every-export">Every export<a class="anchor" href="#every-export" aria-label="Link to this section">#</a></h2>
+<p>The complete, generated list of this package's exports (every function, class and option) is on its <span class="src">API page</span>.</p><div class="pager"><a href="match.html"><small>Previous</small>match</a><a class="next" href="testkit.html"><small>Next</small>testkit</a></div></article></main><aside class="toc"><h4>On this page</h4><a class="l2" href="#how-it-fits-together">How it fits together</a><a class="l2" href="#the-server-half">The server half</a><a class="l2" href="#the-client-half">The client half</a><a class="l2" href="#also-here">Also here</a><a class="l2" href="#tests">Tests</a><a class="l2" href="#every-export">Every export</a></aside></div>
+<footer class="foot">Astreon Engine 0.1.0 · Apache-2.0 · Generated from the repository by <code>node tools/site.js</code></footer>
+<div id="search" role="dialog" aria-label="Search"><div class="box"><input type="search" placeholder="Search pages, packages and exports…" autocomplete="off" aria-label="Search"><ul></ul></div></div>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>
