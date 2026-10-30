@@ -16,6 +16,7 @@ Generated from the source by `npm run docs` (`tools/api-docs.js`): every export 
 | [`@engine/debug`](debug.md) | In-page overlay: live graphs and a decoded packet inspector (F3) | 6 | 100% |
 | [`@engine/editor`](editor.md) | Browser scene editor: viewport with gizmos, hierarchy, inspector generated from prefabs, undo, saving, Play-in-editor; the pieces also work without a page | 66 | 100% |
 | [`@engine/fsm`](fsm.md) | Hierarchical state machines (events, timers, history, saving) and an animation graph with blend trees and cross-fades | 3 | 100% |
+| [`@engine/hud`](hud.md) | HUD widgets for a 2D canvas over a 3D view: panels, gauges, cooldown sweeps, a compass tape, a turning radar, off-screen arrows and a frame-time overlay | 14 | 100% |
 | [`@engine/i18n`](i18n.md) | Localisation: plural forms for every language, contexts, gettext .po and CSV import, fallback chains (pt-BR to pt), pseudo-localisation, a list of what is untranslated | 10 | 100% |
 | [`@engine/input`](input.md) | Actions and bindings over keyboard, mouse, gamepad and on-screen touch controls; contexts, rebinding, saving, prompts | 25 | 100% |
 | [`@engine/match`](match.md) | A match layer: score, assists, streaks, respawns, win rules, control points and a results summary, from a game's events | 31 | 100% |

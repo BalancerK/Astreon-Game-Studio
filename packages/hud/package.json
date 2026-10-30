@@ -1,0 +1,31 @@
+{
+  "name": "@engine/hud",
+  "version": "0.1.0",
+  "description": "HUD widgets for a 2D canvas over a 3D view: panels, gauges, cooldown sweeps, a compass tape, a turning radar, off-screen arrows and a frame-time overlay",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "API.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "game-engine",
+    "javascript",
+    "webgpu",
+    "multiplayer",
+    "hud"
+  ]
+}

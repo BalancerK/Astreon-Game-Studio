@@ -41,6 +41,7 @@ export const ALLOWED = {
   testkit: ['build'],
   match: ['math'],
   camera: [],
+  hud: [],
   matchmaking: [],
   persist: [],
   turns: ['matchmaking', 'transport'],
